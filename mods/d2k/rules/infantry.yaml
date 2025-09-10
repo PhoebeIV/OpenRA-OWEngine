@@ -135,6 +135,7 @@ thumper:
 		UndeployOnMove: true
 		Facing: 512
 		AllowedTerrainTypes: Sand, Spice, Dune, SpiceSand
+		SmartDeploy: true
 	Encyclopedia:
 		Description: actor-thumper.encyclopedia
 		Order: 40
@@ -322,18 +323,18 @@ saboteur:
 	Mobile:
 		Speed: 43
 	Demolition:
-		DetonationDelay: 0
-		Flashes: 0
+		DetonationDelay: 25
+		Flashes: 3
 		EnterBehaviour: Suicide
 	-RevealOnFire:
-	GrantConditionOnDeployWithCharge:
-		DeployedCondition: deployed
+	GrantChargedConditionOnToggle:
+		ActivatedCondition: cloaked
 		CanCancelCondition: true
 		ChargeDuration: 1250
 		ChargeThreshhold: 100
 		ConditionDuration: 375
 	Cloak:
-		RequiresCondition: deployed
+		RequiresCondition: cloaked
 		InitialDelay: 0
 		CloakDelay: 25
 		CloakSound: STEALTH1.WAV

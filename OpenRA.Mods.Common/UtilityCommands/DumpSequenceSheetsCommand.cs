@@ -10,59 +10,109 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
+using OpenRA.FileFormats;
 using OpenRA.FileSystem;
 using OpenRA.Graphics;
 
 namespace OpenRA.Mods.Common.UtilityCommands
 {
-	sealed class DumpSequenceSheetsCommand : IUtilityCommand
+	public interface IDumpSheetsTerrainInfo : ITerrainInfo
 	{
-		static readonly int[] ChannelMasks = { 2, 1, 0, 3 };
+		void DumpSheets(string terrainName, ImmutablePalette palette, ref int sheetCount);
+	}
 
-		string IUtilityCommand.Name => "--dump-sequence-sheets";
+	public class DumpSequenceSheetsCommand : IUtilityCommand
+	{
+		static readonly int[] ChannelMasks = [2, 1, 0, 3];
+
+		string IUtilityCommand.Name => "--dump-sheets";
 
 		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
-			return args.Length >= 3;
+			return args.Length >= 1;
 		}
 
-		[Desc("PALETTE", "TILESET-OR-MAP", "Exports sequence texture atlas as a set of png images.")]
+		[Desc("[PALETTE]", "[TILESET-OR-MAP]", "Exports texture atlas' as a set of png images. "
+			+ "If palette is not specified, only BGRA sheets are exported. "
+			+ "If tileset-or-map is not specified, all tilesets are exported.")]
 		void IUtilityCommand.Run(Utility utility, string[] args)
 		{
 			// HACK: The engine code assumes that Game.modData is set.
 			var modData = Game.ModData = utility.ModData;
 
-			var palette = new ImmutablePalette(args[1], new[] { 0 }, Array.Empty<int>());
+			var palette = args.Length > 1 ? new ImmutablePalette(args[1], [0], []) : null;
+			var sequences = new List<SequenceSet>();
 
-			SequenceSet sequences;
-			if (modData.DefaultTerrainInfo.ContainsKey(args[2]))
-				sequences = new SequenceSet(modData.ModFiles, modData, args[2], null);
+			if (args.Length == 3)
+			{
+				var tilesetUpper = args[2].ToUpperInvariant();
+				if (modData.DefaultTerrainInfo.ContainsKey(tilesetUpper))
+					sequences.Add(new SequenceSet(modData.ModFiles, modData, tilesetUpper, null));
+				else
+				{
+					var mapPackage = new Folder(Platform.EngineDir).OpenPackage(args[2], modData.ModFiles);
+					if (mapPackage == null)
+						throw new InvalidOperationException($"{args[2]} is not a valid tileset or map path");
+
+					sequences.Add(new Map(modData, mapPackage).Sequences);
+				}
+			}
 			else
 			{
-				var mapPackage = new Folder(Platform.EngineDir).OpenPackage(args[2], modData.ModFiles);
-				if (mapPackage == null)
-					throw new InvalidOperationException($"{args[2]} is not a valid tileset or map path");
-
-				sequences = new Map(modData, mapPackage).Sequences;
+				foreach (var t in modData.DefaultTerrainInfo.Keys)
+					sequences.Add(new SequenceSet(modData.ModFiles, modData, t, null));
 			}
 
-			sequences.LoadSprites();
+			var sheetCount = 1;
+			var cursorProvider = new CursorProvider(modData);
+			using (var cursor = new CursorManager(cursorProvider, modData.Manifest.CursorSheetSize))
+				foreach (var sheet in cursor.SheetBuilder.AllSheets)
+					CommitSheet(null, sheet, "cursors", palette, ref sheetCount);
 
-			var count = 0;
-
-			var sb = sequences.SpriteCache.SheetBuilders[SheetType.Indexed];
-			foreach (var s in sb.AllSheets)
+			foreach (var sequence in sequences)
 			{
-				var max = s == sb.Current ? (int)sb.CurrentChannel + 1 : 4;
-				for (var i = 0; i < max; i++)
-					s.AsPng((TextureChannel)ChannelMasks[i], palette).Save($"{count}.{i}.png");
+				sequence.LoadSprites();
 
-				count++;
+				var sequencesName = "sequences";
+				var terrainName = "tileset";
+				if (sequences.Count > 1)
+				{
+					var name = sequence.TileSet.ToLowerInvariant();
+					sequencesName += "." + name;
+					terrainName += "." + name;
+				}
+
+				var sheetBuilder = sequence.SpriteCache.SheetBuilders[SheetType.Indexed];
+				foreach (var sheet in sheetBuilder.AllSheets)
+					CommitSheet(sheetBuilder, sheet, sequencesName, palette, ref sheetCount);
+
+				foreach (var sheet in sequence.SpriteCache.SheetBuilders[SheetType.BGRA].AllSheets)
+					CommitSheet(null, sheet, sequencesName, palette, ref sheetCount);
+
+				modData.DefaultTerrainInfo.TryGetValue(sequence.TileSet, out var terrainInfo);
+				if (terrainInfo is IDumpSheetsTerrainInfo dsi)
+					dsi.DumpSheets(terrainName, palette, ref sheetCount);
+
+				sequence.Dispose();
 			}
+		}
 
-			sb = sequences.SpriteCache.SheetBuilders[SheetType.BGRA];
-			foreach (var s in sb.AllSheets)
-				s.AsPng().Save($"{count++}.png");
+		public static void CommitSheet(SheetBuilder builder, Sheet sheet, string name, ImmutablePalette palette, ref int count)
+		{
+			if (builder == null)
+				sheet.AsPng().Save($"{count++}.{name}.png", Png.Compression.BEST_SPEED);
+			else
+			{
+				if (palette != null)
+				{
+					var channels = sheet == builder.Current ? (int)builder.CurrentChannel + 1 : 4;
+					for (var i = 0; i < channels; i++)
+						sheet.AsPng((TextureChannel)ChannelMasks[i], palette).Save($"{count}.{i}.{name}.png", Png.Compression.BEST_SPEED);
+
+					count++;
+				}
+			}
 		}
 	}
 }

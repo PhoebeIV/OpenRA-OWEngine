@@ -9,9 +9,9 @@
  */
 #endregion
 
-using System;
 using System.Linq;
 using OpenRA.GameRules;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -22,13 +22,23 @@ namespace OpenRA.Mods.Common.Traits
 		[WeaponReference]
 		[FieldLoader.Require]
 		[Desc("The weapons used for shrapnel.")]
-		public readonly string[] Weapons = Array.Empty<string>();
+		public readonly string[] Weapons = [];
+
+		[Desc("What damage type needs to kill the actor to trigger the firing of projectiles? " +
+			"Leave empty to ignore damage types.")]
+		public readonly BitSet<DamageType> DeathTypes = default;
+
+		[Desc("The minimal amount of health loss required to trigger projectiles.")]
+		public readonly int MinimumDamage = 0;
+
+		[Desc("The maximum amount of health loss required to trigger projectiles.")]
+		public readonly int MaximumDamage = int.MaxValue;
 
 		[Desc("The amount of pieces of shrapnel to expel. Two values indicate a range.")]
-		public readonly int[] Pieces = { 3, 10 };
+		public readonly int[] Pieces = [3, 10];
 
 		[Desc("The minimum and maximum distances the shrapnel may travel.")]
-		public readonly WDist[] Range = { WDist.FromCells(2), WDist.FromCells(5) };
+		public readonly WDist[] Range = [WDist.FromCells(2), WDist.FromCells(5)];
 
 		public WeaponInfo[] WeaponInfos { get; private set; }
 
@@ -47,24 +57,32 @@ namespace OpenRA.Mods.Common.Traits
 		}
 	}
 
-	sealed class FireProjectilesOnDeath : ConditionalTrait<FireProjectilesOnDeathInfo>, INotifyKilled
+	public class FireProjectilesOnDeath : ConditionalTrait<FireProjectilesOnDeathInfo>, INotifyKilled
 	{
 		public FireProjectilesOnDeath(FireProjectilesOnDeathInfo info)
 			: base(info) { }
 
-		public void Killed(Actor self, AttackInfo attack)
+		void INotifyKilled.Killed(Actor self, AttackInfo attack)
 		{
 			if (IsTraitDisabled)
 				return;
 
+			if (!Info.DeathTypes.IsEmpty && !attack.Damage.DamageTypes.Overlaps(Info.DeathTypes))
+				return;
+
+			if (attack.Damage.Value <= Info.MinimumDamage || attack.Damage.Value >= Info.MaximumDamage)
+				return;
+
 			foreach (var wep in Info.WeaponInfos)
 			{
-				var pieces = self.World.SharedRandom.Next(Info.Pieces[0], Info.Pieces[1]);
+				var pieces = Util.RandomInRange(self.World.SharedRandom, Info.Pieces);
 				var range = self.World.SharedRandom.Next(Info.Range[0].Length, Info.Range[1].Length);
 
 				for (var i = 0; pieces > i; i++)
 				{
 					var rotation = WRot.FromYaw(new WAngle(self.World.SharedRandom.Next(1024)));
+					var dat = self.World.Map.DistanceAboveTerrain(self.CenterPosition);
+					var source = dat.Length < 0 ? self.CenterPosition - new WVec(0, 0, dat.Length) : self.CenterPosition;
 					var args = new ProjectileArgs
 					{
 						Weapon = wep,
@@ -80,10 +98,10 @@ namespace OpenRA.Mods.Common.Traits
 						RangeModifiers = self.TraitsImplementing<IRangeModifier>()
 							.Select(a => a.GetRangeModifier()).ToArray(),
 
-						Source = self.CenterPosition,
-						CurrentSource = () => self.CenterPosition,
+						Source = source,
+						CurrentSource = () => source,
 						SourceActor = self,
-						PassiveTarget = self.CenterPosition + new WVec(range, 0, 0).Rotate(rotation)
+						PassiveTarget = source + new WVec(range, 0, 0).Rotate(rotation)
 					};
 
 					self.World.AddFrameEndTask(x =>

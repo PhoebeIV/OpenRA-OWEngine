@@ -76,13 +76,13 @@ namespace OpenRA.Mods.Common.Widgets
 			return true;
 		}
 
-		static readonly Keycode[] IgnoreKeys = new Keycode[]
-		{
+		static readonly Keycode[] IgnoreKeys =
+		[
 			Keycode.RSHIFT, Keycode.LSHIFT,
 			Keycode.RCTRL, Keycode.LCTRL,
 			Keycode.RALT, Keycode.LALT,
 			Keycode.RGUI, Keycode.LGUI,
-		};
+		];
 
 		public override bool HandleKeyPress(KeyInput e)
 		{
@@ -157,6 +157,6 @@ namespace OpenRA.Mods.Common.Widgets
 				Game.Renderer.DisableScissor();
 		}
 
-		public override Widget Clone() { return new HotkeyEntryWidget(this); }
+		public override HotkeyEntryWidget Clone() { return new HotkeyEntryWidget(this); }
 	}
 }

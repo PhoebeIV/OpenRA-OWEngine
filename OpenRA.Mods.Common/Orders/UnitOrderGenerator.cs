@@ -159,15 +159,8 @@ namespace OpenRA.Mods.Common.Orders
 			if (mi.Modifiers.HasModifier(Modifiers.Alt))
 				modifiers |= TargetModifiers.ForceMove;
 
-			// The Select(x => x) is required to work around an issue on mono 5.0
-			// where calling OrderBy* on SelectManySingleSelectorIterator can in some
-			// circumstances (which we were unable to identify) replace entries in the
-			// enumeration with duplicates of other entries.
-			// Other action that replace the SelectManySingleSelectorIterator with a
-			// different enumerator type (e.g. .Where(true) or .ToList()) also work.
 			var orders = self.TraitsImplementing<IIssueOrder>()
 				.SelectMany(trait => trait.Orders.Select(x => new { Trait = trait, Order = x }))
-				.Select(x => x)
 				.OrderByDescending(x => x.Order.OrderPriority)
 				.ToList();
 
@@ -197,24 +190,15 @@ namespace OpenRA.Mods.Common.Orders
 			return order;
 		}
 
-		protected sealed class UnitOrderResult
+		protected sealed class UnitOrderResult(Actor actor, IOrderTargeter order, IIssueOrder trait, string cursor, in Target target)
 		{
-			public readonly Actor Actor;
-			public readonly IOrderTargeter Order;
-			public readonly IIssueOrder Trait;
-			public readonly string Cursor;
+			public readonly Actor Actor = actor;
+			public readonly IOrderTargeter Order = order;
+			public readonly IIssueOrder Trait = trait;
+			public readonly string Cursor = cursor;
 			public ref readonly Target Target => ref target;
 
-			readonly Target target;
-
-			public UnitOrderResult(Actor actor, IOrderTargeter order, IIssueOrder trait, string cursor, in Target target)
-			{
-				Actor = actor;
-				Order = order;
-				Trait = trait;
-				Cursor = cursor;
-				this.target = target;
-			}
+			readonly Target target = target;
 		}
 
 		public virtual bool ClearSelectionOnLeftClick => true;

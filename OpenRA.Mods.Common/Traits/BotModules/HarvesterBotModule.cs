@@ -24,10 +24,10 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		[Desc("Actor types that are considered harvesters. If harvester count drops below RefineryTypes count, a new harvester is built.",
 			"Leave empty to disable harvester replacement. Currently only needed by harvester replacement system.")]
-		public readonly HashSet<string> HarvesterTypes = new();
+		public readonly HashSet<string> HarvesterTypes = [];
 
 		[Desc("Actor types that are counted as refineries. Currently only needed by harvester replacement system.")]
-		public readonly HashSet<string> RefineryTypes = new();
+		public readonly HashSet<string> RefineryTypes = [];
 
 		[Desc("Interval (in ticks) between giving out orders to idle harvesters.")]
 		public readonly int ScanForIdleHarvestersInterval = 50;
@@ -68,11 +68,11 @@ namespace OpenRA.Mods.Common.Traits
 		readonly World world;
 		readonly Player player;
 		readonly Func<Actor, bool> unitCannotBeOrdered;
-		readonly Dictionary<Actor, HarvesterTraitWrapper> harvesters = new();
-		readonly Stack<HarvesterTraitWrapper> harvestersNeedingOrders = new();
+		readonly Dictionary<Actor, HarvesterTraitWrapper> harvesters = [];
+		readonly Stack<HarvesterTraitWrapper> harvestersNeedingOrders = [];
 		readonly ActorIndex.OwnerAndNamesAndTrait<BuildingInfo> refineries;
 		readonly ActorIndex.OwnerAndNamesAndTrait<HarvesterInfo> harvestersIndex;
-		readonly Dictionary<CPos, string> resourceTypesByCell = new();
+		readonly Dictionary<CPos, string> resourceTypesByCell = [];
 
 		IResourceLayer resourceLayer;
 		ResourceClaimLayer claimLayer;
@@ -173,7 +173,7 @@ namespace OpenRA.Mods.Common.Traits
 		// Returns true if FindNextResource was called.
 		bool HarvestIfAble(IBot bot, HarvesterTraitWrapper h)
 		{
-			if (h.Mobile == null)
+			if (h.Actor.IsDead || !h.Actor.IsInWorld || h.Mobile == null)
 				return false;
 
 			if (!h.Actor.IsIdle)
@@ -195,7 +195,7 @@ namespace OpenRA.Mods.Common.Traits
 			// Tell the idle harvester to quit slacking:
 			var newSafeResourcePatch = FindNextResource(h.Actor, h);
 			AIUtils.BotDebug($"AI: Harvester {h.Actor} is idle. Ordering to {newSafeResourcePatch} in search for new resources.");
-			if (newSafeResourcePatch != Target.Invalid)
+			if (newSafeResourcePatch.Type != TargetType.Invalid)
 				bot.QueueOrder(new Order("Harvest", h.Actor, newSafeResourcePatch, false));
 			else
 				h.NoResourcesCooldown = Info.ScanIntervalMultiplerWhenNoResources;

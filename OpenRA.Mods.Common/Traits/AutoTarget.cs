@@ -69,7 +69,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string AttackAnythingCondition = null;
 
 		[FieldLoader.Ignore]
-		public readonly Dictionary<UnitStance, string> ConditionByStance = new();
+		public readonly Dictionary<UnitStance, string> ConditionByStance = [];
 
 		[Desc("Allow the player to change the unit stance.")]
 		public readonly bool EnableStances = true;
@@ -364,6 +364,9 @@ namespace OpenRA.Mods.Common.Traits
 					.Concat(self.Owner.FrozenActorLayer.FrozenActorsInCircle(self.World, self.CenterPosition, scanRange)
 					.Select(Target.FromFrozenActor));
 
+			// PERF: Avoid allocating a new list for each target.
+			List<AutoTargetPriorityInfo> validPriorities = [];
+
 			foreach (var target in targetsInRange)
 			{
 				BitSet<TargetableType> targetTypes;
@@ -402,22 +405,22 @@ namespace OpenRA.Mods.Common.Traits
 				else
 					continue;
 
-				var validPriorities = activePriorities.Where(ati =>
+				foreach (var ati in activePriorities)
 				{
 					// Already have a higher priority target
 					if (ati.Priority < chosenTargetPriority)
-						return false;
+						continue;
 
 					// Incompatible relationship
 					if (!ati.ValidRelationships.HasRelationship(self.Owner.RelationshipWith(owner)))
-						return false;
+						continue;
 
 					// Incompatible target types
 					if (!ati.ValidTargets.Overlaps(targetTypes) || ati.InvalidTargets.Overlaps(targetTypes))
-						return false;
+						continue;
 
-					return true;
-				}).ToList();
+					validPriorities.Add(ati);
+				}
 
 				if (validPriorities.Count == 0)
 					continue;
@@ -447,6 +450,8 @@ namespace OpenRA.Mods.Common.Traits
 						chosenTargetRange = targetRange;
 					}
 				}
+
+				validPriorities.Clear();
 			}
 
 			return chosenTarget;

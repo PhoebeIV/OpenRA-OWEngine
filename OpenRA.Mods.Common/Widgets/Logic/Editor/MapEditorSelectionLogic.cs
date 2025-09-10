@@ -17,6 +17,7 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
+	[IncludeStaticFluentReferences(typeof(CopyPasteEditorAction))]
 	public class MapEditorSelectionLogic : ChromeLogic
 	{
 		[FluentReference]
@@ -33,7 +34,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		public LabelWidget DiagonalLabel;
 		public LabelWidget ResourceCounterLabel;
 
-		MapBlitFilters copyFilters = MapBlitFilters.All;
+		MapBlitFilters selectionFilters = MapBlitFilters.All;
 		EditorBlitSource? clipboard;
 
 		[ObjectCreator.UseCtor]
@@ -81,11 +82,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					worldRenderer,
 					clipboard.Value,
 					resourceLayer,
-					() => copyFilters));
+					() => selectionFilters));
 			};
 
 			pasteButton.IsDisabled = () => clipboard == null;
 			pasteButton.IsHighlighted = () => editor.CurrentBrush is EditorCopyPasteBrush;
+
+			var deleteAreaSelectionButton = areaEditPanel.Get<ButtonWidget>("SELECTION_DELETE_BUTTON");
+			deleteAreaSelectionButton.OnClick = () => editor.DefaultBrush.DeleteSelection(selectionFilters);
 
 			var closeAreaSelectionButton = areaEditPanel.Get<ButtonWidget>("SELECTION_CANCEL_BUTTON");
 			closeAreaSelectionButton.OnClick = () => editor.DefaultBrush.ClearSelection(updateSelectedTab: true);
@@ -102,15 +106,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				editorActorLayer,
 				resourceLayer,
 				editor.DefaultBrush.Selection.Area,
-				copyFilters);
+				selectionFilters);
 		}
 
 		void CreateCategoryPanel(MapBlitFilters copyFilter, CheckboxWidget checkbox)
 		{
-			checkbox.GetText = () => copyFilter.ToString();
-			checkbox.IsChecked = () => copyFilters.HasFlag(copyFilter);
+			checkbox.GetText = copyFilter.ToString;
+			checkbox.IsChecked = () => selectionFilters.HasFlag(copyFilter);
 			checkbox.IsVisible = () => true;
-			checkbox.OnClick = () => copyFilters ^= copyFilter;
+			checkbox.OnClick = () => selectionFilters ^= copyFilter;
 		}
 
 		protected override void Dispose(bool disposing)

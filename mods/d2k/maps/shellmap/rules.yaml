@@ -7,6 +7,7 @@ Player:
 
 World:
 	-CrateSpawner:
+	-AutoSave:
 	-SpawnStartingUnits:
 	-MapStartingLocations:
 	ActorSpawnManager:
@@ -19,12 +20,19 @@ World:
 	LuaScript:
 		Scripts: utils.lua, d2k-shellmap.lua
 
+^Palettes:
+	-MenuPostProcessEffect:
+
 ^ExistsInWorld:
 	-GivesExperience:
 
 ^Building:
 	DamageMultiplier@UNKILLABLE:
 		Modifier: 0
+
+^Vehicle:
+	WithDecoration@CARRYALL:
+		RequiresSelection: true
 
 wall:
 	DamageMultiplier@UNKILLABLE:

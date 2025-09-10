@@ -1,6 +1,5 @@
 ^BaseWorld:
 	Inherits: ^Palettes
-	AlwaysVisible:
 	ScreenMap:
 	ActorMap:
 	Selection:
@@ -236,6 +235,7 @@ World:
 	Inherits: ^BaseWorld
 	ChatCommands:
 	DevCommands:
+	AutoSave:
 	DebugVisualizationCommands:
 	PathFinderOverlay:
 	HierarchicalPathFinderOverlay:

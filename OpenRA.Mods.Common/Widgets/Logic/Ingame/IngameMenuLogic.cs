@@ -142,7 +142,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly Widget buttonContainer;
 		readonly ButtonWidget buttonTemplate;
 		readonly int2 buttonStride;
-		readonly List<ButtonWidget> buttons = new();
+		readonly List<ButtonWidget> buttons = [];
 
 		readonly ModData modData;
 		readonly Action onExit;
@@ -263,7 +263,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				Game.RunAfterDelay(exitDelay, () =>
 				{
 					if (Game.IsCurrentWorld(world))
-						mpe.Fade(MenuPostProcessEffect.EffectType.Black);
+						mpe.Fade(mpe.Info.GameExitEffect);
 				});
 				exitDelay += 40 * mpe.Info.FadeLength;
 			}
@@ -288,14 +288,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		void CloseMenu()
 		{
 			Ui.CloseWindow();
-			mpe?.Fade(MenuPostProcessEffect.EffectType.None);
+			mpe?.Fade(mpe.Info.Effect);
 			onExit();
 			Ui.ResetTooltips();
 		}
 
 		ButtonWidget AddButton(string id, string label)
 		{
-			var button = buttonTemplate.Clone() as ButtonWidget;
+			var button = buttonTemplate.Clone();
 			var lastButton = buttons.LastOrDefault();
 			if (lastButton != null)
 			{
@@ -350,7 +350,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				if (mpe != null)
 				{
 					if (Game.IsCurrentWorld(world))
-						mpe.Fade(MenuPostProcessEffect.EffectType.Black);
+						mpe.Fade(mpe.Info.GameExitEffect);
 					exitDelay += 40 * mpe.Info.FadeLength;
 				}
 
@@ -494,7 +494,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					ConfirmationDialogs.ButtonPrompt(modData,
 						title: ErrorMaxPlayerTitle,
 						text: ErrorMaxPlayerPrompt,
-						textArguments: new object[] { "players", playerCount, "max", MapPlayers.MaximumPlayerCount },
+						textArguments: ["players", playerCount, "max", MapPlayers.MaximumPlayerCount],
 						onConfirm: ShowMenu,
 						confirmText: ErrorMaxPlayerAccept);
 
@@ -519,8 +519,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				return;
 
 			var actionManager = world.WorldActor.Trait<EditorActionManager>();
-			AddButton("PLAY_MAP", "Play Map")
-				.OnClick = () =>
+			var button = AddButton("PLAY_MAP", "Play Map");
+			button.IsDisabled = () => leaving || string.IsNullOrEmpty(world.Map.Package.Name);
+			button.OnClick = () =>
 				{
 					hideMenu = true;
 					var uid = modData.MapCache.GetUpdatedMap(world.Map.Uid);
@@ -544,7 +545,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						Ui.ResetTooltips();
 						void CloseMenu()
 						{
-							mpe?.Fade(MenuPostProcessEffect.EffectType.None);
+							mpe?.Fade(mpe.Info.Effect);
 							onExit();
 						}
 
@@ -618,8 +619,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		void ExitEditor(EditorActionManager actionManager, Action onSuccess)
 		{
-			var map = modData.MapCache.GetUpdatedMap(world.Map.Uid);
-			var deletedOrUnavailable = map == null || modData.MapCache[map].Status != MapStatus.Available;
+			var deletedOrUnavailable = false;
+			if (!string.IsNullOrEmpty(world.Map.Package.Name))
+			{
+				var map = modData.MapCache.GetUpdatedMap(world.Map.Uid);
+				deletedOrUnavailable = map == null || modData.MapCache[map].Status != MapStatus.Available;
+			}
+
 			if (actionManager.HasUnsavedItems() || deletedOrUnavailable)
 			{
 				hideMenu = true;

@@ -22,11 +22,7 @@ namespace OpenRA.Scripting
 		protected abstract string MemberNotFoundError(string memberName);
 
 		protected readonly ScriptContext Context;
-		readonly Dictionary<string, ScriptMemberWrapper> members = new();
-
-#if !NET5_0_OR_GREATER
-		readonly List<string> membersToRemove = new List<string>();
-#endif
+		readonly Dictionary<string, ScriptMemberWrapper> members = [];
 
 		protected ScriptObjectWrapper(ScriptContext context)
 		{
@@ -67,22 +63,10 @@ namespace OpenRA.Scripting
 
 		protected void Unbind(Type targetType)
 		{
-#if NET5_0_OR_GREATER
 			// NOTE: In newer versions of .NET modifying the collection by calling Remove while iterating over it is valid
 			foreach (var m in members)
 				if (targetType == m.Value.Target.GetType())
 					members.Remove(m.Key);
-#else
-			// PERF: Re-use instead of allocating a new list on each unbind
-			membersToRemove.Clear();
-
-			foreach (var m in members)
-				if (targetType == m.Value.Target.GetType())
-					membersToRemove.Add(m.Key);
-
-			foreach (var m in membersToRemove)
-				members.Remove(m);
-#endif
 		}
 
 		public bool ContainsKey(string key) { return members.ContainsKey(key); }

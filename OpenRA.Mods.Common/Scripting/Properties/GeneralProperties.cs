@@ -80,7 +80,8 @@ namespace OpenRA.Mods.Common.Scripting
 			Self.World.Add(new FlashTarget(Self, color, 0.5f, count, interval, delay));
 		}
 
-		[Desc("The effective owner of the actor.")]
+		[Desc("The effective (displayed) owner of the actor. " +
+			"This may differ from the true owner in some cases, such as disguised actors.")]
 		public Player EffectiveOwner
 		{
 			get
@@ -96,7 +97,6 @@ namespace OpenRA.Mods.Common.Scripting
 	[ScriptPropertyGroup("General")]
 	public class GeneralProperties : ScriptActorProperties
 	{
-		readonly IFacing facing;
 		readonly AutoTarget autotarget;
 		readonly ScriptTags scriptTags;
 		readonly Tooltip[] tooltips;
@@ -104,28 +104,9 @@ namespace OpenRA.Mods.Common.Scripting
 		public GeneralProperties(ScriptContext context, Actor self)
 			: base(context, self)
 		{
-			facing = self.TraitOrDefault<IFacing>();
 			autotarget = self.TraitOrDefault<AutoTarget>();
 			scriptTags = self.TraitOrDefault<ScriptTags>();
 			tooltips = self.TraitsImplementing<Tooltip>().ToArray();
-		}
-
-		[Desc("The actor position in cell coordinates.")]
-		public CPos Location => Self.Location;
-
-		[Desc("The actor position in world coordinates.")]
-		public WPos CenterPosition => Self.CenterPosition;
-
-		[Desc("The direction that the actor is facing.")]
-		public WAngle Facing
-		{
-			get
-			{
-				if (facing == null)
-					throw new LuaException($"Actor '{Self}' doesn't define a facing");
-
-				return facing.Facing;
-			}
 		}
 
 		[ScriptActorPropertyActivity]
@@ -212,5 +193,33 @@ namespace OpenRA.Mods.Common.Scripting
 		{
 			return IsTaggable && scriptTags.HasTag(tag);
 		}
+	}
+
+	[ScriptPropertyGroup("General")]
+	public class LocationProperties : ScriptActorProperties, Requires<IOccupySpaceInfo>
+	{
+		public LocationProperties(ScriptContext context, Actor self)
+			: base(context, self) { }
+
+		[Desc("The actor position in cell coordinates.")]
+		public CPos Location => Self.Location;
+
+		[Desc("The actor position in world coordinates.")]
+		public WPos CenterPosition => Self.CenterPosition;
+	}
+
+	[ScriptPropertyGroup("General")]
+	public class FacingProperties : ScriptActorProperties, Requires<IFacingInfo>
+	{
+		readonly IFacing facing;
+
+		public FacingProperties(ScriptContext context, Actor self)
+			: base(context, self)
+		{
+			facing = self.Trait<IFacing>();
+		}
+
+		[Desc("The direction that the actor is facing.")]
+		public WAngle Facing => facing.Facing;
 	}
 }

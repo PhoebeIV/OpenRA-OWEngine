@@ -52,14 +52,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		[FluentReference]
 		const string ResetCancel = "dialog-settings-reset.cancel";
 
-		readonly Dictionary<string, Func<bool>> leavePanelActions = new();
-		readonly Dictionary<string, Action> resetPanelActions = new();
+		readonly Dictionary<string, Func<bool>> leavePanelActions = [];
+		readonly Dictionary<string, Action> resetPanelActions = [];
 
 		readonly Widget panelContainer, tabContainer;
 		readonly ButtonWidget tabTemplate;
 		readonly int2 buttonStride;
-		readonly List<ButtonWidget> buttons = new();
-		readonly Dictionary<string, string> panels = new();
+		readonly List<ButtonWidget> buttons = [];
+		readonly Dictionary<string, string> panels = [];
 		string activePanel;
 
 		bool needsRestart = false;
@@ -86,7 +86,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 				foreach (var panel in panels)
 				{
-					var container = panelTemplate.Clone() as ContainerWidget;
+					var container = panelTemplate.Clone();
 					container.Id = panel.Key;
 					panelContainer.AddChild(container);
 
@@ -143,7 +143,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				ConfirmationDialogs.ButtonPrompt(modData,
 					title: ResetTitle,
 					text: ResetPrompt,
-					titleArguments: new object[] { "panel", panels[activePanel] },
+					titleArguments: ["panel", panels[activePanel]],
 					onConfirm: Reset,
 					confirmText: ResetAccept,
 					onCancel: () => { },
@@ -167,7 +167,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		ButtonWidget AddSettingsTab(string id, string label)
 		{
-			var tab = tabTemplate.Clone() as ButtonWidget;
+			var tab = tabTemplate.Clone();
 			var lastButton = buttons.LastOrDefault();
 			if (lastButton != null)
 			{

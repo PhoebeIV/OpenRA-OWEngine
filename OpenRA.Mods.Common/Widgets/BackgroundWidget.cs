@@ -13,6 +13,7 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets
 {
+	[IncludeStaticFluentReferences(typeof(WidgetUtils))]
 	public class BackgroundWidget : Widget
 	{
 		public readonly bool ClickThrough = false;
@@ -37,6 +38,6 @@ namespace OpenRA.Mods.Common.Widgets
 			ClickThrough = other.ClickThrough;
 		}
 
-		public override Widget Clone() { return new BackgroundWidget(this); }
+		public override BackgroundWidget Clone() { return new BackgroundWidget(this); }
 	}
 }

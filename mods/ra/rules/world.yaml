@@ -1,6 +1,5 @@
 ^BaseWorld:
 	Inherits: ^Palettes
-	AlwaysVisible:
 	ActorMap:
 	ScreenMap:
 	Selection:
@@ -276,6 +275,7 @@ World:
 	LoadWidgetAtGameStart:
 	ScriptTriggers:
 	CellTriggerOverlay:
+	AutoSave:
 	TimeLimitManager:
 		TimeLimitDisplayOrder: 2
 		TimeLimitWarnings:
@@ -318,3 +318,8 @@ EditorWorld:
 	BuildableTerrainOverlay:
 		AllowedTerrainTypes: Clear, Road
 	MarkerLayerOverlay:
+	TilingPathTool:
+		DefaultStart: Clear
+		DefaultInner: Beach
+		DefaultEnd: Clear
+	Inherits@MapGenerators: ^MapGenerators

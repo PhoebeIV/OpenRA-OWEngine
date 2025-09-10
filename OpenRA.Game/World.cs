@@ -29,14 +29,14 @@ namespace OpenRA
 	public sealed class World : IDisposable
 	{
 		internal readonly TraitDictionary TraitDict = new();
-		readonly SortedDictionary<uint, Actor> actors = new();
-		readonly List<IEffect> effects = new();
-		readonly List<IEffect> unpartitionedEffects = new();
-		readonly List<ISync> syncedEffects = new();
+		readonly SortedDictionary<uint, Actor> actors = [];
+		readonly List<IEffect> effects = [];
+		readonly List<IEffect> unpartitionedEffects = [];
+		readonly List<ISync> syncedEffects = [];
 		readonly GameSettings gameSettings;
 		readonly ModData modData;
 
-		readonly Queue<Action<World>> frameEndActions = new();
+		readonly Queue<Action<World>> frameEndActions = [];
 
 		public readonly GameSpeed GameSpeed;
 
@@ -52,7 +52,7 @@ namespace OpenRA
 		public LongBitSet<PlayerBitMask> AllPlayersMask = default;
 		public readonly LongBitSet<PlayerBitMask> NoPlayersMask = default;
 
-		public Player[] Players = Array.Empty<Player>();
+		public Player[] Players = [];
 
 		public event Action<Player> RenderPlayerChanged;
 
@@ -188,13 +188,12 @@ namespace OpenRA
 
 		bool wasLoadingGameSave;
 
-		internal World(string mapUID, ModData modData, OrderManager orderManager, WorldType type)
+		internal World(Map map, ModData modData, OrderManager orderManager, WorldType type)
 		{
 			this.modData = modData;
 			Type = type;
 			OrderManager = orderManager;
-			using (new PerfTimer("PrepareMap"))
-				Map = modData.PrepareMap(mapUID);
+			Map = map;
 
 			if (string.IsNullOrEmpty(modData.Manifest.DefaultOrderGenerator))
 				throw new InvalidDataException("mod.yaml must define a DefaultOrderGenerator");
@@ -214,7 +213,7 @@ namespace OpenRA
 			LocalRandom = new MersenneTwister();
 
 			var worldActorType = type == WorldType.Editor ? SystemActors.EditorWorld : SystemActors.World;
-			WorldActor = CreateActor(worldActorType.ToString(), new TypeDictionary());
+			WorldActor = CreateActor(worldActorType.ToString(), []);
 			ActorMap = WorldActor.Trait<IActorMap>();
 			ScreenMap = WorldActor.Trait<ScreenMap>();
 			Selection = WorldActor.Trait<ISelection>();
@@ -239,6 +238,10 @@ namespace OpenRA
 				MapUid = Map.Uid,
 				MapTitle = Map.Title
 			};
+
+			var preview = modData.MapCache[Map.Uid];
+			if (preview.Class == MapClassification.Generated)
+				gameInfo.MapData = preview.ToBase64String();
 
 			RulesContainTemporaryBlocker = Map.Rules.Actors.Any(a => a.Value.HasTraitInfo<ITemporaryBlockerInfo>());
 			gameSettings = Game.Settings.Game;
@@ -400,7 +403,7 @@ namespace OpenRA
 
 		public int WorldTick { get; private set; }
 
-		readonly Dictionary<int, MiniYaml> gameSaveTraitData = new();
+		readonly Dictionary<int, MiniYaml> gameSaveTraitData = [];
 		internal void AddGameSaveTraitData(int traitIndex, MiniYaml yaml)
 		{
 			gameSaveTraitData[traitIndex] = yaml;
@@ -636,12 +639,10 @@ namespace OpenRA
 		}
 	}
 
-	public readonly struct TraitPair<T> : IEquatable<TraitPair<T>>
+	public readonly struct TraitPair<T>(Actor actor, T trait) : IEquatable<TraitPair<T>>
 	{
-		public readonly Actor Actor;
-		public readonly T Trait;
-
-		public TraitPair(Actor actor, T trait) { Actor = actor; Trait = trait; }
+		public readonly Actor Actor = actor;
+		public readonly T Trait = trait;
 
 		public static bool operator ==(TraitPair<T> me, TraitPair<T> other) { return me.Actor == other.Actor && Equals(me.Trait, other.Trait); }
 		public static bool operator !=(TraitPair<T> me, TraitPair<T> other) { return !(me == other); }

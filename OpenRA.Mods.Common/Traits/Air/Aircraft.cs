@@ -83,7 +83,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Minimum altitude where this aircraft is considered airborne.")]
 		public readonly int MinAirborneAltitude = 1;
 
-		public readonly HashSet<string> LandableTerrainTypes = new();
+		public readonly HashSet<string> LandableTerrainTypes = [];
 
 		[Desc("Can the actor be ordered to move in to shroud?")]
 		public readonly bool MoveIntoShroud = true;
@@ -142,10 +142,10 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly WDist AltitudeVelocity = new(43);
 
 		[Desc("Sounds to play when the actor is taking off.")]
-		public readonly string[] TakeoffSounds = Array.Empty<string>();
+		public readonly string[] TakeoffSounds = [];
 
 		[Desc("Sounds to play when the actor is landing.")]
-		public readonly string[] LandingSounds = Array.Empty<string>();
+		public readonly string[] LandingSounds = [];
 
 		[Desc("The distance of the resupply base that the aircraft will wait for its turn.")]
 		public readonly WDist WaitDistanceFromResupplyBase = new(3072);
@@ -284,7 +284,7 @@ namespace OpenRA.Mods.Common.Traits
 		public bool MayYieldReservation { get; private set; }
 		public bool ForceLanding { get; private set; }
 
-		(CPos, SubCell)[] landingCells = Array.Empty<(CPos, SubCell)>();
+		(CPos, SubCell)[] landingCells = [];
 		public bool RequireForceMove;
 
 		readonly int creationActivityDelay;
@@ -883,7 +883,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void AddInfluence(CPos landingCell)
 		{
-			AddInfluence(new[] { (landingCell, SubCell.FullCell) });
+			AddInfluence([(landingCell, SubCell.FullCell)]);
 		}
 
 		public void RemoveInfluence()
@@ -891,7 +891,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (self.IsInWorld)
 				self.World.ActorMap.RemoveInfluence(self, this);
 
-			landingCells = Array.Empty<(CPos, SubCell)>();
+			landingCells = [];
 		}
 
 		public bool HasInfluence()
@@ -1326,9 +1326,11 @@ namespace OpenRA.Mods.Common.Traits
 
 			public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
 			{
-				if (ChildActivity != null)
-					foreach (var n in ChildActivity.TargetLineNodes(self))
-						yield return n;
+				var a = ChildActivity;
+				for (; a != null; a = a.NextActivity)
+					if (!a.IsCanceling)
+						foreach (var n in a.TargetLineNodes(self))
+							yield return n;
 			}
 		}
 

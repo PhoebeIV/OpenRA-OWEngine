@@ -8,13 +8,13 @@ Metadata:
 PackageFormats: Mix
 
 FileSystem: ContentInstallerFileSystem
-    Packages:
+	SystemPackages:
 		^EngineDir
 		$ra: ra
 		^EngineDir|mods/common: common
 		~^SupportDir|Content/ra/v2/: content
-		ra|scripts
 		common|scripts
+		ra|scripts
 		ra|uibits
 	ContentPackages:
 		content|allies.mix
@@ -36,9 +36,10 @@ FileSystem: ContentInstallerFileSystem
 		~content|movies
 		~content|scores.mix
 		~content|general.mix
+		# Below are mod-provided (system) packages that need to be loaded after the content packages so they can override content assets.
 		ra|bits
 		ra|bits/desert
-	ContentFiles:
+	RequiredContentFiles:
 		content|expand/chrotnk1.aud
 		content|expand/fixit1.aud
 		content|expand/jburn1.aud
@@ -85,6 +86,7 @@ Rules:
 	ra|rules/aircraft.yaml
 	ra|rules/ships.yaml
 	ra|rules/fakes.yaml
+	ra|rules/map-generators.yaml
 
 Sequences:
 	ra|sequences/ships.yaml
@@ -135,6 +137,7 @@ ChromeLayout:
 	common|chrome/settings-audio.yaml
 	common|chrome/settings-input.yaml
 	common|chrome/settings-hotkeys.yaml
+	common|chrome/settings-gameplay.yaml
 	common|chrome/settings-advanced.yaml
 	common|chrome/credits.yaml
 	common|chrome/lobby.yaml
@@ -258,7 +261,6 @@ Missions:
 	ra|missions.yaml
 
 MapGrid:
-	TileSize: 24,24
 	Type: Rectangular
 
 DefaultOrderGenerator: UnitOrderGenerator

@@ -16,6 +16,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Commands
 {
 	[TraitLocation(SystemActors.World)]
+	[IncludeStaticFluentReferences(typeof(ChatCommands))]
 	[Desc("Enables commands triggered by typing them into the chatbox. Attach this to the world actor.")]
 	public class ChatCommandsInfo : TraitInfo<ChatCommands> { }
 
@@ -28,7 +29,7 @@ namespace OpenRA.Mods.Common.Commands
 
 		public ChatCommands()
 		{
-			Commands = new Dictionary<string, IChatCommand>();
+			Commands = [];
 		}
 
 		public bool OnChat(string playername, string message)

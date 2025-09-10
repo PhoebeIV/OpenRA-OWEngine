@@ -115,7 +115,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 					var color = presetColors[colorIndex];
 
-					var newSwatch = (ColorBlockWidget)presetColorTemplate.Clone();
+					var newSwatch = presetColorTemplate.Clone();
 					newSwatch.GetColor = () => color;
 					newSwatch.IsVisible = () => true;
 					newSwatch.Bounds.X = i * newSwatch.Bounds.Width;
@@ -136,8 +136,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				{
 					var colorIndex = j * paletteCols + i;
 
-					var newSwatch = (ColorBlockWidget)customColorTemplate.Clone();
-					var getColor = new CachedTransform<Color, Color>(c => colorManager.MakeValid(c, world.LocalRandom, Array.Empty<Color>(), Array.Empty<Color>()));
+					var newSwatch = customColorTemplate.Clone();
+					var getColor = new CachedTransform<Color, Color>(c => colorManager.MakeValid(c, world.LocalRandom, [], []));
 
 					newSwatch.GetColor = () => getColor.Update(Game.Settings.Player.CustomColors[colorIndex]);
 					newSwatch.IsVisible = () => Game.Settings.Player.CustomColors.Length > colorIndex;

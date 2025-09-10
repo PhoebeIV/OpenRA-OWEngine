@@ -19,7 +19,7 @@ namespace OpenRA.Mods.Common.Warheads
 	public class CreateResourceWarhead : Warhead
 	{
 		[Desc("Size of the area. The resources are seeded within this area.", "Provide 2 values for a ring effect (outer/inner).")]
-		public readonly int[] Size = { 0, 0 };
+		public readonly int[] Size = [0, 0];
 
 		[Desc("Will this splatter resources and which?")]
 		[FieldLoader.Require]
@@ -50,7 +50,7 @@ namespace OpenRA.Mods.Common.Warheads
 				if (!resourceLayer.CanAddResource(AddsResourceType, cell))
 					continue;
 
-				var splash = world.SharedRandom.Next(1, maxDensity - resourceLayer.GetResource(cell).Density);
+				var splash = (byte)world.SharedRandom.Next(1, maxDensity - resourceLayer.GetResource(cell).Density);
 				resourceLayer.AddResource(AddsResourceType, cell, splash);
 			}
 		}

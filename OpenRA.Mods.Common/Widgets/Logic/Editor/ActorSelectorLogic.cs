@@ -19,26 +19,13 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
+	[IncludeStaticFluentReferences(typeof(AddActorAction), typeof(CommonSelectorLogic))]
 	public class ActorSelectorLogic : CommonSelectorLogic
 	{
 		[FluentReference("actorType")]
 		const string ActorTypeTooltip = "label-actor-type";
 
-		sealed class ActorSelectorActor
-		{
-			public readonly ActorInfo Actor;
-			public readonly string[] Categories;
-			public readonly string[] SearchTerms;
-			public readonly string Tooltip;
-
-			public ActorSelectorActor(ActorInfo actor, string[] categories, string[] searchTerms, string tooltip)
-			{
-				Actor = actor;
-				Categories = categories;
-				SearchTerms = searchTerms;
-				Tooltip = tooltip;
-			}
-		}
+		sealed record ActorSelectorActor(ActorInfo Actor, string[] Categories, string[] SearchTerms, string Tooltip);
 
 		readonly DropDownButtonWidget ownersDropDown;
 		readonly Ruleset mapRules;
@@ -129,7 +116,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			allCategories = allActors.SelectMany(ac => ac.Categories)
 				.Distinct()
-				.OrderBy(x => x)
+				.Order()
 				.ToArray();
 
 			foreach (var c in allCategories)
@@ -149,7 +136,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 							s => s.Contains(searchFilter, StringComparison.CurrentCultureIgnoreCase)))
 						.SelectMany(t => t.Categories)
 						.Distinct()
-						.OrderBy(x => x));
+						.Order());
 				else
 					FilteredCategories.AddRange(allCategories);
 

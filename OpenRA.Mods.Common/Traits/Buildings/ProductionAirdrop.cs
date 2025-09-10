@@ -100,26 +100,26 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				if (!self.IsInWorld || self.IsDead)
 				{
-					owner.PlayerActor.Trait<PlayerResources>().GiveCash(refundableValue);
+					owner.PlayerActor.Trait<PlayerResources>().RefundCash(refundableValue);
 					return;
 				}
 
-				var actor = w.CreateActor(info.ActorType, new TypeDictionary
-				{
+				var actor = w.CreateActor(info.ActorType,
+				[
 					new CenterPositionInit(w.Map.CenterOfCell(startPos) + new WVec(WDist.Zero, WDist.Zero, aircraftInfo.CruiseAltitude)),
 					new OwnerInit(owner),
 					new FacingInit(spawnFacing)
-				});
+				]);
 
 				var exitCell = self.Location + exit.ExitCell;
-				actor.QueueActivity(new Land(actor, Target.FromActor(self), WDist.Zero, info.LandOffset, info.Facing, clearCells: new CPos[1] { exitCell }));
+				actor.QueueActivity(new Land(actor, Target.FromActor(self), WDist.Zero, info.LandOffset, info.Facing, clearCells: [exitCell]));
 				if (info.WaitTickBeforeProduce > 0)
 					actor.QueueActivity(new Wait(info.WaitTickBeforeProduce));
 				actor.QueueActivity(new CallFunc(() =>
 				{
 					if (!self.IsInWorld || self.IsDead)
 					{
-						owner.PlayerActor.Trait<PlayerResources>().GiveCash(refundableValue);
+						owner.PlayerActor.Trait<PlayerResources>().RefundCash(refundableValue);
 						return;
 					}
 

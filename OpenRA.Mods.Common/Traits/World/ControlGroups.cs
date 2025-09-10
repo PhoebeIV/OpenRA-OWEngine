@@ -18,7 +18,7 @@ namespace OpenRA.Mods.Common.Traits
 {
 	public class ControlGroupsInfo : TraitInfo, IControlGroupsInfo
 	{
-		public readonly string[] Groups = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" };
+		public readonly string[] Groups = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
 
 		public override object Create(ActorInitializer init) { return new ControlGroups(init.World, this); }
 
@@ -127,10 +127,10 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			return new List<MiniYamlNode>()
-			{
+			return
+			[
 				new("Groups", new MiniYaml("", groups))
-			};
+			];
 		}
 
 		void IGameSaveTraitData.ResolveTraitData(Actor self, MiniYaml data)
@@ -141,7 +141,7 @@ namespace OpenRA.Mods.Common.Traits
 				foreach (var n in groupsNode.Value.Nodes)
 				{
 					var group = FieldLoader.GetValue<uint[]>(n.Key, n.Value.Value)
-						.Select(a => self.World.GetActorById(a)).Where(a => a != null);
+						.Select(self.World.GetActorById).Where(a => a != null);
 					controlGroups[Exts.ParseInt32Invariant(n.Key)].AddRange(group);
 				}
 			}

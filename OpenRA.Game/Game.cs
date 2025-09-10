@@ -27,6 +27,7 @@ using OpenRA.Widgets;
 
 namespace OpenRA
 {
+	[IncludeStaticFluentReferences(typeof(Server.Server), typeof(Player), typeof(UnitOrders), typeof(OrderManager))]
 	public static class Game
 	{
 		[FluentReference("filename")]
@@ -181,7 +182,16 @@ namespace OpenRA
 
 		public static event Action BeforeGameStart = () => { };
 		public static event Action AfterGameStart = () => { };
-		internal static void StartGame(string mapUID, WorldType type)
+		internal static void StartGame(string uid, WorldType type)
+		{
+			var preview = ModData.MapCache[uid];
+			if (preview.Status != MapStatus.Available)
+				throw new InvalidDataException($"Invalid map uid: {uid}");
+
+			StartGame(preview.ToMap(), type);
+		}
+
+		internal static void StartGame(Map map, WorldType type)
 		{
 			// Dispose of the old world before creating a new one.
 			worldRenderer?.Dispose();
@@ -190,7 +200,23 @@ namespace OpenRA
 			BeforeGameStart();
 
 			using (new PerfTimer("NewWorld"))
-				OrderManager.World = new World(mapUID, ModData, OrderManager, type);
+			{
+				ModData.PrepareMap(map);
+
+				// The depth buffer needs to be initialized with enough range to cover:
+				//  - the height of the screen
+				//  - the z-offset of tiles from MaxTerrainHeight below the bottom of the screen (pushed into view)
+				//  - additional z-offset from actors on top of MaxTerrainHeight terrain
+				//  - a small margin so that tiles rendered partially above the top edge of the screen aren't pushed behind the clip plane
+				// We need an offset of mapGrid.MaximumTerrainHeight * mapGrid.TileSize.Height / 2 to cover the terrain height
+				// and choose to use mapGrid.MaximumTerrainHeight * mapGrid.TileSize.Height / 4 for each of the actor and top-edge cases
+				var margin = 0;
+				if (map.Grid.EnableDepthBuffer)
+					margin = map.Rules.TerrainInfo.TileSize.Height * map.Grid.MaximumTerrainHeight;
+
+				Renderer.SetDepthMargin(margin);
+				OrderManager.World = new World(map, ModData, OrderManager, type);
+			}
 
 			OrderManager.World.GameOver += FinishBenchmark;
 
@@ -344,7 +370,7 @@ namespace OpenRA
 			var explicitModPaths = Array.Empty<string>();
 			if (modID != null && (File.Exists(modID) || Directory.Exists(modID)))
 			{
-				explicitModPaths = new[] { modID };
+				explicitModPaths = [modID];
 				modID = Path.GetFileNameWithoutExtension(modID);
 			}
 
@@ -390,7 +416,7 @@ namespace OpenRA
 			var modSearchArg = args.GetValue("Engine.ModSearchPaths", null);
 			var modSearchPaths = modSearchArg != null ?
 				FieldLoader.GetValue<string[]>("Engine.ModsPath", modSearchArg) :
-				new[] { Path.Combine(Platform.EngineDir, "mods") };
+				[Path.Combine(Platform.EngineDir, "mods")];
 
 			Mods = new InstalledMods(modSearchPaths, explicitModPaths);
 			Console.WriteLine("Internal mods:");
@@ -408,7 +434,7 @@ namespace OpenRA
 
 				// Sanitize input from platform-specific launchers
 				// Process.Start requires paths to not be quoted, even if they contain spaces
-				if (launchPath != null && launchPath[0] == '"' && launchPath.Last() == '"')
+				if (launchPath != null && launchPath[0] == '"' && launchPath[^1] == '"')
 					launchPath = launchPath[1..^1];
 
 				// Metadata registration requires an explicit launch path
@@ -429,15 +455,8 @@ namespace OpenRA
 		{
 			var rendererPath = Path.Combine(Platform.BinDir, "OpenRA.Platforms." + platformName + ".dll");
 
-#if NET5_0_OR_GREATER
 			var loader = new AssemblyLoader(rendererPath);
 			var platformType = loader.LoadDefaultAssembly().GetTypes().SingleOrDefault(t => typeof(IPlatform).IsAssignableFrom(t));
-
-#else
-			// NOTE: This is currently the only use of System.Reflection in this file, so would give an unused using error if we import it above
-			var assembly = System.Reflection.Assembly.LoadFile(rendererPath);
-			var platformType = assembly.GetTypes().SingleOrDefault(t => typeof(IPlatform).IsAssignableFrom(t));
-#endif
 
 			if (platformType == null)
 				throw new InvalidOperationException("Platform dll must include exactly one IPlatform implementation.");
@@ -492,9 +511,6 @@ namespace OpenRA
 			using (new PerfTimer("LoadMaps"))
 				ModData.MapCache.LoadMaps();
 
-			var grid = ModData.Manifest.Contains<MapGrid>() ? ModData.Manifest.Get<MapGrid>() : null;
-			Renderer.InitializeDepthBuffer(grid);
-
 			Cursor?.Dispose();
 			Cursor = new CursorManager(ModData.CursorProvider, ModData.Manifest.CursorSheetSize);
 
@@ -514,10 +530,16 @@ namespace OpenRA
 			ModData.LoadScreen.StartGame(args);
 		}
 
-		public static void LoadEditor(string mapUid)
+		public static void LoadEditor(string uid)
 		{
 			JoinLocal();
-			StartGame(mapUid, WorldType.Editor);
+			StartGame(uid, WorldType.Editor);
+		}
+
+		public static void LoadEditor(Map map)
+		{
+			JoinLocal();
+			StartGame(map, WorldType.Editor);
 		}
 
 		public static void LoadShellMap()
@@ -591,7 +613,7 @@ namespace OpenRA
 				Directory.CreateDirectory(directory);
 
 				var filename = TimestampedFilename(true);
-				var path = Path.Combine(directory, string.Concat(filename, ".png"));
+				var path = Path.Combine(directory, $"{filename}.png");
 				Log.Write("debug", "Taking screenshot " + path);
 
 				Renderer.SaveScreenshot(path);
@@ -947,7 +969,8 @@ namespace OpenRA
 			{
 				Name = "Skirmish Game",
 				Map = map,
-				AdvertiseOnline = false
+				AdvertiseOnline = false,
+				AdvertiseOnLocalNetwork = !isSkirmish
 			};
 
 			// Always connect to local games using the same loopback connection
@@ -985,7 +1008,7 @@ namespace OpenRA
 				Order.Command($"state {Session.ClientState.Ready}")
 			};
 
-			var map = ModData.MapCache.SingleOrDefault(m => m.Uid == launchMap || Path.GetFileName(m.PackageName) == launchMap);
+			var map = ModData.MapCache.SingleOrDefault(m => m.Uid == launchMap || Path.GetFileName(m.Path) == launchMap);
 			if (map == null)
 				throw new ArgumentException($"Could not find map '{launchMap}'.");
 

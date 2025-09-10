@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using OpenRA.Primitives;
 using OpenRA.Support;
@@ -119,17 +120,11 @@ namespace OpenRA
 
 		public static V GetOrAdd<K, V>(this Dictionary<K, V> d, K k, V v)
 		{
-#if NET5_0_OR_GREATER
 			// SAFETY: Dictionary cannot be modified whilst the ref is alive.
-			ref var value = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrAddDefault(d, k, out var exists);
+			ref var value = ref CollectionsMarshal.GetValueRefOrAddDefault(d, k, out var exists);
 			if (!exists)
 				value = v;
 			return value;
-#else
-			if (!d.TryGetValue(k, out var ret))
-				d.Add(k, ret = v);
-			return ret;
-#endif
 		}
 
 		public static V GetOrAdd<K, V>(this Dictionary<K, V> d, K k, Func<K, V> createFn)
@@ -418,11 +413,6 @@ namespace OpenRA
 			return ts.Except(exclusions);
 		}
 
-		public static HashSet<T> ToHashSet<T>(this IEnumerable<T> source)
-		{
-			return new HashSet<T>(source);
-		}
-
 		public static Dictionary<TKey, TSource> ToDictionaryWithConflictLog<TSource, TKey>(
 			this IEnumerable<TSource> source, Func<TSource, TKey> keySelector,
 			string debugName, Func<TKey, string> logKey, Func<TSource, string> logValue)
@@ -465,14 +455,14 @@ namespace OpenRA
 				// Check for a key conflict:
 				if (!output.TryAdd(key, element))
 				{
-					dupKeys ??= new Dictionary<TKey, List<string>>();
+					dupKeys ??= [];
 					if (!dupKeys.TryGetValue(key, out var dupKeyMessages))
 					{
 						// Log the initial conflicting value already inserted:
-						dupKeyMessages = new List<string>
-						{
+						dupKeyMessages =
+						[
 							logValue(output[key])
-						};
+						];
 						dupKeys.Add(key, dupKeyMessages);
 					}
 
@@ -487,7 +477,7 @@ namespace OpenRA
 				var badKeysFormatted = new StringBuilder(
 					$"{debugName}, duplicate values found for the following keys: ");
 				foreach (var p in dupKeys)
-					badKeysFormatted.Append($"{logKey(p.Key)}: [{string.Join(",", p.Value)}]");
+					badKeysFormatted.Append(CultureInfo.InvariantCulture, $"{logKey(p.Key)}: [{string.Join(",", p.Value)}]");
 				throw new ArgumentException(badKeysFormatted.ToString());
 			}
 		}
@@ -510,42 +500,14 @@ namespace OpenRA
 			return result;
 		}
 
-		public static T[,] ResizeArray<T>(T[,] ts, T t, int width, int height)
-		{
-			var result = new T[width, height];
-			for (var i = 0; i < width; i++)
-			{
-				for (var j = 0; j < height; j++)
-				{
-					// Workaround for broken ternary operators in certain versions of mono
-					// (3.10 and certain versions of the 3.8 series): https://bugzilla.xamarin.com/show_bug.cgi?id=23319
-					if (i <= ts.GetUpperBound(0) && j <= ts.GetUpperBound(1))
-						result[i, j] = ts[i, j];
-					else
-						result[i, j] = t;
-				}
-			}
-
-			return result;
-		}
-
-		public static int ToBits(this IEnumerable<bool> bits)
-		{
-			var i = 0;
-			var result = 0;
-			foreach (var b in bits)
-				if (b)
-					result |= 1 << i++;
-				else
-					i++;
-			if (i > 33)
-				throw new InvalidOperationException("ToBits only accepts up to 32 values.");
-			return result;
-		}
-
 		public static byte ParseByteInvariant(string s)
 		{
 			return byte.Parse(s, NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+		}
+
+		public static ushort ParseUshortInvariant(string s)
+		{
+			return ushort.Parse(s, NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
 		}
 
 		public static short ParseInt16Invariant(string s)
@@ -558,6 +520,22 @@ namespace OpenRA
 			return int.Parse(s, NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
 		}
 
+		public static float ParseFloatOrPercentInvariant(string s)
+		{
+			var f = float.Parse(s.Replace("%", ""), NumberStyles.Float, NumberFormatInfo.InvariantInfo);
+			return f * (s.Contains('%') ? 0.01f : 1f);
+		}
+
+		public static bool TryParseByteInvariant(string s, out byte i)
+		{
+			return byte.TryParse(s, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out i);
+		}
+
+		public static bool TryParseUshortInvariant(string s, out ushort i)
+		{
+			return ushort.TryParse(s, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out i);
+		}
+
 		public static bool TryParseInt32Invariant(string s, out int i)
 		{
 			return int.TryParse(s, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out i);
@@ -566,6 +544,17 @@ namespace OpenRA
 		public static bool TryParseInt64Invariant(string s, out long i)
 		{
 			return long.TryParse(s, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out i);
+		}
+
+		public static bool TryParseFloatOrPercentInvariant(string s, out float f)
+		{
+			if (float.TryParse(s.Replace("%", ""), NumberStyles.Float, NumberFormatInfo.InvariantInfo, out f))
+			{
+				f *= s.Contains('%') ? 0.01f : 1f;
+				return true;
+			}
+
+			return false;
 		}
 
 		public static string ToStringInvariant(this byte i)
@@ -581,6 +570,11 @@ namespace OpenRA
 		public static string ToStringInvariant(this int i)
 		{
 			return i.ToString(NumberFormatInfo.InvariantInfo);
+		}
+
+		public static string ToStringInvariant(this float f)
+		{
+			return f.ToString(NumberFormatInfo.InvariantInfo);
 		}
 
 		public static string ToStringInvariant(this int i, string format)
@@ -665,7 +659,7 @@ namespace OpenRA
 			if (index == -1)
 			{
 				// The remaining string is an empty string
-				str = ReadOnlySpan<char>.Empty;
+				str = [];
 				Current = span;
 				return true;
 			}

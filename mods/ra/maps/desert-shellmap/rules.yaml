@@ -10,6 +10,7 @@ Player:
 
 World:
 	-CrateSpawner:
+	-AutoSave:
 	-SpawnStartingUnits:
 	-MapStartingLocations:
 	MusicPlaylist:
@@ -19,6 +20,9 @@ World:
 	LuaScript:
 		Scripts: desert-shellmap.lua
 	-StartGameNotification:
+
+^Palettes:
+	-MenuPostProcessEffect:
 
 ^ExistsInWorld:
 	GivesExperience:

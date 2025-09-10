@@ -23,6 +23,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[TraitLocation(SystemActors.World)]
+	[IncludeStaticFluentReferences(typeof(PathFinderOverlay))]
 	[Desc("Renders a visualization overlay showing how the pathfinder searches for paths. Attach this to the world actor.")]
 	public class PathFinderOverlayInfo : TraitInfo, Requires<PathFinderInfo>
 	{
@@ -46,7 +47,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		sealed class Record : PathSearch.IRecorder, IEnumerable<(CPos Source, CPos Destination, int CostSoFar, int EstimatedRemainingCost)>
 		{
-			readonly Dictionary<CPos, (CPos Source, int CostSoFar, int EstimatedRemainingCost)> edges = new();
+			readonly Dictionary<CPos, (CPos Source, int CostSoFar, int EstimatedRemainingCost)> edges = [];
 
 			public void Add(CPos source, CPos destination, int costSoFar, int estimatedRemainingCost)
 			{
@@ -160,11 +161,11 @@ namespace OpenRA.Mods.Common.Traits
 			var visibleRegion = wr.Viewport.AllVisibleCells;
 
 			foreach (var sourceCell in sourceCells)
-				yield return new TargetLineRenderable(new[]
-				{
+				yield return new TargetLineRenderable(
+				[
 					self.World.Map.CenterOfSubCell(sourceCell, SubCell.FullCell),
 					self.World.Map.CenterOfSubCell(targetCell ?? sourceCell, SubCell.FullCell),
-				}, info.TargetLineColor, 8, 8);
+				], info.TargetLineColor, 8, 8);
 
 			foreach (var line in RenderEdges(self, abstractEdges1, 8, 6, info.AbstractColor1, null))
 				yield return line;
@@ -210,11 +211,11 @@ namespace OpenRA.Mods.Common.Traits
 				if (visibleRegion != null && !visibleRegion.Contains(srcUv) && !visibleRegion.Contains(dstUv))
 					continue;
 
-				yield return new TargetLineRenderable(new[]
-				{
+				yield return new TargetLineRenderable(
+				[
 					self.World.Map.CenterOfSubCell(source, SubCell.FullCell) + CustomLayerOffset(source),
 					self.World.Map.CenterOfSubCell(destination, SubCell.FullCell) + CustomLayerOffset(destination),
-				}, destination.Layer == 0 ? color : customColor, edgeSize, nodeSize);
+				], destination.Layer == 0 ? color : customColor, edgeSize, nodeSize);
 			}
 		}
 

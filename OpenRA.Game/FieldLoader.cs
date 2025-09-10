@@ -16,7 +16,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
 using OpenRA.Primitives;
 using OpenRA.Support;
 
@@ -26,7 +25,6 @@ namespace OpenRA
 	{
 		const char SplitComma = ',';
 
-		[Serializable]
 		public class MissingFieldsException : YamlException
 		{
 			public readonly string[] Missing;
@@ -45,13 +43,6 @@ namespace OpenRA
 			{
 				Header = missing.Length > 1 ? header : headerSingle ?? header;
 				Missing = missing;
-			}
-
-			public override void GetObjectData(SerializationInfo info, StreamingContext context)
-			{
-				base.GetObjectData(info, context);
-				info.AddValue("Missing", Missing);
-				info.AddValue("Header", Header);
 			}
 		}
 
@@ -539,8 +530,8 @@ namespace OpenRA
 			if (value != null)
 			{
 				var parts = value.Split(SplitComma, StringSplitOptions.RemoveEmptyEntries);
-				var ctor = fieldType.GetConstructor(new[] { typeof(string[]) });
-				return ctor.Invoke(new object[] { parts.Select(p => p.Trim()).ToArray() });
+				var ctor = fieldType.GetConstructor([typeof(string[])]);
+				return ctor.Invoke([parts.Select(p => p.Trim()).ToArray()]);
 			}
 
 			return InvalidValueAction(value, fieldType, fieldName);
@@ -553,7 +544,7 @@ namespace OpenRA
 
 			var innerType = fieldType.GetGenericArguments()[0];
 			var innerValue = GetValue("Nullable<T>", innerType, value, field);
-			return fieldType.GetConstructor(new[] { innerType }).Invoke(new[] { innerValue });
+			return fieldType.GetConstructor([innerType]).Invoke([innerValue]);
 		}
 
 		public static void Load(object self, MiniYaml my)
@@ -574,7 +565,7 @@ namespace OpenRA
 						val = fli.Loader(my);
 					else
 					{
-						missing ??= new List<string>();
+						missing ??= [];
 						missing.Add(fli.YamlName);
 						continue;
 					}
@@ -585,7 +576,7 @@ namespace OpenRA
 					{
 						if (fli.Attribute.Required)
 						{
-							missing ??= new List<string>();
+							missing ??= [];
 							missing.Add(fli.YamlName);
 						}
 
@@ -799,7 +790,6 @@ namespace OpenRA
 			public string YamlName;
 			public string Loader;
 			public bool FromYamlKey;
-			public bool DictionaryFromYamlKey;
 			public bool Required;
 			public bool AllowEmptyEntries;
 
@@ -837,22 +827,10 @@ namespace OpenRA
 		}
 	}
 
-	// Special-cases FieldFromYamlKeyAttribute for use with Dictionary<K,V>.
-	[AttributeUsage(AttributeTargets.Field)]
-	public sealed class DictionaryFromYamlKeyAttribute : FieldLoader.SerializeAttribute
-	{
-		public DictionaryFromYamlKeyAttribute()
-		{
-			FromYamlKey = true;
-			DictionaryFromYamlKey = true;
-		}
-	}
-
 	// Mirrors DescriptionAttribute from System.ComponentModel but we don't want to have to use that everywhere.
 	[AttributeUsage(AttributeTargets.All)]
-	public sealed class DescAttribute : Attribute
+	public sealed class DescAttribute(params string[] lines) : Attribute
 	{
-		public readonly string[] Lines;
-		public DescAttribute(params string[] lines) { Lines = lines; }
+		public readonly string[] Lines = lines;
 	}
 }

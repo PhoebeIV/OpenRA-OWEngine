@@ -119,7 +119,7 @@ namespace OpenRA.Mods.Common.Widgets
 			var graphBottomOffset = Padding * 2 + xAxisLabelSize.Y + xAxisPointLabelHeight;
 			var height = rect.Height - (graphBottomOffset + Padding);
 
-			var maxValue = series.Select(p => p.Points).SelectMany(d => d).Concat(new[] { 0f }).Max();
+			var maxValue = series.Select(p => p.Points).SelectMany(d => d).Concat([0f]).Max();
 			var longestName = series.Select(s => s.Key).OrderByDescending(s => s.Length).FirstOrDefault() ?? "";
 
 			var scale = 200 / Math.Max(5000, (float)Math.Ceiling(maxValue / 1000) * 1000);
@@ -224,23 +224,11 @@ namespace OpenRA.Mods.Common.Widgets
 			cr.DrawLine(graphOrigin, graphOrigin + new float2(0, -height), 1, Color.White);
 		}
 
-		public override Widget Clone()
+		public override LineGraphWidget Clone()
 		{
 			return new LineGraphWidget(this);
 		}
 	}
 
-	public class LineGraphSeries
-	{
-		public string Key;
-		public Color Color;
-		public IEnumerable<float> Points;
-
-		public LineGraphSeries(string key, Color color, IEnumerable<float> points)
-		{
-			Key = key;
-			Color = color;
-			Points = points;
-		}
-	}
+	public record LineGraphSeries(string Key, Color Color, IEnumerable<float> Points);
 }

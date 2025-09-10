@@ -371,6 +371,7 @@ JUGG:
 		DeploySounds: place2.aud
 		UndeploySounds: clicky1.aud
 		Voice: Move
+		SmartDeploy: true
 	EntersTunnels:
 		RequireForceMoveCondition: !undeployed
 	Repairable:
@@ -446,11 +447,11 @@ MOBILEMP:
 		RequiresCondition: !inside-tunnel
 		Range: 6c0
 		MaxHeightDelta: 3
-	GrantConditionOnDeployWithCharge:
+	GrantChargedConditionOnToggle:
 		Voice: Move
 		ChargeDuration: 750
-		DeployedCondition: deployed
+		ActivatedCondition: triggered
 		PauseOnCondition: empdisable
 	FireWarheads:
 		Weapons: MEMPulse
-		RequiresCondition: deployed && !empdisable
+		RequiresCondition: triggered && !empdisable

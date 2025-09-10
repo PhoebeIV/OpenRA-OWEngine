@@ -35,7 +35,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 
 		public ModData ModData;
 		public Map Map;
-		public List<string> Players = new();
+		public List<string> Players = [];
 		public MapPlayers MapPlayers;
 		bool singlePlayer;
 		int spawnCount;
@@ -51,6 +51,10 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			Game.ModData = ModData = utility.ModData;
 
 			var filename = args[1];
+			var author = args.Length > 2
+				? args[2]
+				: "Westwood Studios";
+
 			using (var stream = File.OpenRead(filename))
 			{
 				var file = new IniFile(stream);
@@ -70,10 +74,10 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 				if (!ModData.DefaultTerrainInfo.TryGetValue(tileset, out var terrainInfo))
 					throw new InvalidDataException($"Unknown tileset {tileset}");
 
-				Map = new Map(ModData, terrainInfo, MapSize, MapSize)
+				Map = new Map(ModData, terrainInfo, new Size(MapSize, MapSize))
 				{
 					Title = basic.GetValue("Name", Path.GetFileNameWithoutExtension(filename)),
-					Author = "Westwood Studios",
+					Author = author,
 					RequiresMod = ModData.Manifest.Id
 				};
 
@@ -133,7 +137,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			var worldNode = Map.RuleDefinitions.NodeWithKeyOrDefault("World");
 			var worldNodeBuilder = worldNode != null
 				? new MiniYamlNodeBuilder(worldNode)
-				: new MiniYamlNodeBuilder("World", new MiniYamlBuilder("", new List<MiniYamlNode>()));
+				: new MiniYamlNodeBuilder("World", new MiniYamlBuilder("", []));
 			return worldNodeBuilder;
 		}
 
@@ -169,7 +173,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			var missionData = worldNodeBuilder.Value.NodeWithKeyOrDefault("MissionData");
 			if (missionData == null)
 			{
-				missionData = new MiniYamlNodeBuilder("MissionData", new MiniYamlBuilder("", new List<MiniYamlNode>()));
+				missionData = new MiniYamlNodeBuilder("MissionData", new MiniYamlBuilder("", []));
 				worldNodeBuilder.Value.Nodes.Add(missionData);
 			}
 
@@ -240,7 +244,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 				var missionData = worldNodeBuilder.Value.NodeWithKeyOrDefault("MissionData");
 				if (missionData == null)
 				{
-					missionData = new MiniYamlNodeBuilder("MissionData", new MiniYamlBuilder("", new List<MiniYamlNode>()));
+					missionData = new MiniYamlNodeBuilder("MissionData", new MiniYamlBuilder("", []));
 					worldNodeBuilder.Value.Nodes.Add(missionData);
 				}
 
@@ -343,14 +347,14 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			if (scorches.Count > 0)
 			{
 				var initialScorches = new MiniYamlNode("InitialSmudges", new MiniYaml("", scorches));
-				var smudgeLayer = new MiniYamlNodeBuilder("SmudgeLayer@SCORCH", new MiniYamlBuilder("", new List<MiniYamlNode>() { initialScorches }));
+				var smudgeLayer = new MiniYamlNodeBuilder("SmudgeLayer@SCORCH", new MiniYamlBuilder("", [initialScorches]));
 				worldNodeBuilder.Value.Nodes.Add(smudgeLayer);
 			}
 
 			if (craters.Count > 0)
 			{
 				var initialCraters = new MiniYamlNode("InitialSmudges", new MiniYaml("", craters));
-				var smudgeLayer = new MiniYamlNodeBuilder("SmudgeLayer@CRATER", new MiniYamlBuilder("", new List<MiniYamlNode>() { initialCraters }));
+				var smudgeLayer = new MiniYamlNodeBuilder("SmudgeLayer@CRATER", new MiniYamlBuilder("", [initialCraters]));
 				worldNodeBuilder.Value.Nodes.Add(smudgeLayer);
 			}
 
@@ -497,22 +501,4 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			Map.ActorDefinitions = Map.ActorDefinitions.Concat(nodes).ToArray();
 		}
 	}
-
-#if !NET6_0_OR_GREATER
-	public static class Extensions
-	{
-		/// <summary>
-		/// Only used for Mono builds. .NET 6 added the exact same thing.
-		/// </summary>
-		public static IEnumerable<TSource> DistinctBy<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> keySelector)
-		{
-			var knownKeys = new HashSet<TKey>();
-			foreach (var element in source)
-			{
-				if (knownKeys.Add(keySelector(element)))
-					yield return element;
-			}
-		}
-	}
-#endif
 }

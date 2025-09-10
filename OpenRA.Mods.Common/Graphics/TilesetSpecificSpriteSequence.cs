@@ -20,7 +20,7 @@ namespace OpenRA.Mods.Common.Graphics
 		public TilesetSpecificSpriteSequenceLoader(ModData modData)
 			: base(modData) { }
 
-		public override ISpriteSequence CreateSequence(
+		public override TilesetSpecificSpriteSequence CreateSequence(
 			ModData modData, string tileSet, SpriteCache cache, string image, string sequence, MiniYaml data, MiniYaml defaults)
 		{
 			return new TilesetSpecificSpriteSequence(cache, this, image, sequence, data, defaults);
@@ -62,7 +62,7 @@ namespace OpenRA.Mods.Common.Graphics
 				if (tilesetNode != null)
 				{
 					var loadFrames = CalculateFrameIndices(start, length, stride ?? length ?? 0, facings, frames, transpose, reverseFacings, shadowStart);
-					return new[] { new ReservationInfo(tilesetNode.Value.Value, loadFrames, frames, tilesetNode.Location) };
+					return [new ReservationInfo(tilesetNode.Value.Value, loadFrames, frames, tilesetNode.Location)];
 				}
 			}
 
@@ -84,7 +84,7 @@ namespace OpenRA.Mods.Common.Graphics
 						frames = Exts.MakeArray(subLength, i => subStart + i);
 					}
 
-					return new[] { new ReservationInfo(tilesetNode.Value.Value, frames, frames, tilesetNode.Location) };
+					return [new ReservationInfo(tilesetNode.Value.Value, frames, frames, tilesetNode.Location)];
 				}
 			}
 

@@ -2,25 +2,29 @@ name: Continuous Integration
 
 on:
   push:
+    paths-ignore:
+      - '*.md'
   pull_request:
     branches: [ bleed, 'prep-*' ]
+    paths-ignore:
+      - '*.md'
 
 permissions:
   contents: read  #  to fetch code (actions/checkout)
 
 jobs:
   linux:
-    name: Linux (.NET 6.0)
+    name: Linux (.NET 8.0)
     runs-on: ubuntu-22.04
 
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Install .NET 6.0
-        uses: actions/setup-dotnet@v4
+      - name: Install .NET 8.0
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '8.0.x'
 
       - name: Check Code
         run: |
@@ -33,36 +37,18 @@ jobs:
           make check-scripts
           make TREAT_WARNINGS_AS_ERRORS=true test
 
-  linux-mono:
-    name: Linux (mono)
-    runs-on: ubuntu-22.04
-
-    steps:
-      - name: Clone Repository
-        uses: actions/checkout@v4
-
-      - name: Check Code
-        run: |
-          mono --version
-          make RUNTIME=mono check
-
-      - name: Check Mods
-        run: |
-          # check-scripts does not depend on .net/mono, so is not needed here
-          make RUNTIME=mono TREAT_WARNINGS_AS_ERRORS=true test
-
   windows:
-    name: Windows (.NET 6.0)
-    runs-on: windows-2019
+    name: Windows (.NET 8.0)
+    runs-on: windows-2022
 
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Install .NET 6.0
-        uses: actions/setup-dotnet@v4
+      - name: Install .NET 8.0
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '8.0.x'
 
       - name: Check Code
         shell: powershell
@@ -74,7 +60,7 @@ jobs:
 
       - name: Check Mods
         run: |
-          choco install lua --version 5.1.5.52
+          choco install lua --version 5.1.5.52 --no-progress
           $ENV:Path = $ENV:Path + ";C:\Program Files (x86)\Lua\5.1\"
           $ENV:TREAT_WARNINGS_AS_ERRORS = "true"
           .\make.ps1 check-scripts

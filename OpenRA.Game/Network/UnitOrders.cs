@@ -183,7 +183,7 @@ namespace OpenRA.Network
 
 					if (!string.IsNullOrEmpty(order.TargetString))
 					{
-						var data = MiniYaml.FromString(order.TargetString, order.OrderString);
+						var data = MiniYaml.FromString(order.TargetString, order.OrderString).ToList();
 						var saveLastOrdersFrame = data.FirstOrDefault(n => n.Key == "SaveLastOrdersFrame");
 						if (saveLastOrdersFrame != null)
 							orderManager.GameSaveLastFrame =
@@ -203,7 +203,7 @@ namespace OpenRA.Network
 
 				case "SaveTraitData":
 				{
-					var data = MiniYaml.FromString(order.TargetString, order.OrderString)[0];
+					var data = MiniYaml.FromString(order.TargetString, order.OrderString).First();
 					var traitIndex = Exts.ParseInt32Invariant(data.Key);
 
 					world?.AddGameSaveTraitData(traitIndex, data.Value);
@@ -386,6 +386,13 @@ namespace OpenRA.Network
 				case "SyncMapPool":
 				{
 					orderManager.ServerMapPool = FieldLoader.GetValue<HashSet<string>>("SyncMapPool", order.TargetString);
+					break;
+				}
+
+				case "GenerateMap":
+				{
+					var yaml = new MiniYaml(order.OrderString, MiniYaml.FromString(order.TargetString, order.OrderString));
+					Game.ModData.MapCache.GenerateMap(FieldLoader.Load<MapGenerationArgs>(yaml));
 					break;
 				}
 

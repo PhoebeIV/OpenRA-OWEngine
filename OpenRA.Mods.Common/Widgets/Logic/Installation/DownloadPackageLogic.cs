@@ -61,7 +61,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		[FluentReference]
 		const string MirrorSelectionFailed = "label-mirror-selection-failed";
 
-		static readonly string[] SizeSuffixes = { "bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
+		static readonly string[] SizeSuffixes = ["bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
 		readonly ModData modData;
 		readonly ModContent.ModDownload download;
@@ -191,7 +191,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 							return;
 						}
 
-						using (var fileStream = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, 8192, true))
+						await using (var fileStream = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, 8192, true))
 						{
 							await response.ReadAsStreamWithProgress(fileStream, OnDownloadProgress, token);
 						}
@@ -205,7 +205,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 							var archiveValid = false;
 							try
 							{
-								using (var stream = File.OpenRead(file))
+								await using (var stream = File.OpenRead(file))
 								{
 									var archiveSHA1 = CryptoUtil.SHA1Hash(stream);
 									Log.Write("install", "Downloaded SHA1: " + archiveSHA1);
@@ -233,7 +233,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						var extracted = new List<string>();
 						try
 						{
-							using (var stream = File.OpenRead(file))
+							await using (var stream = File.OpenRead(file))
 							{
 								var packageLoader = modData.ObjectCreator.CreateObject<IPackageLoader>($"{download.Type}Loader");
 
@@ -253,8 +253,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 										Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
 										extracted.Add(targetPath);
 
-										using (var zz = package.GetStream(kv.Value))
-										using (var f = File.Create(targetPath))
+										await using (var zz = package.GetStream(kv.Value))
+										await using (var f = File.Create(targetPath))
 											await zz.CopyToAsync(f);
 									}
 

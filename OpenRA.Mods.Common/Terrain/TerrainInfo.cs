@@ -10,6 +10,7 @@
 #endregion
 
 using System.Collections.Generic;
+using OpenRA.Mods.Common.MapGenerator;
 
 namespace OpenRA.Mods.Common.Terrain
 {
@@ -17,6 +18,7 @@ namespace OpenRA.Mods.Common.Terrain
 	{
 		string[] EditorTemplateOrder { get; }
 		IReadOnlyDictionary<ushort, TerrainTemplateInfo> Templates { get; }
+		IReadOnlyDictionary<string, IEnumerable<MultiBrushInfo>> MultiBrushCollections { get; }
 	}
 
 	public interface ITerrainInfoNotifyMapCreated : ITerrainInfo

@@ -5,7 +5,7 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
-    <LangVersion>9</LangVersion>
+    <LangVersion>12</LangVersion>
     <DebugSymbols>true</DebugSymbols>
     <EngineRootPath Condition="'$(EngineRootPath)' == ''">..</EngineRootPath>
     <OutputPath>$(EngineRootPath)/bin</OutputPath>
@@ -18,8 +18,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <TargetFramework Condition="'$(MSBuildRuntimeType)'!='Mono'">net6.0</TargetFramework>
-    <TargetFramework Condition="'$(MSBuildRuntimeType)'=='Mono'">netstandard2.1</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -53,9 +52,8 @@
 
   <!-- StyleCop/Roslynator -->
   <ItemGroup>
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435" PrivateAssets="All" />
-    <!-- Roslynator analyzers fail to run under Mono (AD0001) -->
-    <PackageReference Include="Roslynator.Analyzers" Version="4.2.0" PrivateAssets="All" Condition="'$(MSBuildRuntimeType)'!='Mono'" />
-    <PackageReference Include="Roslynator.Formatting.Analyzers" Version="4.2.0" PrivateAssets="All" Condition="'$(MSBuildRuntimeType)'!='Mono'" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="All" />
+    <PackageReference Include="Roslynator.Analyzers" Version="4.13.0" PrivateAssets="All" />
+    <PackageReference Include="Roslynator.Formatting.Analyzers" Version="4.13.0" PrivateAssets="All" />
   </ItemGroup>
 </Project>

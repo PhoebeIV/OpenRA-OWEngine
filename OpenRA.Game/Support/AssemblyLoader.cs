@@ -9,9 +9,7 @@
  */
 #endregion
 
-// Not used/usable on Mono. Only used for Dotnet Core.
 // Based on https://github.com/natemcmaster/DotNetCorePlugins and used under the terms of the Apache 2.0 license
-#if NET5_0_OR_GREATER
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -107,34 +105,34 @@ namespace OpenRA.Support
 		static readonly string[] NativeLibraryPrefixes;
 
 		static readonly string[] ManagedAssemblyExtensions =
-		{
+		[
 			".dll",
 			".ni.dll",
 			".exe",
 			".ni.exe"
-		};
+		];
 
 		static ManagedLoadContext()
 		{
 			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 			{
-				NativeLibraryPrefixes = new[] { "" };
-				NativeLibraryExtensions = new[] { ".dll" };
+				NativeLibraryPrefixes = [""];
+				NativeLibraryExtensions = [".dll"];
 			}
 			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
 			{
-				NativeLibraryPrefixes = new[] { "", "lib", };
-				NativeLibraryExtensions = new[] { ".dylib" };
+				NativeLibraryPrefixes = ["", "lib",];
+				NativeLibraryExtensions = [".dylib"];
 			}
 			else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 			{
-				NativeLibraryPrefixes = new[] { "", "lib" };
-				NativeLibraryExtensions = new[] { ".so", ".so.1" };
+				NativeLibraryPrefixes = ["", "lib"];
+				NativeLibraryExtensions = [".so", ".so.1"];
 			}
 			else
 			{
-				NativeLibraryPrefixes = Array.Empty<string>();
-				NativeLibraryExtensions = Array.Empty<string>();
+				NativeLibraryPrefixes = [];
+				NativeLibraryExtensions = [];
 			}
 		}
 
@@ -346,7 +344,7 @@ namespace OpenRA.Support
 
 		static IEnumerable<string> GetRids(RuntimeFallbacks runtimeGraph)
 		{
-			return Enumerable.Concat(new[] { runtimeGraph.Runtime }, runtimeGraph?.Fallbacks ?? Enumerable.Empty<string>());
+			return Enumerable.Concat([runtimeGraph.Runtime], runtimeGraph?.Fallbacks ?? Enumerable.Empty<string>());
 		}
 
 		static IEnumerable<string> SelectAssets(IEnumerable<string> rids, IReadOnlyCollection<RuntimeAssetGroup> groups)
@@ -362,4 +360,3 @@ namespace OpenRA.Support
 		}
 	}
 }
-#endif

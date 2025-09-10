@@ -1,6 +1,5 @@
 ^BaseWorld:
 	Inherits: ^Palettes
-	AlwaysVisible:
 	ScreenMap:
 	ActorMap:
 	Selection:
@@ -11,6 +10,7 @@
 	TerrainGeometryOverlay:
 	DebugVisualizations:
 	TerrainRenderer:
+	SonicBlastRenderer:
 	ShroudRenderer:
 		ShroudVariants: shrouda, shroudb, shroudc, shroudd
 		FogVariants: foga, fogb, fogc, fogd
@@ -125,6 +125,7 @@ World:
 	HierarchicalPathFinderOverlay:
 	PlayerCommands:
 	HelpCommand:
+	AutoSave:
 	ScreenShaker:
 	BuildingInfluence:
 	ProductionQueueFromSelection:
@@ -265,3 +266,8 @@ EditorWorld:
 	BuildableTerrainOverlay:
 		AllowedTerrainTypes: Rock, Concrete
 	MarkerLayerOverlay:
+	TilingPathTool:
+		DefaultStart: RockSmooth
+		DefaultInner: RockSmooth
+		DefaultEnd: RockSmooth
+	Inherits@MapGenerators: ^MapGenerators

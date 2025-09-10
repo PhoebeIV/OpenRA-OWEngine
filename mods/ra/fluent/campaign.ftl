@@ -1,7 +1,7 @@
 ## world
 dropdown-difficulty =
     .label = Difficulty
-    .description = The difficulty of the mission.
+    .description = The difficulty of the mission
 
 options-difficulty =
     .easy = Easy
@@ -10,7 +10,7 @@ options-difficulty =
 
 ## player
 bot-campaign-ai =
-   .name = Campaign Player AI
+    .name = Campaign Player AI
 
 ## campaign-rules.yaml
 actor-crate-name = Crate
@@ -36,8 +36,8 @@ actor-givefix-name = Weapons Factory or Helipad
 actor-demitri-name = Dr. Demitri
 
 actor-5tnk =
-   .name = Super Tank
-   .generic-name = Super Tank
+    .name = Super Tank
+    .generic-name = Super Tank
 
 actor-5tnk-husk-name = Husk (Super Tank)
 
@@ -45,7 +45,7 @@ actor-5tnk-husk-name = Husk (Super Tank)
 actor-gas-name = Gas
 
 ## sarin-gas-2-down-under
-actor-offiser-name = Officer
+actor-officer-name = Officer
 
 ## sarin-gas-3-controlled-burn
 actor-sarin-processing-plant-name = Sarin Processing Plant
@@ -58,18 +58,18 @@ actor-scientist-name = Scientist
 
 ## soviet-soldier-volkov-n-chitzkoi
 actor-afac =
-   .name = Alloy Facility
-   .generic-name = Alloy Facility
+    .name = Alloy Facility
+    .generic-name = Alloy Facility
 
 actor-ccen =
-   .name = Control Center
-   .generic-name = Control Center
+    .name = Control Center
+    .generic-name = Control Center
 
 actor-hgun-name = Heavy Turret Prototype
 
 actor-zkoi =
-   .name = Chitzkoi
-   .generic-name = Cyborg Dog
+    .name = Chitzkoi
+    .generic-name = Cyborg Dog
 
 ## situation-critical, soviet-soldier-volkov-n-chitzkoi
 actor-volk-name = Volkov

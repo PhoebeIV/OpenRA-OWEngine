@@ -24,6 +24,7 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
+	[IncludeStaticFluentReferences(typeof(ReplayUtils))]
 	public class ReplayBrowserLogic : ChromeLogic
 	{
 		[FluentReference("time")]
@@ -109,8 +110,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly Widget panel;
 		readonly ScrollPanelWidget replayList, playerList;
 		readonly ScrollItemWidget playerTemplate, playerHeader;
-		readonly List<ReplayMetadata> replays = new();
-		readonly Dictionary<ReplayMetadata, ReplayState> replayState = new();
+		readonly List<ReplayMetadata> replays = [];
+		readonly Dictionary<ReplayMetadata, ReplayState> replayState = [];
 		readonly Action onStart;
 		readonly ModData modData;
 		readonly WebServices services;
@@ -507,7 +508,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				ConfirmationDialogs.ButtonPrompt(modData,
 					title: DeleteReplayTitle,
 					text: DeleteReplayPrompt,
-					textArguments: new object[] { "replay", Path.GetFileNameWithoutExtension(r.FilePath) },
+					textArguments: ["replay", Path.GetFileNameWithoutExtension(r.FilePath)],
 					onConfirm: () =>
 					{
 						DeleteReplay(r);
@@ -545,7 +546,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				ConfirmationDialogs.ButtonPrompt(modData,
 					title: DeleteAllReplaysTitle,
 					text: DeleteAllReplaysPrompt,
-					textArguments: new object[] { "count", list.Count },
+					textArguments: ["count", list.Count],
 					onConfirm: () =>
 					{
 						foreach (var replayMetadata in list)
@@ -713,7 +714,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			try
 			{
 				if (map.Status == MapStatus.Unavailable && Game.Settings.Game.AllowDownloading)
-					modData.MapCache.QueryRemoteMapDetails(services.MapRepository, new[] { map.Uid });
+					modData.MapCache.QueryRemoteMapDetails(services.MapRepository, [map.Uid]);
 
 				var players = replay.GameInfo.Players
 					.GroupBy(p => p.Team)
@@ -793,7 +794,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var item = ScrollItemWidget.Setup(template,
 				() => selectedReplay == replay,
 				() => SelectReplay(replay),
-				() => WatchReplay());
+				WatchReplay);
 
 			replayState[replay] = new ReplayState
 			{

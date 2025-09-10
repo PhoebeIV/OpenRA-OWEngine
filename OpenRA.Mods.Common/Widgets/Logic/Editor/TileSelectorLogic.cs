@@ -19,6 +19,10 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
+	[IncludeStaticFluentReferences(
+		typeof(PaintTileEditorAction),
+		typeof(FloodFillEditorAction),
+		typeof(CommonSelectorLogic))]
 	public class TileSelectorLogic : CommonSelectorLogic
 	{
 		sealed class TileSelectorTemplate
@@ -33,7 +37,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				Template = template;
 				Categories = template.Categories;
 				Tooltip = template.Id.ToString(NumberFormatInfo.CurrentInfo);
-				SearchTerms = new[] { Tooltip };
+				SearchTerms = [Tooltip];
 			}
 		}
 

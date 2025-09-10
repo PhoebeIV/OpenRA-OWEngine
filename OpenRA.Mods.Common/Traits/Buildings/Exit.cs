@@ -27,7 +27,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly WAngle? Facing = null;
 
 		[Desc("Type tags on this exit.")]
-		public readonly HashSet<string> ProductionTypes = new();
+		public readonly HashSet<string> ProductionTypes = [];
 
 		[Desc("Number of ticks to wait before moving into the world.")]
 		public readonly int ExitDelay = 0;
@@ -48,14 +48,9 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		public static Exit NearestExitOrDefault(this Actor actor, WPos pos, string productionType = null, Func<Exit, bool> p = null)
 		{
-			// The .ToList() is required to work around a bug/unexpected behaviour in mono, where
-			// the ThenBy clause makes the FirstOrDefault behave differently than under .NET.
-			// This is important because p may have side-effects that trigger a desync if not
-			// called on the same exits in the same order!
 			var all = Exits(actor, productionType)
 				.OrderByDescending(e => e.Info.Priority)
-				.ThenBy(e => (actor.World.Map.CenterOfCell(actor.Location + e.Info.ExitCell) - pos).LengthSquared)
-				.ToList();
+				.ThenBy(e => (actor.World.Map.CenterOfCell(actor.Location + e.Info.ExitCell) - pos).LengthSquared);
 
 #pragma warning disable RCS1077 // Optimize LINQ method call.
 			return p != null ? all.FirstOrDefault(p) : all.FirstOrDefault();
@@ -65,7 +60,7 @@ namespace OpenRA.Mods.Common.Traits
 		public static IEnumerable<Exit> Exits(this Actor actor, string productionType = null)
 		{
 			if (!actor.IsInWorld || actor.Disposed)
-				return Enumerable.Empty<Exit>();
+				return [];
 
 			var all = actor.TraitsImplementing<Exit>()
 				.Where(t => !t.IsTraitDisabled);

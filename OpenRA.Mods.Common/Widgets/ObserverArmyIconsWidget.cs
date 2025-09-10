@@ -40,7 +40,7 @@ namespace OpenRA.Mods.Common.Widgets
 		public readonly string TooltipContainer;
 
 		readonly Lazy<TooltipContainerWidget> tooltipContainer;
-		readonly List<ArmyIcon> armyIcons = new();
+		readonly List<ArmyIcon> armyIcons = [];
 
 		readonly CachedTransform<Player, PlayerStatistics> stats = new(player => player.PlayerActor.TraitOrDefault<PlayerStatistics>());
 
@@ -157,7 +157,7 @@ namespace OpenRA.Mods.Common.Widgets
 			Parent.Parent.Bounds.Width = Math.Max(25 + widestChildWidth, Bounds.Left + MinWidth);
 		}
 
-		public override Widget Clone()
+		public override ObserverArmyIconsWidget Clone()
 		{
 			return new ObserverArmyIconsWidget(this);
 		}

@@ -21,6 +21,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[TraitLocation(SystemActors.World)]
+	[IncludeStaticFluentReferences(typeof(HierarchicalPathFinderOverlay))]
 	[Desc("Renders a debug overlay showing the abstract graph of the hierarchical pathfinder. Attach this to the world actor.")]
 	public class HierarchicalPathFinderOverlayInfo : TraitInfo, Requires<PathFinderInfo>
 	{
@@ -93,7 +94,7 @@ namespace OpenRA.Mods.Common.Traits
 					.Select(a => a.TraitOrDefault<Mobile>()?.Locomotor)
 					.Where(l => l != null)
 					.Distinct()
-				: new[] { Locomotor };
+				: [Locomotor];
 			foreach (var locomotor in locomotors)
 			{
 				var (abstractGraph, abstractDomains) = pathFinder.GetOverlayDataForLocomotor(locomotor, Check);

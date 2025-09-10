@@ -87,9 +87,6 @@ namespace OpenRA.Mods.Common.Server
 		[FluentReference("faction")]
 		const string InvalidFactionSelected = "notification-invalid-faction-selected";
 
-		[FluentReference("factions")]
-		const string SupportedFactions = "notification-supported-factions";
-
 		[FluentReference]
 		const string RequiresHost = "notification-requires-host";
 
@@ -224,7 +221,7 @@ namespace OpenRA.Mods.Common.Server
 
 				if (server.State == ServerState.GameStarted)
 				{
-					server.SendFluentMessageTo(conn, StateUnchangedGameStarted, new object[] { "command", command });
+					server.SendFluentMessageTo(conn, StateUnchangedGameStarted, ["command", command]);
 					return false;
 				}
 				else if (client.State == Session.ClientState.Ready && !(command.StartsWith("state", StringComparison.Ordinal) || command == "startgame"))
@@ -303,7 +300,7 @@ namespace OpenRA.Mods.Common.Server
 			{
 				if (!Enum<Session.ClientState>.TryParse(s, false, out var state))
 				{
-					server.SendFluentMessageTo(conn, MalformedCommand, new object[] { "command", "state" });
+					server.SendFluentMessageTo(conn, MalformedCommand, ["command", "state"]);
 
 					return true;
 				}
@@ -399,7 +396,7 @@ namespace OpenRA.Mods.Common.Server
 					return true;
 				}
 
-				server.SendFluentMessageTo(conn, MalformedCommand, new object[] { "command", "allow_spectate" });
+				server.SendFluentMessageTo(conn, MalformedCommand, ["command", "allow_spectate"]);
 
 				return true;
 			}
@@ -488,7 +485,7 @@ namespace OpenRA.Mods.Common.Server
 				var parts = s.Split(' ');
 				if (parts.Length < 3)
 				{
-					server.SendFluentMessageTo(conn, MalformedCommand, new object[] { "command", "slot_bot" });
+					server.SendFluentMessageTo(conn, MalformedCommand, ["command", "slot_bot"]);
 					return true;
 				}
 
@@ -609,9 +606,8 @@ namespace OpenRA.Mods.Common.Server
 
 						foreach (var c in server.LobbyInfo.Clients)
 						{
+							c.Faction = SanitizePlayerFaction(server, c.Faction, selectableFactions);
 							c.State = Session.ClientState.Invalid;
-							if (!selectableFactions.Contains(c.Faction))
-								c.Faction = "Random";
 						}
 
 						// Reassign players into new slots based on their old slots:
@@ -671,12 +667,27 @@ namespace OpenRA.Mods.Common.Server
 				var m = server.ModData.MapCache[s];
 				if (m.Status == MapStatus.Available || m.Status == MapStatus.DownloadAvailable)
 					SelectMap(m);
+				else if (m.Class == MapClassification.Generated)
+				{
+					if (m.Status == MapStatus.Generating)
+					{
+						// Wait up to 5 seconds for the map to be generated
+						var stopwatch = Stopwatch.StartNew();
+						while (m.Status == MapStatus.Generating && stopwatch.ElapsedMilliseconds < 5000)
+							Thread.Sleep(100);
+					}
+
+					if (m.Status == MapStatus.Available)
+						SelectMap(m);
+					else
+						QueryFailed();
+				}
 				else if (server.Settings.QueryMapRepository)
 				{
 					server.SendFluentMessageTo(conn, SearchingMap);
 					var mapRepository = server.ModData.Manifest.Get<WebServices>().MapRepository;
 					var reported = false;
-					server.ModData.MapCache.QueryRemoteMapDetails(mapRepository, new[] { s }, SelectMap, _ =>
+					server.ModData.MapCache.QueryRemoteMapDetails(mapRepository, [s], SelectMap, _ =>
 					{
 						if (!reported)
 							QueryFailed();
@@ -722,7 +733,7 @@ namespace OpenRA.Mods.Common.Server
 
 				if (option.IsLocked)
 				{
-					server.SendFluentMessageTo(conn, OptionLocked, new object[] { "option", option.Name });
+					server.SendFluentMessageTo(conn, OptionLocked, ["option", option.Name]);
 					return true;
 				}
 
@@ -805,7 +816,7 @@ namespace OpenRA.Mods.Common.Server
 
 				if (!Exts.TryParseInt32Invariant(raw, out var teamCount))
 				{
-					server.SendFluentMessageTo(conn, NumberTeams, new object[] { "raw", raw });
+					server.SendFluentMessageTo(conn, NumberTeams, ["raw", raw]);
 					return true;
 				}
 
@@ -850,7 +861,7 @@ namespace OpenRA.Mods.Common.Server
 				var split = s.Split(' ');
 				if (split.Length < 2)
 				{
-					server.SendFluentMessageTo(conn, MalformedCommand, new object[] { "command", "kick" });
+					server.SendFluentMessageTo(conn, MalformedCommand, ["command", "kick"]);
 					return true;
 				}
 
@@ -902,7 +913,7 @@ namespace OpenRA.Mods.Common.Server
 				var split = s.Split(' ');
 				if (split.Length != 2)
 				{
-					server.SendFluentMessageTo(conn, MalformedCommand, new object[] { "command", "vote_kick" });
+					server.SendFluentMessageTo(conn, MalformedCommand, ["command", "vote_kick"]);
 					return true;
 				}
 
@@ -930,7 +941,7 @@ namespace OpenRA.Mods.Common.Server
 
 				if (!bool.TryParse(split[1], out var vote))
 				{
-					server.SendFluentMessageTo(conn, MalformedCommand, new object[] { "command", "vote_kick" });
+					server.SendFluentMessageTo(conn, MalformedCommand, ["command", "vote_kick"]);
 					return true;
 				}
 
@@ -1055,15 +1066,13 @@ namespace OpenRA.Mods.Common.Server
 				if (server.LobbyInfo.Slots[targetClient.Slot].LockFaction)
 					return true;
 
-				var factions = server.Map.WorldActorInfo.TraitInfos<FactionInfo>()
-					.Where(f => f.Selectable).Select(f => f.InternalName)
-					.ToList();
-
 				var faction = parts[1];
-				if (!factions.Contains(faction))
+				var isValidFaction = server.Map.WorldActorInfo.TraitInfos<FactionInfo>()
+					.Any(f => f.Selectable && f.InternalName == client.Faction);
+
+				if (!isValidFaction)
 				{
-					server.SendFluentMessageTo(conn, InvalidFactionSelected, new object[] { "faction", faction });
-					server.SendFluentMessageTo(conn, SupportedFactions, new object[] { "factions", factions.JoinWith(", ") });
+					server.SendFluentMessageTo(conn, InvalidFactionSelected, ["faction", faction]);
 					return true;
 				}
 
@@ -1436,6 +1445,11 @@ namespace OpenRA.Mods.Common.Server
 
 				return colorManager.MakeValid(askColor, server.Random, terrainColors, playerColors, OnError);
 			}
+		}
+
+		public static string SanitizePlayerFaction(S server, string askedFaction, IEnumerable<string> validFactions)
+		{
+			return !validFactions.Contains(askedFaction) ? "Random" : askedFaction;
 		}
 
 		static string MissionBriefingOrDefault(S server)

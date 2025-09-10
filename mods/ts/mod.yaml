@@ -8,7 +8,7 @@ Metadata:
 PackageFormats: Mix
 
 FileSystem: ContentInstallerFileSystem
-    Packages:
+	SystemPackages:
 		^EngineDir
 		$ts: ts
 		^EngineDir|mods/common: common
@@ -38,6 +38,7 @@ FileSystem: ContentInstallerFileSystem
 		content|firestorm/e01vox02.mix
 		content|firestorm/ecache01.mix
 		~content|firestorm/scores01.mix
+		# Below are mod-provided (system) packages that need to be loaded after the content packages so they can override content assets.
 		ts|bits
 	ContentInstallerMod: ts-content
 
@@ -102,7 +103,6 @@ TileSets:
 	ts|tilesets/snow.yaml
 
 MapGrid:
-	TileSize: 48,24
 	EnableDepthBuffer: True
 	Type: RectangularIsometric
 	MaximumTerrainHeight: 16
@@ -141,6 +141,7 @@ ChromeLayout:
 	ts|chrome/mainmenu-prerelease-notification.yaml
 	common|chrome/settings.yaml
 	common|chrome/settings-display.yaml
+	common|chrome/settings-gameplay.yaml
 	common|chrome/settings-audio.yaml
 	common|chrome/settings-input.yaml
 	ts|chrome/settings-hotkeys.yaml

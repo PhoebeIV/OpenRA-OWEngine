@@ -31,25 +31,13 @@ namespace OpenRA.Graphics
 
 	public interface IModelWidget
 	{
-		public string Palette { get; }
-		public float Scale { get; }
-		public void Setup(Func<bool> isVisible, Func<string> getPalette, Func<string> getPlayerPalette,
+		string Palette { get; }
+		float Scale { get; }
+		void Setup(Func<bool> isVisible, Func<string> getPalette, Func<string> getPlayerPalette,
 			Func<float> getScale, Func<IModel> getVoxel, Func<WRot> getRotation);
 	}
 
-	public readonly struct ModelRenderData
-	{
-		public readonly int Start;
-		public readonly int Count;
-		public readonly Sheet Sheet;
-
-		public ModelRenderData(int start, int count, Sheet sheet)
-		{
-			Start = start;
-			Count = count;
-			Sheet = sheet;
-		}
-	}
+	public readonly record struct ModelRenderData(int Start, int Count, Sheet Sheet);
 
 	public interface IModelCacheInfo : ITraitInfoInterface { }
 

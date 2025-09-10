@@ -74,24 +74,24 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				if (!self.IsInWorld || self.IsDead)
 				{
-					owner.PlayerActor.Trait<PlayerResources>().GiveCash(refundableValue);
+					owner.PlayerActor.Trait<PlayerResources>().RefundCash(refundableValue);
 					return;
 				}
 
 				var altitude = self.World.Map.Rules.Actors[actorType].TraitInfo<AircraftInfo>().CruiseAltitude;
-				var actor = w.CreateActor(actorType, new TypeDictionary
-				{
+				var actor = w.CreateActor(actorType,
+				[
 					new CenterPositionInit(w.Map.CenterOfCell(startPos) + new WVec(WDist.Zero, WDist.Zero, altitude)),
 					new OwnerInit(owner),
 					new FacingInit(new WAngle(256)),
-				});
+				]);
 
 				actor.QueueActivity(new Fly(actor, Target.FromCell(w, dropPos)));
 				actor.QueueActivity(new CallFunc(() =>
 				{
 					if (!self.IsInWorld || self.IsDead)
 					{
-						owner.PlayerActor.Trait<PlayerResources>().GiveCash(refundableValue);
+						owner.PlayerActor.Trait<PlayerResources>().RefundCash(refundableValue);
 						return;
 					}
 
@@ -137,7 +137,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				var initialFacing = (exitinfo != null && exitinfo.Facing.HasValue) ? exitinfo.Facing.Value : (to - spawn).Yaw;
 
-				exitLocations = rp.Value != null && rp.Value.Path.Count > 0 ? rp.Value.Path : new List<CPos> { exit };
+				exitLocations = rp.Value != null && rp.Value.Path.Count > 0 ? rp.Value.Path : [exit];
 
 				td.Add(new LocationInit(exit));
 				td.Add(new CenterPositionInit(spawn));

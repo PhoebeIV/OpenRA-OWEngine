@@ -27,8 +27,8 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 
 		string defaultSpriteExtension = ".shp";
 		List<MiniYamlNodeBuilder> resolvedImagesNodes;
-		readonly Dictionary<string, string> tilesetExtensions = new();
-		readonly Dictionary<string, string> tilesetCodes = new();
+		readonly Dictionary<string, string> tilesetExtensions = [];
+		readonly Dictionary<string, string> tilesetCodes = [];
 		bool parseModYaml = true;
 		bool reportModYamlChanges;
 		bool disabled;
@@ -38,7 +38,8 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 			// Keep a resolved copy of the sequences so we can account for values imported through inheritance or Defaults.
 			// This will be modified during processing, so take a deep copy to avoid side-effects on other update rules.
 			this.resolvedImagesNodes = MiniYaml.FromString(resolvedImagesNodes.WriteToString(), nameof(BeforeUpdateSequences))
-				.ConvertAll(n => new MiniYamlNodeBuilder(n));
+				.Select(n => new MiniYamlNodeBuilder(n))
+				.ToList();
 
 			var requiredMetadata = new HashSet<string>();
 			foreach (var imageNode in resolvedImagesNodes)
@@ -103,32 +104,32 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 					{
 						case "cnc":
 							fromBackup = true;
-							tilesetExtensionsNode = new List<MiniYamlNodeBuilder>()
-							{
+							tilesetExtensionsNode =
+							[
 								new("TEMPERAT", ".tem"),
 								new("SNOW", ".sno"),
 								new("INTERIOR", ".int"),
 								new("DESERT", ".des"),
 								new("JUNGLE", ".jun"),
-							};
+							];
 							break;
 						case "ra":
 							fromBackup = true;
-							tilesetExtensionsNode = new List<MiniYamlNodeBuilder>()
-							{
+							tilesetExtensionsNode =
+							[
 								new("TEMPERAT", ".tem"),
 								new("SNOW", ".sno"),
 								new("INTERIOR", ".int"),
 								new("DESERT", ".des"),
-							};
+							];
 							break;
 						case "ts":
 							fromBackup = true;
-							tilesetExtensionsNode = new List<MiniYamlNodeBuilder>()
-							{
+							tilesetExtensionsNode =
+							[
 								new("TEMPERATE", ".tem"),
 								new("SNOW", ".sno"),
-							};
+							];
 							break;
 					}
 				}
@@ -148,11 +149,11 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 				if (tilesetCodesNode == null && modData.Manifest.Id == "ts")
 				{
 					fromBackup = true;
-					tilesetCodesNode = new List<MiniYamlNodeBuilder>()
-					{
+					tilesetCodesNode =
+					[
 						new("TEMPERATE", "t"),
 						new("SNOW", "a"),
-					};
+					];
 				}
 
 				if (tilesetCodesNode != null)
@@ -210,11 +211,11 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 					if (resolvedSequenceNode == resolvedDefaultsNode)
 						continue;
 
-					resolvedSequenceNode.Value.Nodes = MiniYaml.Merge(new[]
-					{
+					resolvedSequenceNode.Value.Nodes = MiniYaml.Merge(
+					[
 						resolvedDefaultsNode.Value.Nodes.Select(n => n.Build()).ToArray(),
 						resolvedSequenceNode.Value.Nodes.Select(n => n.Build()).ToArray()
-					}).ConvertAll(n => new MiniYamlNodeBuilder(n));
+					]).ConvertAll(n => new MiniYamlNodeBuilder(n));
 					resolvedSequenceNode.Value.Value ??= resolvedDefaultsNode.Value.Value;
 				}
 			}
@@ -286,7 +287,7 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 						imageNode.Value.Nodes.Insert(inheritsNodeIndex, defaultsNode);
 					}
 
-					var nodes = MiniYaml.FromString(duplicateTilesetCount.First(kv => kv.Value == maxDuplicateTilesetCount).Key, nameof(UpdateSequenceNode));
+					var nodes = MiniYaml.FromString(duplicateTilesetCount.First(kv => kv.Value == maxDuplicateTilesetCount).Key, nameof(UpdateSequenceNode)).ToList();
 					defaultTilesetFilenamesNode = new MiniYamlNodeBuilder("TilesetFilenames", "", nodes);
 					defaultsNode.Value.Nodes.Insert(0, defaultTilesetFilenamesNode);
 				}

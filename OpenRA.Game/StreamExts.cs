@@ -14,6 +14,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OpenRA
@@ -160,11 +161,7 @@ namespace OpenRA
 			while ((b = s.ReadUInt8()) != 0)
 				bytes.Add(b);
 
-#if NET5_0_OR_GREATER
-			return Encoding.ASCII.GetString(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(bytes));
-#else
-			return Encoding.ASCII.GetString(bytes.ToArray());
-#endif
+			return Encoding.ASCII.GetString(CollectionsMarshal.AsSpan(bytes));
 		}
 
 		public static string ReadAllText(this Stream s)
@@ -214,7 +211,7 @@ namespace OpenRA
 				{
 					var offset = 0;
 					int read;
-					while ((read = sr.ReadBlock(buffer, offset, buffer.Length - offset)) != 0)
+					while ((read = sr.Read(buffer, offset, buffer.Length - offset)) != 0)
 					{
 						offset += read;
 
@@ -281,7 +278,7 @@ namespace OpenRA
 			if (!string.IsNullOrEmpty(text))
 				bytes = encoding.GetBytes(text);
 			else
-				bytes = Array.Empty<byte>();
+				bytes = [];
 
 			s.Write(bytes.Length);
 			s.Write(bytes);

@@ -10,6 +10,7 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Commands;
 using OpenRA.Mods.Common.Graphics;
@@ -19,6 +20,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[TraitLocation(SystemActors.World)]
+	[IncludeStaticFluentReferences(typeof(CellTriggerOverlay))]
 	[Desc("Renders a debug overlay showing the script triggers. Attach this to the world actor.")]
 	public class CellTriggerOverlayInfo : TraitInfo
 	{

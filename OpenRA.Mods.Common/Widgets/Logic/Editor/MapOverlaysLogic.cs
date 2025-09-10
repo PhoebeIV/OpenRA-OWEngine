@@ -95,14 +95,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		Widget CreateOverlaysPanel()
 		{
-			var categoriesPanel = Ui.LoadWidget("OVERLAY_PANEL", null, new WidgetArgs());
+			var categoriesPanel = Ui.LoadWidget("OVERLAY_PANEL", null, []);
 			var categoryTemplate = categoriesPanel.Get<CheckboxWidget>("CATEGORY_TEMPLATE");
 
-			MapOverlays[] allCategories = { MapOverlays.Grid, MapOverlays.Buildable, MapOverlays.Marker };
+			MapOverlays[] allCategories = [MapOverlays.Grid, MapOverlays.Buildable, MapOverlays.Marker];
 			foreach (var cat in allCategories)
 			{
-				var category = (CheckboxWidget)categoryTemplate.Clone();
-				category.GetText = () => cat.ToString();
+				var category = categoryTemplate.Clone();
+				category.GetText = cat.ToString;
 				category.IsVisible = () => true;
 
 				if (cat.HasFlag(MapOverlays.Grid))

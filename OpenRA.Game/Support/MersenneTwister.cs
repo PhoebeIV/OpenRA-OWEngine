@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 
 namespace OpenRA.Support
 {
@@ -32,7 +33,10 @@ namespace OpenRA.Support
 				mt[i] = 1812433253u * (mt[i - 1] ^ (mt[i - 1] >> 30)) + i;
 		}
 
-		public int Next()
+		/// <summary>
+		/// Produces a random unsigned 32-bit integer.
+		/// </summary>
+		public uint NextUint()
 		{
 			if (index == 0) Generate();
 
@@ -45,6 +49,24 @@ namespace OpenRA.Support
 			index = (index + 1) % 624;
 			TotalCount++;
 			Last = (int)(y % int.MaxValue);
+			return y;
+		}
+
+		/// <summary>
+		/// Produces a random unsigned 64-bit integer.
+		/// </summary>
+		public ulong NextUlong()
+		{
+			return (ulong)NextUint() << 32 | NextUint();
+		}
+
+		/// <summary>
+		/// Produces signed integers between -0x7fffffff and 0x7fffffff inclusive.
+		/// 0 is twice as likely as any other number.
+		/// </summary>
+		public int Next()
+		{
+			NextUint();
 			return Last;
 		}
 
@@ -65,9 +87,55 @@ namespace OpenRA.Support
 			return Next(0, high);
 		}
 
+		/// <summary>
+		/// Produces random 32-bit floats between 0 inclusive and 1 inclusive.
+		/// Note that whilst floats are 32-bit (23-bit mantissa), the entropy is not. Lower numbers preserve more entropy.
+		/// </summary>
 		public float NextFloat()
 		{
 			return Math.Abs(Next() / (float)0x7fffffff);
+		}
+
+		/// <summary>
+		/// Pick a random index from a list of weights.
+		/// </summary>
+		public int PickWeighted(IReadOnlyList<int> weights)
+		{
+			ulong total = 0;
+			foreach (var weight in weights)
+			{
+				if (weight < 0)
+					throw new ArgumentException("Found a negative weight.");
+				total += (ulong)weight;
+			}
+
+			if (total == 0)
+				return Next(0, weights.Count);
+
+			var spin = NextUlong() % total;
+			int i;
+			ulong acc = 0;
+			for (i = 0; i < weights.Count; i++)
+			{
+				acc += (ulong)weights[i];
+				if (spin < acc)
+					return i;
+			}
+
+			throw new InvalidOperationException("unreachable");
+		}
+
+		/// <summary>
+		/// Shuffle a portion of a list in place. Has minor biases.
+		/// </summary>
+		public void ShuffleInPlace<T>(IList<T> list, int start, int len)
+		{
+			for (var i = len; i > 1; i--)
+			{
+				var swap = Next(i);
+				(list[start + i - 1], list[start + swap]) =
+					(list[start + swap], list[start + i - 1]);
+			}
 		}
 
 		void Generate()

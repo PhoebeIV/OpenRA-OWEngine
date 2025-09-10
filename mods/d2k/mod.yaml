@@ -8,26 +8,30 @@ Metadata:
 PackageFormats: D2kSoundResources
 
 FileSystem: ContentInstallerFileSystem
-    Packages:
+	SystemPackages:
 		^EngineDir
 		$d2k: d2k
 		^EngineDir|mods/common: common
 		~^SupportDir|Content/d2k/v3/: content
-		d2k|scripts
 		common|scripts
+		d2k|scripts
 		d2k|uibits
 	ContentPackages:
 		content|SOUND.RS
 		content|GAMESFX
+		~content|Music
+		~content|Movies
+		# Below are mod-provided (system) packages that need to be loaded after the content packages so they can override content assets.
 		d2k|bits
-	ContentFiles:
-		content|DATA.R16
+	RequiredContentFiles:
 		content|BLOXBASE.R16
 		content|BLOXBAT.R16
 		content|BLOXBGBS.R16
 		content|BLOXICE.R16
 		content|BLOXTREE.R16
 		content|BLOXWAST.R16
+		content|DATA.R16
+		content|MOUSE.R16
 		content|PALETTE.BIN
 	ContentInstallerMod: d2k-content
 
@@ -49,6 +53,7 @@ Rules:
 	d2k|rules/starport.yaml
 	d2k|rules/husks.yaml
 	d2k|rules/arrakis.yaml
+	d2k|rules/map-generators.yaml
 
 Sequences:
 	d2k|sequences/aircraft.yaml
@@ -62,7 +67,6 @@ TileSets:
 	d2k|tilesets/arrakis.yaml
 
 MapGrid:
-	TileSize: 32,32
 	Type: Rectangular
 
 Cursors:
@@ -96,6 +100,7 @@ ChromeLayout:
 	common|chrome/mainmenu-prompts.yaml
 	common|chrome/settings.yaml
 	common|chrome/settings-display.yaml
+	common|chrome/settings-gameplay.yaml
 	common|chrome/settings-audio.yaml
 	common|chrome/settings-input.yaml
 	common|chrome/settings-hotkeys.yaml

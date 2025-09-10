@@ -31,26 +31,26 @@ namespace OpenRA.Graphics
 
 		public event Action PaletteInvalidated = null;
 
-		readonly HashSet<Actor> onScreenActors = new();
+		readonly HashSet<Actor> onScreenActors = [];
 		readonly HardwarePalette palette = new();
-		readonly Dictionary<string, PaletteReference> palettes = new();
+		readonly Dictionary<string, PaletteReference> palettes = [];
 		readonly IRenderTerrain terrainRenderer;
 		readonly Lazy<DebugVisualizations> debugVis;
 		readonly Func<string, PaletteReference> createPaletteReference;
 		readonly bool enableDepthBuffer;
 
-		readonly List<IFinalizedRenderable> preparedRenderables = new();
-		readonly List<IFinalizedRenderable> preparedOverlayRenderables = new();
-		readonly List<IFinalizedRenderable> preparedAnnotationRenderables = new();
+		readonly List<IFinalizedRenderable> preparedRenderables = [];
+		readonly List<IFinalizedRenderable> preparedOverlayRenderables = [];
+		readonly List<IFinalizedRenderable> preparedAnnotationRenderables = [];
 
-		readonly List<IRenderable> renderablesBuffer = new();
+		readonly List<IRenderable> renderablesBuffer = [];
 		readonly IRenderer[] renderers;
 		readonly IRenderPostProcessPass[] postProcessPasses;
 
 		internal WorldRenderer(ModData modData, World world)
 		{
 			World = world;
-			TileSize = World.Map.Grid.TileSize;
+			TileSize = World.Map.Rules.TerrainInfo.TileSize;
 			TileScale = World.Map.Grid.TileScale;
 			Viewport = new Viewport(this, world.Map);
 
@@ -70,7 +70,7 @@ namespace OpenRA.Graphics
 			renderers = world.WorldActor.TraitsImplementing<IRenderer>().ToArray();
 			terrainRenderer = world.WorldActor.TraitOrDefault<IRenderTerrain>();
 
-			debugVis = Exts.Lazy(() => world.WorldActor.TraitOrDefault<DebugVisualizations>());
+			debugVis = Exts.Lazy(world.WorldActor.TraitOrDefault<DebugVisualizations>);
 
 			postProcessPasses = world.WorldActor.TraitsImplementing<IRenderPostProcessPass>().ToArray();
 		}
@@ -429,7 +429,7 @@ namespace OpenRA.Graphics
 		public float[] ScreenVector(in WVec vec)
 		{
 			var xyz = ScreenVectorComponents(vec);
-			return new[] { xyz.X, xyz.Y, xyz.Z, 1f };
+			return [xyz.X, xyz.Y, xyz.Z, 1f];
 		}
 
 		public int2 ScreenPxOffset(in WVec vec)

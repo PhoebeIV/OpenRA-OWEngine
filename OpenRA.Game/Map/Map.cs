@@ -11,7 +11,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -33,12 +32,12 @@ namespace OpenRA
 		public readonly uint HeightsOffset;
 		public readonly uint ResourcesOffset;
 
-		public BinaryDataHeader(Stream s, int2 expectedSize)
+		public BinaryDataHeader(Stream s, Size expectedSize)
 		{
 			Format = s.ReadUInt8();
 			var width = s.ReadUInt16();
 			var height = s.ReadUInt16();
-			if (width != expectedSize.X || height != expectedSize.Y)
+			if (width != expectedSize.Width || height != expectedSize.Height)
 				throw new InvalidDataException("Invalid tile data");
 
 			if (Format == 1)
@@ -158,7 +157,7 @@ namespace OpenRA
 
 		/// <summary>Defines the order of the fields in map.yaml.</summary>
 		static readonly MapField[] YamlFields =
-		{
+		[
 			new("MapFormat"),
 			new("RequiresMod"),
 			new("Title"),
@@ -179,7 +178,7 @@ namespace OpenRA
 			new("Voices", nameof(VoiceDefinitions), required: false),
 			new("Music", nameof(MusicDefinitions), required: false),
 			new("Notifications", nameof(NotificationDefinitions), required: false),
-		};
+		];
 
 		// Format versions
 		public int MapFormat { get; private set; }
@@ -193,13 +192,13 @@ namespace OpenRA
 		public bool LockPreview;
 		public Rectangle Bounds;
 		public MapVisibility Visibility = MapVisibility.Lobby;
-		public string[] Categories = { "Conquest" };
+		public string[] Categories = ["Conquest"];
 
-		public int2 MapSize { get; private set; }
+		public Size MapSize { get; private set; }
 
 		// Player and actor yaml. Public for access by the map importers and lint checks.
-		public IReadOnlyCollection<MiniYamlNode> PlayerDefinitions = ImmutableArray<MiniYamlNode>.Empty;
-		public IReadOnlyCollection<MiniYamlNode> ActorDefinitions = ImmutableArray<MiniYamlNode>.Empty;
+		public IReadOnlyCollection<MiniYamlNode> PlayerDefinitions = [];
+		public IReadOnlyCollection<MiniYamlNode> ActorDefinitions = [];
 
 		// Custom map yaml. Public for access by the map importers and lint checks
 		public MiniYaml RuleDefinitions;
@@ -211,7 +210,7 @@ namespace OpenRA
 		public MiniYaml MusicDefinitions;
 		public MiniYaml NotificationDefinitions;
 
-		public readonly Dictionary<CPos, TerrainTile> ReplacedInvalidTerrainTiles = new();
+		public readonly Dictionary<CPos, TerrainTile> ReplacedInvalidTerrainTiles = [];
 
 		// Generated data
 		public readonly MapGrid Grid;
@@ -283,7 +282,7 @@ namespace OpenRA
 
 				// Take the SHA1
 				if (streams.Count == 0)
-					return CryptoUtil.SHA1Hash(Array.Empty<byte>());
+					return CryptoUtil.SHA1Hash([]);
 
 				var merged = streams[0];
 				for (var i = 1; i < streams.Count; i++)
@@ -321,26 +320,25 @@ namespace OpenRA
 		/// Initializes a new map created by the editor or importer.
 		/// The map will not receive a valid UID until after it has been saved and reloaded.
 		/// </summary>
-		public Map(ModData modData, ITerrainInfo terrainInfo, int width, int height)
+		public Map(ModData modData, ITerrainInfo terrainInfo, Size size)
 		{
 			this.modData = modData;
-			var size = new Size(width, height);
+			MapSize = size;
 			Grid = modData.Manifest.Get<MapGrid>();
 
 			Title = "Name your map here";
 			Author = "Your name here";
 
-			MapSize = new int2(size);
 			Tileset = terrainInfo.Id;
 
 			// Empty rules that can be added to by the importers.
 			// Will be dropped on save if nothing is added to it
 			RuleDefinitions = new MiniYaml("");
 
-			Tiles = new CellLayer<TerrainTile>(Grid.Type, size);
-			Resources = new CellLayer<ResourceTile>(Grid.Type, size);
-			Height = new CellLayer<byte>(Grid.Type, size);
-			Ramp = new CellLayer<byte>(Grid.Type, size);
+			Tiles = new CellLayer<TerrainTile>(Grid.Type, MapSize);
+			Resources = new CellLayer<ResourceTile>(Grid.Type, MapSize);
+			Height = new CellLayer<byte>(Grid.Type, MapSize);
+			Ramp = new CellLayer<byte>(Grid.Type, MapSize);
 			Tiles.Clear(terrainInfo.DefaultTerrainTile);
 
 			if (Grid.MaximumTerrainHeight > 0)
@@ -368,16 +366,15 @@ namespace OpenRA
 			if (MapFormat < SupportedMapFormat)
 				throw new InvalidDataException($"Map format {MapFormat} is not supported.\n File: {package.Name}");
 
-			PlayerDefinitions = yaml.NodeWithKeyOrDefault("Players")?.Value.Nodes ?? ImmutableArray<MiniYamlNode>.Empty;
-			ActorDefinitions = yaml.NodeWithKeyOrDefault("Actors")?.Value.Nodes ?? ImmutableArray<MiniYamlNode>.Empty;
+			PlayerDefinitions = yaml.NodeWithKeyOrDefault("Players")?.Value.Nodes ?? [];
+			ActorDefinitions = yaml.NodeWithKeyOrDefault("Actors")?.Value.Nodes ?? [];
 
 			Grid = modData.Manifest.Get<MapGrid>();
 
-			var size = new Size(MapSize.X, MapSize.Y);
-			Tiles = new CellLayer<TerrainTile>(Grid.Type, size);
-			Resources = new CellLayer<ResourceTile>(Grid.Type, size);
-			Height = new CellLayer<byte>(Grid.Type, size);
-			Ramp = new CellLayer<byte>(Grid.Type, size);
+			Tiles = new CellLayer<TerrainTile>(Grid.Type, MapSize);
+			Resources = new CellLayer<ResourceTile>(Grid.Type, MapSize);
+			Height = new CellLayer<byte>(Grid.Type, MapSize);
+			Ramp = new CellLayer<byte>(Grid.Type, MapSize);
 
 			using (var s = Package.GetStream("map.bin"))
 			{
@@ -385,9 +382,9 @@ namespace OpenRA
 				if (header.TilesOffset > 0)
 				{
 					s.Position = header.TilesOffset;
-					for (var i = 0; i < MapSize.X; i++)
+					for (var i = 0; i < MapSize.Width; i++)
 					{
-						for (var j = 0; j < MapSize.Y; j++)
+						for (var j = 0; j < MapSize.Height; j++)
 						{
 							var tile = s.ReadUInt16();
 							var index = s.ReadUInt8();
@@ -404,9 +401,9 @@ namespace OpenRA
 				if (header.ResourcesOffset > 0)
 				{
 					s.Position = header.ResourcesOffset;
-					for (var i = 0; i < MapSize.X; i++)
+					for (var i = 0; i < MapSize.Width; i++)
 					{
-						for (var j = 0; j < MapSize.Y; j++)
+						for (var j = 0; j < MapSize.Height; j++)
 						{
 							var type = s.ReadUInt8();
 							var density = s.ReadUInt8();
@@ -418,8 +415,8 @@ namespace OpenRA
 				if (header.HeightsOffset > 0)
 				{
 					s.Position = header.HeightsOffset;
-					for (var i = 0; i < MapSize.X; i++)
-						for (var j = 0; j < MapSize.Y; j++)
+					for (var i = 0; i < MapSize.Width; i++)
+						for (var j = 0; j < MapSize.Height; j++)
 							Height[new MPos(i, j)] = s.ReadUInt8().Clamp((byte)0, Grid.MaximumTerrainHeight);
 				}
 			}
@@ -455,7 +452,7 @@ namespace OpenRA
 			Sequences = new SequenceSet(this, modData, Tileset, SequenceDefinitions);
 
 			var tl = new MPos(0, 0).ToCPos(this);
-			var br = new MPos(MapSize.X - 1, MapSize.Y - 1).ToCPos(this);
+			var br = new MPos(MapSize.Width - 1, MapSize.Height - 1).ToCPos(this);
 			AllCells = new CellRegion(Grid.Type, tl, br);
 
 			var btl = new PPos(Bounds.Left, Bounds.Top);
@@ -516,7 +513,7 @@ namespace OpenRA
 			foreach (var cell in AllCells)
 			{
 				var uv = cell.ToMPos(Grid.Type);
-				cellProjection[uv] = Array.Empty<PPos>();
+				cellProjection[uv] = [];
 				inverseCellProjection[uv] = new List<MPos>(1);
 			}
 
@@ -532,7 +529,7 @@ namespace OpenRA
 			if (Grid.MaximumTerrainHeight == 0)
 			{
 				uv = cell.ToMPos(Grid.Type);
-				cellProjection[cell] = new[] { (PPos)uv };
+				cellProjection[cell] = [(PPos)uv];
 				var inverse = inverseCellProjection[uv];
 				inverse.Clear();
 				inverse.Add(uv);
@@ -607,7 +604,7 @@ namespace OpenRA
 			// Any changes to this function should be reflected when setting projectionSafeBounds.
 			var height = mapHeight[uv];
 			if (height == 0)
-				return new[] { (PPos)uv };
+				return [(PPos)uv];
 
 			// Odd-height ramps get bumped up a level to the next even height layer
 			if ((height & 1) == 1 && Ramp[uv] != 0)
@@ -684,13 +681,13 @@ namespace OpenRA
 				writer.Write(TileFormat);
 
 				// Size
-				writer.Write((ushort)MapSize.X);
-				writer.Write((ushort)MapSize.Y);
+				writer.Write((ushort)MapSize.Width);
+				writer.Write((ushort)MapSize.Height);
 
 				// Data offsets
 				const int TilesOffset = 17;
-				var heightsOffset = Grid.MaximumTerrainHeight > 0 ? 3 * MapSize.X * MapSize.Y + 17 : 0;
-				var resourcesOffset = (Grid.MaximumTerrainHeight > 0 ? 4 : 3) * MapSize.X * MapSize.Y + 17;
+				var heightsOffset = Grid.MaximumTerrainHeight > 0 ? 3 * MapSize.Width * MapSize.Height + 17 : 0;
+				var resourcesOffset = (Grid.MaximumTerrainHeight > 0 ? 4 : 3) * MapSize.Width * MapSize.Height + 17;
 
 				writer.Write((uint)TilesOffset);
 				writer.Write((uint)heightsOffset);
@@ -699,9 +696,9 @@ namespace OpenRA
 				// Tile data
 				if (TilesOffset != 0)
 				{
-					for (var i = 0; i < MapSize.X; i++)
+					for (var i = 0; i < MapSize.Width; i++)
 					{
-						for (var j = 0; j < MapSize.Y; j++)
+						for (var j = 0; j < MapSize.Height; j++)
 						{
 							var tile = Tiles[new MPos(i, j)];
 							writer.Write(tile.Type);
@@ -712,16 +709,16 @@ namespace OpenRA
 
 				// Height data
 				if (heightsOffset != 0)
-					for (var i = 0; i < MapSize.X; i++)
-						for (var j = 0; j < MapSize.Y; j++)
+					for (var i = 0; i < MapSize.Width; i++)
+						for (var j = 0; j < MapSize.Height; j++)
 							writer.Write(Height[new MPos(i, j)]);
 
 				// Resource data
 				if (resourcesOffset != 0)
 				{
-					for (var i = 0; i < MapSize.X; i++)
+					for (var i = 0; i < MapSize.Width; i++)
 					{
-						for (var j = 0; j < MapSize.Y; j++)
+						for (var j = 0; j < MapSize.Height; j++)
 						{
 							var tile = Resources[new MPos(i, j)];
 							writer.Write(tile.Type);
@@ -1044,7 +1041,7 @@ namespace OpenRA
 			return (PPos)CellContaining(projectedPos).ToMPos(Grid.Type);
 		}
 
-		static readonly PPos[] NoProjectedCells = Array.Empty<PPos>();
+		static readonly PPos[] NoProjectedCells = [];
 		public PPos[] ProjectedCellsCovering(MPos uv)
 		{
 			if (!initializedCellProjection)
@@ -1064,7 +1061,7 @@ namespace OpenRA
 				InitializeCellProjection();
 
 			if (!inverseCellProjection.Contains(uv))
-				return new List<MPos>();
+				return [];
 
 			return inverseCellProjection[uv];
 		}
@@ -1089,16 +1086,15 @@ namespace OpenRA
 			var oldMapResources = Resources;
 			var oldMapHeight = Height;
 			var oldMapRamp = Ramp;
-			var newSize = new Size(width, height);
 
-			Tiles = CellLayer.Resize(oldMapTiles, newSize, oldMapTiles[MPos.Zero]);
-			Resources = CellLayer.Resize(oldMapResources, newSize, oldMapResources[MPos.Zero]);
-			Height = CellLayer.Resize(oldMapHeight, newSize, oldMapHeight[MPos.Zero]);
-			Ramp = CellLayer.Resize(oldMapRamp, newSize, oldMapRamp[MPos.Zero]);
-			MapSize = new int2(newSize);
+			MapSize = new Size(width, height);
+			Tiles = CellLayer.Resize(oldMapTiles, MapSize, oldMapTiles[MPos.Zero]);
+			Resources = CellLayer.Resize(oldMapResources, MapSize, oldMapResources[MPos.Zero]);
+			Height = CellLayer.Resize(oldMapHeight, MapSize, oldMapHeight[MPos.Zero]);
+			Ramp = CellLayer.Resize(oldMapRamp, MapSize, oldMapRamp[MPos.Zero]);
 
 			var tl = new MPos(0, 0);
-			var br = new MPos(MapSize.X - 1, MapSize.Y - 1);
+			var br = new MPos(MapSize.Width - 1, MapSize.Height - 1);
 			AllCells = new CellRegion(Grid.Type, tl.ToCPos(this), br.ToCPos(this));
 			SetBounds(new PPos(tl.U + 1, tl.V + 1), new PPos(br.U - 1, br.V - 1));
 		}
@@ -1146,6 +1142,11 @@ namespace OpenRA
 
 		public byte GetTerrainIndex(CPos cell)
 		{
+			return GetTerrainIndex(cell.ToMPos(this));
+		}
+
+		public byte GetTerrainIndex(MPos uv)
+		{
 			// Lazily initialize a cache for terrain indexes.
 			if (cachedTerrainIndexes == null)
 			{
@@ -1153,7 +1154,6 @@ namespace OpenRA
 				cachedTerrainIndexes.Clear(InvalidCachedTerrainIndex);
 			}
 
-			var uv = cell.ToMPos(this);
 			var terrainIndex = cachedTerrainIndexes[uv];
 
 			// PERF: Cache terrain indexes per cell on demand.
@@ -1168,7 +1168,12 @@ namespace OpenRA
 
 		public TerrainTypeInfo GetTerrainInfo(CPos cell)
 		{
-			return Rules.TerrainInfo.TerrainTypes[GetTerrainIndex(cell)];
+			return GetTerrainInfo(cell.ToMPos(this));
+		}
+
+		public TerrainTypeInfo GetTerrainInfo(MPos uv)
+		{
+			return Rules.TerrainInfo.TerrainTypes[GetTerrainIndex(uv)];
 		}
 
 		public CPos Clamp(CPos cell)

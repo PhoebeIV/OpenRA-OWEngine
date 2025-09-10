@@ -45,7 +45,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly WorldRenderer worldRenderer;
 		readonly TooltipInfoBase tooltip;
 		readonly ActorReference reference;
-		readonly Dictionary<INotifyEditorPlacementInfo, object> editorData = new();
+		readonly Dictionary<INotifyEditorPlacementInfo, object> editorData = [];
 		readonly Action<CPos> onCellEntryChanged;
 
 		SelectionBoxAnnotationRenderable selectionBox;
@@ -137,20 +137,33 @@ namespace OpenRA.Mods.Common.Traits
 
 		public IEnumerable<IRenderable> Render()
 		{
-			var items = previews.SelectMany(p => p.Render(worldRenderer, CenterPosition));
+			return RenderAt(CenterPosition);
+		}
+
+		public IEnumerable<IRenderable> RenderWithOffset(WVec offset)
+		{
+			return RenderAt(CenterPosition + offset);
+		}
+
+		public IEnumerable<IRenderable> RenderAt(WPos centerPosition)
+		{
 			if (Selected)
 			{
-				var overlay = items.Where(r => !r.IsDecoration && r is IModifyableRenderable)
-					.Select(r =>
+				foreach (var p in previews)
+				{
+					foreach (var r in p.Render(worldRenderer, centerPosition))
 					{
-						var mr = (IModifyableRenderable)r;
-						return mr.WithTint(float3.Ones, mr.TintModifiers | TintModifiers.ReplaceColor).WithAlpha(0.5f);
-					});
-
-				return items.Concat(overlay);
+						yield return r;
+						if (!r.IsDecoration && r is IModifyableRenderable mr)
+							yield return mr.WithTint(float3.Ones, mr.TintModifiers | TintModifiers.ReplaceColor)
+								.WithAlpha(0.5f);
+					}
+				}
 			}
-
-			return items;
+			else
+				foreach (var p in previews)
+					foreach (var r in p.Render(worldRenderer, centerPosition))
+						yield return r;
 		}
 
 		public IEnumerable<IRenderable> RenderAnnotations()

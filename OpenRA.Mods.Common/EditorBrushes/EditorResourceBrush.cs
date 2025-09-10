@@ -30,7 +30,7 @@ namespace OpenRA.Mods.Common.Widgets
 		bool resourceAdded;
 
 		CPos cell;
-		readonly List<IRenderable> preview = new();
+		readonly List<IRenderable> preview = [];
 		readonly IResourceRenderer[] resourceRenderers;
 
 		public EditorResourceBrush(EditorViewportControllerWidget editorWidget, string resourceType, WorldRenderer wr)
@@ -109,19 +109,7 @@ namespace OpenRA.Mods.Common.Widgets
 		public void Dispose() { }
 	}
 
-	readonly struct CellResource
-	{
-		public readonly CPos Cell;
-		public readonly ResourceLayerContents OldResourceTile;
-		public readonly string NewResourceType;
-
-		public CellResource(CPos cell, ResourceLayerContents oldResourceTile, string newResourceType)
-		{
-			Cell = cell;
-			OldResourceTile = oldResourceTile;
-			NewResourceType = newResourceType;
-		}
-	}
+	readonly record struct CellResource(CPos Cell, ResourceLayerContents OldResourceTile, string NewResourceType);
 
 	sealed class AddResourcesEditorAction : IEditorAction
 	{
@@ -132,7 +120,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 		readonly IResourceLayer resourceLayer;
 		readonly string resourceType;
-		readonly List<CellResource> cellResources = new();
+		readonly List<CellResource> cellResources = [];
 
 		public AddResourcesEditorAction(string resourceType, IResourceLayer resourceLayer)
 		{

@@ -22,7 +22,7 @@ namespace OpenRA
 	{
 		// .NET does not support unloading assemblies, so mod libraries will leak across mod changes.
 		// This tracks the assemblies that have been loaded since game start so that we don't load multiple copies
-		static readonly Dictionary<string, Assembly> ResolvedAssemblies = new();
+		static readonly Dictionary<string, Assembly> ResolvedAssemblies = [];
 
 		readonly Cache<string, Type> typeCache;
 		readonly Cache<Type, ConstructorInfo> ctorCache;
@@ -55,26 +55,9 @@ namespace OpenRA
 
 			if (!ResolvedAssemblies.TryGetValue(hash, out var assembly))
 			{
-#if NET5_0_OR_GREATER
 				var loader = new Support.AssemblyLoader(resolvedPath);
 				assembly = loader.LoadDefaultAssembly();
 				ResolvedAssemblies.Add(hash, assembly);
-#else
-				assembly = Assembly.LoadFile(resolvedPath);
-				ResolvedAssemblies.Add(hash, assembly);
-
-				// Allow mods to use libraries.
-				var assemblyPath = Path.GetDirectoryName(resolvedPath);
-				if (assemblyPath != null)
-				{
-					foreach (var referencedAssembly in assembly.GetReferencedAssemblies())
-					{
-						var depedencyPath = Path.Combine(assemblyPath, referencedAssembly.Name + ".dll");
-						if (File.Exists(depedencyPath))
-							LoadAssembly(assemblyList, depedencyPath);
-					}
-				}
-#endif
 			}
 
 			assemblyList.Add(assembly);
@@ -94,7 +77,7 @@ namespace OpenRA
 
 		public T CreateObject<T>(string className)
 		{
-			return CreateObject<T>(className, new Dictionary<string, object>());
+			return CreateObject<T>(className, []);
 		}
 
 		public T CreateObject<T>(string className, Dictionary<string, object> args)
@@ -136,7 +119,7 @@ namespace OpenRA
 
 		public object CreateBasic(Type type)
 		{
-			return type.GetConstructor(Array.Empty<Type>()).Invoke(Array.Empty<object>());
+			return type.GetConstructor([]).Invoke([]);
 		}
 
 		public object CreateUsingArgs(ConstructorInfo ctor, Dictionary<string, object> args)

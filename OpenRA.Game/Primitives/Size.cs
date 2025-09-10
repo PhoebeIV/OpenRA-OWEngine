@@ -46,6 +46,16 @@ namespace OpenRA.Primitives
 
 		public bool IsEmpty => Width == 0 && Height == 0;
 
+		public int2 ToInt2()
+		{
+			return new(Width, Height);
+		}
+
+		public static Size FromInt2(int2 xy)
+		{
+			return new(xy.X, xy.Y);
+		}
+
 		public bool Equals(Size other)
 		{
 			return this == other;
@@ -64,9 +74,6 @@ namespace OpenRA.Primitives
 			return Width ^ Height;
 		}
 
-		public override string ToString()
-		{
-			return $"{{Width={Width}, Height={Height}}}";
-		}
+		public override string ToString() { return Width + "," + Height; }
 	}
 }

@@ -100,7 +100,7 @@ namespace OpenRA.Scripting
 		public LuaValue Get(LuaRuntime runtime)
 		{
 			if (IsMethod)
-				return runtime.CreateFunctionFromDelegate((Func<LuaVararg, LuaValue>)Invoke);
+				return runtime.CreateFunctionFromDelegate(Invoke);
 
 			if (IsGetProperty)
 				return ((PropertyInfo)Member).GetValue(Target, null).ToLuaValue(context);
@@ -150,7 +150,7 @@ namespace OpenRA.Scripting
 			// Remove the namespace and the trailing "Info"
 			return types.SelectMany(i => i.GetGenericArguments())
 				.Select(g => g.Name.Split('.', StringSplitOptions.RemoveEmptyEntries).LastOrDefault())
-				.Select(s => s.EndsWith("Info", StringComparison.Ordinal) ? s.Remove(s.Length - 4, 4) : s)
+				.Select(s => s.EndsWith("Info", StringComparison.Ordinal) ? s[..^4] : s)
 				.ToArray();
 		}
 	}

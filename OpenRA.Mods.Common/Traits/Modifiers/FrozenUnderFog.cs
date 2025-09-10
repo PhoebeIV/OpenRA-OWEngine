@@ -40,14 +40,10 @@ namespace OpenRA.Mods.Common.Traits
 		bool isRendering;
 		bool created;
 
-		sealed class FrozenState
+		sealed class FrozenState(FrozenActor frozenActor)
 		{
-			public readonly FrozenActor FrozenActor;
+			public readonly FrozenActor FrozenActor = frozenActor;
 			public bool IsVisible;
-			public FrozenState(FrozenActor frozenActor)
-			{
-				FrozenActor = frozenActor;
-			}
 		}
 
 		public FrozenUnderFog(ActorInitializer init, FrozenUnderFogInfo info)
@@ -61,7 +57,7 @@ namespace OpenRA.Mods.Common.Traits
 			var exploredMap = init.World.LobbyInfo.GlobalSettings.OptionOrDefault("explored", shroudInfo.ExploredMapCheckboxEnabled);
 			startsRevealed = exploredMap && init.Contains<SpawnedByMapInit>() && !init.Contains<HiddenUnderFogInit>();
 			var buildingInfo = init.Self.Info.TraitInfoOrDefault<BuildingInfo>();
-			var footprintCells = buildingInfo?.FrozenUnderFogTiles(init.Self.Location).ToList() ?? new List<CPos>() { init.Self.Location };
+			var footprintCells = buildingInfo?.FrozenUnderFogTiles(init.Self.Location).ToList() ?? [init.Self.Location];
 			footprint = footprintCells.SelectMany(c => map.ProjectedCellsCovering(c.ToMPos(map))).ToArray();
 		}
 

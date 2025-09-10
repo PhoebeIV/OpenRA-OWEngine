@@ -19,6 +19,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Commands
 {
 	[TraitLocation(SystemActors.World)]
+	[IncludeStaticFluentReferences(typeof(DevCommands))]
 	[Desc("Enables developer cheats via the chatbox. Attach this to the world actor.")]
 	public class DevCommandsInfo : TraitInfo<DevCommands> { }
 
@@ -254,7 +255,6 @@ namespace OpenRA.Mods.Common.Commands
 			world.IssueOrder(new Order(command, world.LocalPlayer.PlayerActor, false));
 		}
 
-		[Serializable]
 		public class DevException : Exception { }
 	}
 }

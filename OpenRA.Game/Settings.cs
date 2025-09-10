@@ -53,6 +53,9 @@ namespace OpenRA
 		[Desc("Reports the game to the master server list.")]
 		public bool AdvertiseOnline = true;
 
+		[Desc("Reports the game on the local area network.")]
+		public bool AdvertiseOnLocalNetwork = true;
+
 		[Desc("Locks the game with a password.")]
 		public string Password = "";
 
@@ -66,16 +69,16 @@ namespace OpenRA
 		public string Map = null;
 
 		[Desc("Takes a comma separated list of IP addresses that are not allowed to join.")]
-		public string[] Ban = Array.Empty<string>();
+		public string[] Ban = [];
 
 		[Desc("For dedicated servers only, allow anonymous clients to join.")]
 		public bool RequireAuthentication = false;
 
 		[Desc("For dedicated servers only, if non-empty, only allow authenticated players with these profile IDs to join.")]
-		public int[] ProfileIDWhitelist = Array.Empty<int>();
+		public int[] ProfileIDWhitelist = [];
 
 		[Desc("For dedicated servers only, if non-empty, always reject players with these user IDs from joining.")]
-		public int[] ProfileIDBlacklist = Array.Empty<int>();
+		public int[] ProfileIDBlacklist = [];
 
 		[Desc("For dedicated servers only, controls whether a game can be started with just one human player in the lobby.")]
 		public bool EnableSingleplayer = false;
@@ -102,7 +105,7 @@ namespace OpenRA
 		public bool EnableLintChecks = true;
 
 		[Desc("For dedicated servers only, a comma separated list of map uids that are allowed to be used.")]
-		public string[] MapPool = Array.Empty<string>();
+		public string[] MapPool = [];
 
 		[Desc("Delay in milliseconds before newly joined players can send chat messages.")]
 		public int FloodLimitJoinCooldown = 5000;
@@ -119,7 +122,7 @@ namespace OpenRA
 		[Desc("Can players vote to kick other players?")]
 		public bool EnableVoteKick = true;
 
-		[Desc("After how much time in miliseconds should the vote kick fail after idling?")]
+		[Desc("After how much time in milliseconds should the vote kick fail after idling?")]
 		public int VoteKickTimer = 30000;
 
 		[Desc("If a vote kick was unsuccessful for how long should the player who started the vote not be able to start new votes?")]
@@ -248,7 +251,15 @@ namespace OpenRA
 		public string Name = "Commander";
 		public Color Color = Color.FromArgb(200, 32, 32);
 		public string LastServer = "localhost:1234";
-		public Color[] CustomColors = Array.Empty<Color>();
+		public Color[] CustomColors = [];
+	}
+
+	public class SinglePlayerGameSettings
+	{
+		[Desc("Sets the Auto-save frequency, in seconds")]
+		public int AutoSaveInterval = 0;
+		[Desc("Sets the AutoSave number of max files to bes saved on the file-system")]
+		public int AutoSaveMaxFileCount = 10;
 	}
 
 	public class GameSettings
@@ -308,14 +319,14 @@ namespace OpenRA
 		public readonly GraphicSettings Graphics = new();
 		public readonly ServerSettings Server = new();
 		public readonly DebugSettings Debug = new();
-		internal Dictionary<string, Hotkey> Keys = new();
-
+		public readonly SinglePlayerGameSettings SinglePlayerSettings = new();
+		internal Dictionary<string, Hotkey> Keys = [];
 		public readonly Dictionary<string, object> Sections;
 
 		// A direct clone of the file loaded from disk.
 		// Any changed settings will be merged over this on save,
 		// allowing us to persist any unknown configuration keys
-		readonly List<MiniYamlNode> yamlCache = new();
+		readonly List<MiniYamlNode> yamlCache = [];
 
 		public Settings(string file, Arguments args)
 		{
@@ -328,6 +339,7 @@ namespace OpenRA
 				{ "Graphics", Graphics },
 				{ "Server", Server },
 				{ "Debug", Debug },
+				{ "SinglePlayerSettings", SinglePlayerSettings },
 			};
 
 			// Override fieldloader to ignore invalid entries
@@ -339,7 +351,7 @@ namespace OpenRA
 
 				if (File.Exists(settingsFile))
 				{
-					yamlCache = MiniYaml.FromFile(settingsFile, false);
+					yamlCache = MiniYaml.FromFile(settingsFile, false).ToList();
 					foreach (var yamlSection in yamlCache)
 					{
 						if (yamlSection.Key != null && Sections.TryGetValue(yamlSection.Key, out var settingsSection))

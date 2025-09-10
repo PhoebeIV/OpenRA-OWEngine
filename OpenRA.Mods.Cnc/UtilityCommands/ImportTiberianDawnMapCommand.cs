@@ -26,7 +26,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 		string IUtilityCommand.Name => "--import-td-map";
 		bool IUtilityCommand.ValidateArguments(string[] args) { return ValidateArguments(args); }
 
-		[Desc("FILENAME", "Convert a legacy Tiberian Dawn INI/MPR map to the OpenRA format.")]
+		[Desc("FILENAME [AUTHOR]", "Convert a legacy Tiberian Dawn INI/MPR map to the OpenRA format.")]
 		void IUtilityCommand.Run(Utility utility, string[] args) { Run(utility, args); }
 
 		public override void ValidateMapFormat(int format)
@@ -65,8 +65,9 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			}
 		}
 
-		static readonly string[] OverlayActors = new string[]
-		{
+		static readonly string[] OverlayActors =
+		[
+
 			// Fences
 			"sbag", "cycl", "brik", "barb", "wood",
 
@@ -75,7 +76,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 
 			// Crates
 			"wcrate", "scrate"
-		};
+		];
 
 		void ReadOverlay(IniFile file)
 		{

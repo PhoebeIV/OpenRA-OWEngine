@@ -47,7 +47,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		readonly Actor self;
 
-		readonly Dictionary<Actor, int> tokens = new();
+		readonly Dictionary<Actor, int> tokens = [];
 
 		int proximityTrigger;
 		WPos cachedPosition;
@@ -170,7 +170,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (IsTraitDisabled)
 				return;
 
-			// Work around for actors changin owner within the region.
+			// Work around for actors changing owner within the region.
 			if ((actor.CenterPosition - self.CenterPosition).HorizontalLengthSquared <= Info.Range.LengthSquared)
 			{
 				var hasRelationship = Info.ValidRelationships.HasRelationship(self.Owner.RelationshipWith(actor.Owner));
