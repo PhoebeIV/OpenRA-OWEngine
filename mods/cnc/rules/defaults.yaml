@@ -366,6 +366,8 @@
 			FireDeath: 5
 			TiberiumDeath: 6
 		CrushedSequence: die-crushed
+		CrushedSequencePalette: player
+		CrushedPaletteIsPlayerPalette: true
 	AttackMove:
 	Passenger:
 		CargoType: Infantry
@@ -467,6 +469,8 @@
 ^CivInfantry:
 	Inherits: ^Infantry
 	Inherits@selection: ^SelectableSupportUnit
+	Selectable:
+		Class: CivInfantry
 	Valued:
 		Cost: 10
 	Tooltip:
@@ -490,16 +494,22 @@
 		MinMoveDelay: 150
 		MaxMoveDelay: 750
 		AvoidTerrainTypes: Tiberium, BlueTiberium
+	WithInfantryBody:
+		IdleSequences: idle1
+		MinIdleDelay: 60
+		MaxIdleDelay: 220
 	MapEditorData:
 		Categories: Civilian infantry
 
 ^ArmedCivilian:
+	Inherits@AUTOTARGET: ^AutoTargetGroundAssaultMove
 	Inherits@selection: ^SelectableCombatUnit
 	Armament:
 		Weapon: Pistol
 	AttackFrontal:
 		FacingTolerance: 0
 	WithInfantryBody:
+		IdleSequences: idle1,idle2
 		DefaultAttackSequence: shoot
 
 ^DINO:
@@ -751,6 +761,7 @@
 	Sellable:
 		RequiresCondition: !build-incomplete && !being-demolished
 		SellSounds: cashturn.aud
+		Notification: StructureSold
 	CaptureManager:
 	Capturable:
 		RequiresCondition: !build-incomplete

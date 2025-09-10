@@ -28,7 +28,7 @@ namespace OpenRA.Mods.Common.Traits
 	public class SupportPowerManager : ITick, IResolveOrder, ITechTreeElement
 	{
 		public readonly Actor Self;
-		public readonly Dictionary<string, SupportPowerInstance> Powers = new();
+		public readonly Dictionary<string, SupportPowerInstance> Powers = [];
 
 		public readonly DeveloperMode DevMode;
 		public readonly TechTree TechTree;
@@ -39,7 +39,7 @@ namespace OpenRA.Mods.Common.Traits
 			Self = init.Self;
 			DevMode = Self.Trait<DeveloperMode>();
 			TechTree = Self.Trait<TechTree>();
-			RadarPings = Exts.Lazy(() => Self.World.WorldActor.TraitOrDefault<RadarPings>());
+			RadarPings = Exts.Lazy(Self.World.WorldActor.TraitOrDefault<RadarPings>);
 
 			init.World.ActorAdded += ActorAdded;
 			init.World.ActorRemoved += ActorRemoved;
@@ -106,7 +106,7 @@ namespace OpenRA.Mods.Common.Traits
 				sp.Activate(order);
 		}
 
-		static readonly SupportPowerInstance[] NoInstances = Array.Empty<SupportPowerInstance>();
+		static readonly SupportPowerInstance[] NoInstances = [];
 
 		public IEnumerable<SupportPowerInstance> GetPowersForActor(Actor a)
 		{
@@ -144,7 +144,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public readonly string Key;
 
-		public readonly List<SupportPower> Instances = new();
+		public readonly List<SupportPower> Instances = [];
 		public readonly int TotalTicks;
 
 		protected int remainingSubTicks;

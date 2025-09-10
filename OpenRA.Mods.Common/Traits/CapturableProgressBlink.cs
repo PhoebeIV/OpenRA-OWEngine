@@ -22,13 +22,16 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Number of ticks to wait between repeating blinks.")]
 		public readonly int Interval = 50;
 
+		[Desc("Sound to play at the same time the actor blinks.")]
+		public readonly string Sound = null;
+
 		public override object Create(ActorInitializer init) { return new CapturableProgressBlink(this); }
 	}
 
 	sealed class CapturableProgressBlink : ConditionalTrait<CapturableProgressBlinkInfo>, ITick, ICaptureProgressWatcher
 	{
-		readonly List<Player> captorOwners = new();
-		readonly HashSet<Actor> captors = new();
+		readonly List<Player> captorOwners = [];
+		readonly HashSet<Actor> captors = [];
 		int tick = 0;
 
 		public CapturableProgressBlink(CapturableProgressBlinkInfo info)
@@ -68,6 +71,9 @@ namespace OpenRA.Mods.Common.Traits
 				foreach (var captor in captors)
 					if (captor.Owner == captorOwner)
 						self.World.Add(new FlashTarget(captor, captorOwner.Color));
+
+				if (Info.Sound != null)
+					Game.Sound.Play(SoundType.World, Info.Sound, self.CenterPosition);
 			}
 
 			if (++tick >= Info.Interval)

@@ -63,7 +63,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					modData.ModFiles.TryGetPackageContaining(chrome, out var chromePackage, out var chromeName);
 					var chromePath = Path.Combine(chromePackage.Name, chromeName);
 
-					var yaml = MiniYaml.FromFile(chromePath, false).ConvertAll(n => new MiniYamlNodeBuilder(n));
+					var yaml = MiniYaml.FromFile(chromePath, false).Select(n => new MiniYamlNodeBuilder(n)).ToList();
 					yamlSet.Add(((IReadWritePackage)chromePackage, chromeName, yaml));
 
 					var extractionCandidates = new List<ExtractionCandidate>();
@@ -80,7 +80,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					if (extractionCandidates.Count > 0)
 					{
 						var chromeFilename = chrome.Split('/').Last();
-						groupedCandidates[new HashSet<string>() { chromeFilename }] = new List<ExtractionCandidate>();
+						groupedCandidates[[chromeFilename]] = [];
 						for (var i = 0; i < extractionCandidates.Count; i++)
 						{
 							var candidate = extractionCandidates[i];
@@ -126,7 +126,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					if (nHash.Key != null)
 						groupedCandidates[nHash.Key].Add(candidate);
 					else
-						groupedCandidates[newHash] = new List<ExtractionCandidate>() { candidate };
+						groupedCandidates[newHash] = [candidate];
 				}
 
 				var startWithNewline = File.Exists(fluentPath);
@@ -183,7 +183,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 											type = type.Replace("text", "");
 									}
 
-									build += $"   .{type} = {candidate.Value}\n";
+									build += $"    .{type} = {candidate.Value}\n";
 									foreach (var node in candidate.Nodes)
 										node.Value.Value = $"{key}.{type}";
 								}
@@ -200,22 +200,13 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			}
 		}
 
-		struct ExtractionCandidate
+		struct ExtractionCandidate(string key, string type, string value, MiniYamlNodeBuilder node)
 		{
-			public string Chrome;
-			public readonly string Key;
-			public readonly string Type;
-			public readonly string Value;
-			public readonly List<MiniYamlNodeBuilder> Nodes;
-
-			public ExtractionCandidate(string key, string type, string value, MiniYamlNodeBuilder node)
-			{
-				Chrome = null;
-				Key = key;
-				Type = type;
-				Value = value;
-				Nodes = new List<MiniYamlNodeBuilder>() { node };
-			}
+			public string Chrome = null;
+			public readonly string Key = key;
+			public readonly string Type = type;
+			public readonly string Value = value;
+			public readonly List<MiniYamlNodeBuilder> Nodes = [node];
 		}
 
 		static string ClearContainersAndToLower(string node)
@@ -300,7 +291,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				if (!string.IsNullOrEmpty(nodeId))
 				{
 					nodeId = string.Join('-', nodeId.Split('_')
-						.Except(string.IsNullOrEmpty(container) ? new string[] { widgetType } : container.Split('_').Append(widgetType))
+						.Except(string.IsNullOrEmpty(container) ? [widgetType] : container.Split('_').Append(widgetType))
 						.Where(s => !string.IsNullOrEmpty(s)));
 
 					if (!string.IsNullOrEmpty(nodeId))

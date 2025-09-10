@@ -173,7 +173,8 @@ namespace OpenRA.Mods.Common.Activities
 			// Prioritise search by these locations in this order: lastHarvestedCell -> lastLinkedDock -> self.
 			CPos searchFromLoc;
 			int searchRadius;
-			WPos? dockPos = null;
+			var dockPos = harv.DockClientManager?.LastReservedHost?.DockPosition;
+
 			if (lastHarvestedCell.HasValue)
 			{
 				searchRadius = harvInfo.SearchFromHarvesterRadius;
@@ -182,12 +183,8 @@ namespace OpenRA.Mods.Common.Activities
 			else
 			{
 				searchRadius = harvInfo.SearchFromProcRadius;
-				var dock = harv.DockClientManager?.LastReservedHost;
-				if (dock != null)
-				{
-					dockPos = dock.DockPosition;
+				if (dockPos != null)
 					searchFromLoc = self.World.Map.CellContaining(dockPos.Value);
-				}
 				else
 					searchFromLoc = self.Location;
 			}
@@ -200,7 +197,7 @@ namespace OpenRA.Mods.Common.Activities
 			// Find any harvestable resources:
 			var path = mobile.PathFinder.FindPathToTargetCellByPredicate(
 				self,
-				new[] { searchFromLoc, self.Location },
+				[searchFromLoc, self.Location],
 				loc =>
 					harv.CanHarvestCell(loc) &&
 					claimLayer.CanClaimCell(self, loc),

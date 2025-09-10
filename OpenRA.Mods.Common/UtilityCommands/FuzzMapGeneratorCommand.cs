@@ -12,10 +12,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using System.Text;
+using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Mods.Common.Traits;
-using OpenRA.Traits;
+using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.UtilityCommands
 {
@@ -204,13 +206,11 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				.Select(variable => config.Choices[variable].Length)
 				.ToImmutableArray();
 
-			var generatorInfo =
-				modData.DefaultRules.Actors[SystemActors.EditorWorld].TraitInfos<IMapGeneratorInfo>()
-					.FirstOrDefault(info => info.Type == config.MapGeneratorType);
-			if (generatorInfo == null)
+			var generator = modData.DefaultRules.Actors[SystemActors.EditorWorld]
+				.TraitInfos<IEditorMapGeneratorInfo>()
+				.FirstOrDefault(info => info.Type == config.MapGeneratorType);
+			if (generator == null)
 				throw new ArgumentException($"No map generator with type `{config.MapGeneratorType}`");
-
-			var generator = (generatorInfo as TraitInfo).Create(null) as IMapGenerator;
 
 			long maxSerial = 1;
 			long tests = 0;
@@ -237,7 +237,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 
 					var descriptionBuilder = new StringBuilder();
 					foreach (var variable in config.Variables)
-						descriptionBuilder.Append($"  {variable}={iterationChoices[variable]}\n");
+						descriptionBuilder.Append(CultureInfo.InvariantCulture, $"  {variable}={iterationChoices[variable]}\n");
 
 					if (!config.NoDefaults)
 						descriptionBuilder.Append("  (+Defaults)\n");
@@ -248,7 +248,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 						.Select(kv => $"{kv.Key}={kv.Value}")
 						.ToHashSet();
 
-					var tileset = modData.DefaultTerrainInfo[iterationChoices[Configuration.TilesetVariable]];
+					var terrainInfo = modData.DefaultTerrainInfo[iterationChoices[Configuration.TilesetVariable]];
 					iterationChoices.Remove(Configuration.TilesetVariable);
 
 					var size = iterationChoices[Configuration.SizeVariable]
@@ -265,26 +265,25 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					if (size.Length != 2)
 						throw new ArgumentException($"bad map size `{iterationChoices[Configuration.SizeVariable]}`");
 
-					var map = new Map(modData, tileset, size[0], size[1]);
-					var maxTerrainHeight = map.Grid.MaximumTerrainHeight;
-					var tl = new PPos(1, 1 + maxTerrainHeight);
-					var br = new PPos(size[0], size[1] + maxTerrainHeight);
-					map.SetBounds(tl, br);
-
-					var settings = generator.GetSettings(map);
-					var choices = settings.DefaultChoices();
-					foreach (var option in choices.Keys)
-						if (iterationChoices.TryGetValue(option.Id, out var choice))
+					var settings = generator.GetSettings();
+					foreach (var o in settings.Options)
+					{
+						if (iterationChoices.TryGetValue(o.Id, out var choice))
 						{
-							choices[option] = option.IsFreeform()
-								? choices[option].NewValue(choice)
-								: option.Choices.First(c => c.Id == choice);
-							iterationChoices.Remove(option.Id);
+							if (o is MapGeneratorBooleanOption bo)
+								bo.Value = FieldLoader.GetValue<bool>("choice", choice);
+							else if (o is MapGeneratorIntegerOption io)
+								io.Value = FieldLoader.GetValue<int>("choice", choice);
+							else if (o is MapGeneratorMultiIntegerChoiceOption mio)
+								mio.Value = FieldLoader.GetValue<int>("choice", choice);
+							else if (o is MapGeneratorMultiChoiceOption mo)
+								mo.Value = choice;
+
+							iterationChoices.Remove(o.Id);
 						}
 						else if (config.NoDefaults)
-						{
-							throw new ArgumentException($"No choices specified for option `{option.Id}`");
-						}
+							throw new ArgumentException($"No choices specified for option `{o.Id}`");
+					}
 
 					if (iterationChoices.Count != 0)
 						throw new ArgumentException($"Unknown options: {string.Join(", ", iterationChoices.Keys)}");
@@ -294,8 +293,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 						tests++;
 						try
 						{
-							var my = settings.Compile(choices);
-							generator.Generate(map, my);
+							generator.Generate(modData, settings.Compile(terrainInfo, new Size(size[0], size[1])));
 						}
 						catch (Exception e) when (e is MapGenerationException || e is YamlException)
 						{

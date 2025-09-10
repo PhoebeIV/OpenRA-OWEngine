@@ -48,12 +48,13 @@ namespace OpenRA
 		// FieldLoader used here, must matching naming in YAML.
 #pragma warning disable IDE1006 // Naming Styles
 		[FluentReference]
-		readonly string Title;
+		public readonly string Title;
 		public readonly string Version;
 		public readonly string Website;
 		public readonly string WebIcon32;
-		[FluentReference]
-		readonly string WindowTitle;
+
+		[FluentReference(optional: true)]
+		public readonly string WindowTitle;
 		public readonly bool Hidden;
 #pragma warning restore IDE1006 // Naming Styles
 
@@ -78,11 +79,11 @@ namespace OpenRA
 		public readonly MiniYaml LoadScreen;
 		public readonly string DefaultOrderGenerator;
 
-		public readonly string[] Assemblies = Array.Empty<string>();
-		public readonly string[] SoundFormats = Array.Empty<string>();
-		public readonly string[] SpriteFormats = Array.Empty<string>();
-		public readonly string[] PackageFormats = Array.Empty<string>();
-		public readonly string[] VideoFormats = Array.Empty<string>();
+		public readonly string[] Assemblies = [];
+		public readonly string[] SoundFormats = [];
+		public readonly string[] SpriteFormats = [];
+		public readonly string[] PackageFormats = [];
+		public readonly string[] VideoFormats = [];
 		public readonly int FontSheetSize = 512;
 		public readonly int CursorSheetSize = 512;
 
@@ -91,15 +92,15 @@ namespace OpenRA
 		public readonly bool AllowUnusedFluentMessagesInExternalPackages = true;
 
 		readonly string[] reservedModuleNames =
-		{
+		[
 			"Include", "Metadata", "FileSystem", "MapFolders", "Rules",
 			"Sequences", "ModelSequences", "Cursors", "Chrome", "Assemblies", "ChromeLayout", "Weapons",
 			"Voices", "Notifications", "Music", "FluentMessages", "TileSets", "ChromeMetrics", "Missions", "Hotkeys",
 			"ServerTraits", "LoadScreen", "DefaultOrderGenerator", "SupportsMapsFrom", "SoundFormats", "SpriteFormats", "VideoFormats",
 			"RequiresMods", "PackageFormats", "AllowUnusedFluentMessagesInExternalPackages", "FontSheetSize", "CursorSheetSize"
-		};
+		];
 
-		readonly TypeDictionary modules = new();
+		readonly TypeDictionary modules = [];
 		readonly Dictionary<string, MiniYaml> yaml;
 
 		bool customDataLoaded;
@@ -110,7 +111,7 @@ namespace OpenRA
 			Package = package;
 
 			var stringPool = new HashSet<string>(); // Reuse common strings in YAML
-			var nodes = MiniYaml.FromStream(package.GetStream("mod.yaml"), $"{package.Name}:mod.yaml", stringPool: stringPool);
+			var nodes = MiniYaml.FromStream(package.GetStream("mod.yaml"), $"{package.Name}:mod.yaml", stringPool: stringPool).ToList();
 			for (var i = nodes.Count - 1; i >= 0; i--)
 			{
 				if (nodes[i].Key != "Include")
@@ -127,7 +128,7 @@ namespace OpenRA
 			}
 
 			// Merge inherited overrides
-			yaml = new MiniYaml(null, MiniYaml.Merge(new[] { nodes })).ToDictionary();
+			yaml = new MiniYaml(null, MiniYaml.Merge([nodes])).ToDictionary();
 
 			Metadata = FieldLoader.Load<ModMetadata>(yaml["Metadata"]);
 
@@ -207,11 +208,11 @@ namespace OpenRA
 					throw new InvalidDataException($"`{kv.Key}` is not a valid mod manifest entry.");
 
 				IGlobalModData module;
-				var ctor = t.GetConstructor(new[] { typeof(MiniYaml) });
+				var ctor = t.GetConstructor([typeof(MiniYaml)]);
 				if (ctor != null)
 				{
 					// Class has opted-in to DIY initialization
-					module = (IGlobalModData)ctor.Invoke(new object[] { kv.Value });
+					module = (IGlobalModData)ctor.Invoke([kv.Value]);
 				}
 				else
 				{
@@ -229,7 +230,7 @@ namespace OpenRA
 		static string[] YamlList(Dictionary<string, MiniYaml> yaml, string key)
 		{
 			if (!yaml.TryGetValue(key, out var value))
-				return Array.Empty<string>();
+				return [];
 
 			return value.Nodes.Select(n => n.Key).ToArray();
 		}
@@ -279,11 +280,11 @@ namespace OpenRA
 			}
 
 			IGlobalModData module;
-			var ctor = t.GetConstructor(new[] { typeof(MiniYaml) });
+			var ctor = t.GetConstructor([typeof(MiniYaml)]);
 			if (ctor != null)
 			{
 				// Class has opted-in to DIY initialization
-				module = (IGlobalModData)ctor.Invoke(new object[] { data.Value });
+				module = (IGlobalModData)ctor.Invoke([data.Value]);
 			}
 			else
 			{

@@ -17,17 +17,11 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	public readonly struct ResourceLayerContents
+	public readonly struct ResourceLayerContents(string type, byte density)
 	{
 		public static readonly ResourceLayerContents Empty = default;
-		public readonly string Type;
-		public readonly int Density;
-
-		public ResourceLayerContents(string type, int density)
-		{
-			Type = type;
-			Density = density;
-		}
+		public readonly string Type = type;
+		public readonly byte Density = density;
 	}
 
 	[TraitLocation(SystemActors.World)]
@@ -49,7 +43,7 @@ namespace OpenRA.Mods.Common.Traits
 			public readonly HashSet<string> AllowedTerrainTypes = null;
 
 			[Desc("Maximum number of resource units allowed in a single cell.")]
-			public readonly int MaxDensity = 10;
+			public readonly byte MaxDensity = 10;
 
 			public ResourceTypeInfo(MiniYaml yaml)
 			{
@@ -160,8 +154,10 @@ namespace OpenRA.Mods.Common.Traits
 						++adjacent;
 				}
 
-				// Adjacent includes the current cell, so is always >= 1
-				var density = Math.Max(int2.Lerp(0, resourceInfo.MaxDensity, adjacent, 9), 1);
+				// We need to have at least one resource in the cell.
+				// HACK: we should not be lerping to 9, as maximum adjacent resources is 8.
+				// HACK: it's too disruptive to fix.
+				var density = (byte)Math.Max(int2.Lerp(0, resourceInfo.MaxDensity, adjacent, 9), 1);
 				Content[cell] = new ResourceLayerContents(resource.Type, density);
 			}
 		}
@@ -176,10 +172,11 @@ namespace OpenRA.Mods.Common.Traits
 			if (resourceType == null || !info.ResourceTypes.TryGetValue(resourceType, out var resourceInfo))
 				return false;
 
-			if (!resourceInfo.AllowedTerrainTypes.Contains(Map.GetTerrainInfo(cell).Type))
+			var cellTerrainType = Map.GetTerrainInfo(cell).Type;
+			if (!resourceInfo.AllowedTerrainTypes.Contains(cellTerrainType))
 				return false;
 
-			return !BuildingInfluence.AnyBuildingAt(cell);
+			return BuildingInfluence.GetBuildingsAt(cell).All(a => a.Info.TraitInfo<BuildingInfo>().TerrainTypes.Contains(resourceInfo.TerrainType));
 		}
 
 		ResourceLayerContents CreateResourceCell(string resourceType, CPos cell, int density)
@@ -193,10 +190,10 @@ namespace OpenRA.Mods.Common.Traits
 			world.Map.CustomTerrain[cell] = world.Map.Rules.TerrainInfo.GetTerrainIndex(resourceInfo.TerrainType);
 			++resCells;
 
-			return new ResourceLayerContents(resourceType, density.Clamp(1, resourceInfo.MaxDensity));
+			return new ResourceLayerContents(resourceType, (byte)density.Clamp(1, resourceInfo.MaxDensity));
 		}
 
-		bool CanAddResource(string resourceType, CPos cell, int amount = 1)
+		bool CanAddResource(string resourceType, CPos cell, byte amount = 1)
 		{
 			if (!world.Map.Contains(cell))
 				return false;
@@ -214,7 +211,7 @@ namespace OpenRA.Mods.Common.Traits
 			return content.Density + amount <= resourceInfo.MaxDensity;
 		}
 
-		int AddResource(string resourceType, CPos cell, int amount = 1)
+		int AddResource(string resourceType, CPos cell, byte amount = 1)
 		{
 			if (!Content.Contains(cell))
 				return 0;
@@ -230,7 +227,7 @@ namespace OpenRA.Mods.Common.Traits
 				return 0;
 
 			var oldDensity = content.Density;
-			var density = Math.Min(resourceInfo.MaxDensity, oldDensity + amount);
+			var density = (byte)Math.Min(resourceInfo.MaxDensity, oldDensity + amount);
 			Content[cell] = new ResourceLayerContents(content.Type, density);
 
 			CellChanged?.Invoke(cell, content.Type);
@@ -238,7 +235,7 @@ namespace OpenRA.Mods.Common.Traits
 			return density - oldDensity;
 		}
 
-		int RemoveResource(string resourceType, CPos cell, int amount = 1)
+		int RemoveResource(string resourceType, CPos cell, byte amount = 1)
 		{
 			if (!Content.Contains(cell))
 				return 0;
@@ -248,7 +245,7 @@ namespace OpenRA.Mods.Common.Traits
 				return 0;
 
 			var oldDensity = content.Density;
-			var density = Math.Max(0, oldDensity - amount);
+			var density = (byte)Math.Max(0, oldDensity - amount);
 
 			if (density == 0)
 			{
@@ -285,7 +282,7 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		ResourceLayerContents IResourceLayer.GetResource(CPos cell) { return Content.Contains(cell) ? Content[cell] : default; }
-		int IResourceLayer.GetMaxDensity(string resourceType)
+		byte IResourceLayer.GetMaxDensity(string resourceType)
 		{
 			if (!info.ResourceTypes.TryGetValue(resourceType, out var resourceInfo))
 				return 0;
@@ -293,9 +290,9 @@ namespace OpenRA.Mods.Common.Traits
 			return resourceInfo.MaxDensity;
 		}
 
-		bool IResourceLayer.CanAddResource(string resourceType, CPos cell, int amount) { return CanAddResource(resourceType, cell, amount); }
-		int IResourceLayer.AddResource(string resourceType, CPos cell, int amount) { return AddResource(resourceType, cell, amount); }
-		int IResourceLayer.RemoveResource(string resourceType, CPos cell, int amount) { return RemoveResource(resourceType, cell, amount); }
+		bool IResourceLayer.CanAddResource(string resourceType, CPos cell, byte amount) { return CanAddResource(resourceType, cell, amount); }
+		int IResourceLayer.AddResource(string resourceType, CPos cell, byte amount) { return AddResource(resourceType, cell, amount); }
+		int IResourceLayer.RemoveResource(string resourceType, CPos cell, byte amount) { return RemoveResource(resourceType, cell, amount); }
 		void IResourceLayer.ClearResources(CPos cell) { ClearResources(cell); }
 		bool IResourceLayer.IsVisible(CPos cell) { return !world.FogObscures(cell); }
 		bool IResourceLayer.IsEmpty => resCells < 1;

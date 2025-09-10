@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Newtonsoft.Json;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
@@ -24,9 +23,16 @@ namespace OpenRA.Mods.Common.Traits
 	[TraitLocation(SystemActors.EditorWorld)]
 	public class MarkerLayerOverlayInfo : TraitInfo
 	{
+		[FluentReference]
+		[Desc("The label to show in the tools menu.")]
+		public readonly string Label = "label-tool-marker-tiles";
+
+		[Desc("The widget tree to open when the tool is selected.")]
+		public readonly string PanelWidget = "MARKER_TOOL_PANEL";
+
 		[Desc("A list of colors to be used for drawing.")]
-		public readonly Color[] Colors = new[]
-		{
+		public readonly Color[] Colors =
+		[
 			Color.FromArgb(255, 0, 0),
 			Color.FromArgb(255, 127, 0),
 			Color.FromArgb(255, 238, 70),
@@ -35,7 +41,7 @@ namespace OpenRA.Mods.Common.Traits
 			Color.FromArgb(0, 42, 255),
 			Color.FromArgb(165, 0, 255),
 			Color.FromArgb(255, 0, 220),
-		};
+		];
 
 		[Desc("Default alpha blend.")]
 		public readonly int Alpha = 85;
@@ -49,20 +55,47 @@ namespace OpenRA.Mods.Common.Traits
 		}
 	}
 
-	public class MarkerLayerOverlay : IRenderAnnotations, INotifyActorDisposing, IWorldLoaded
+	public class MarkerLayerOverlay : IEditorTool, IRenderAnnotations, INotifyActorDisposing, IWorldLoaded
 	{
-		public class MarkerLayerFile
+		public string Label { get; }
+		public string PanelWidget { get; }
+		public TraitInfo TraitInfo { get; }
+		public bool IsEnabled => true;
+
+		public class MarkerLayer
 		{
-			public Dictionary<int, List<int>> Tiles { get; set; }
-			public MarkerTileMirrorMode MirrorMode { get; set; }
-			public int NumSides { get; set; }
-			public int AxisAngle { get; set; }
-			public int TileAlpha { get; set; }
+			public readonly Dictionary<int, CPos[]> Tiles;
+			public readonly MarkerTileMirrorMode MirrorMode;
+			public readonly int NumSides;
+			public readonly int AxisAngle;
+			public readonly int TileAlpha;
+
+			public MarkerLayer() { }
+
+			public MarkerLayer(MarkerLayerOverlay markerLayerOverlay)
+			{
+				Tiles = markerLayerOverlay.Tiles.ToDictionary(d => d.Key, d => d.Value.ToArray());
+				MirrorMode = markerLayerOverlay.MirrorMode;
+				NumSides = markerLayerOverlay.NumSides;
+				AxisAngle = markerLayerOverlay.AxisAngle;
+				TileAlpha = markerLayerOverlay.TileAlpha;
+			}
+
+			public static MarkerLayer Deserialize(string path)
+			{
+				var yaml = MiniYaml.FromFile(path).First().Value;
+				return FieldLoader.Load<MarkerLayer>(yaml);
+			}
+
+			public List<MiniYamlNode> Serialize()
+			{
+				return [new("MarkerLayer", FieldSaver.Save(this))];
+			}
 		}
 
 		const double DegreesToRadians = Math.PI / 180;
 
-		readonly int[] validFlipModeSides = { 2, 4 };
+		readonly int[] validFlipModeSides = [2, 4];
 
 		public enum MarkerTileMirrorMode
 		{
@@ -76,7 +109,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Color[] alphaBlendColors;
 
 		public readonly CellLayer<int?> CellLayer;
-		public readonly Dictionary<int, HashSet<CPos>> Tiles = new();
+		public readonly Dictionary<int, HashSet<CPos>> Tiles = [];
 
 		public bool Enabled = true;
 		public MarkerTileMirrorMode MirrorMode { get; private set; } = MarkerTileMirrorMode.None;
@@ -101,6 +134,8 @@ namespace OpenRA.Mods.Common.Traits
 			Info = info;
 			world = self.World;
 			var map = self.World.Map;
+			Label = info.Label;
+			PanelWidget = info.PanelWidget;
 
 			tileAlpha = info.Alpha;
 			alphaBlendColors = new Color[info.Colors.Length];
@@ -124,43 +159,26 @@ namespace OpenRA.Mods.Common.Traits
 				if (string.IsNullOrWhiteSpace(world.Map.Package.Name))
 					return;
 
-				var markerTileFilename = $"{Path.GetFileNameWithoutExtension(world.Map.Package.Name)}.json";
+				var markerTileFilename = $"{Path.GetFileNameWithoutExtension(world.Map.Package.Name)}.yaml";
 				var markerTilePath = Path.Combine(directory, markerTileFilename);
+
 				if (!File.Exists(markerTilePath))
 					return;
 
-				using (var streamReader = new StreamReader(markerTilePath))
-				{
-					var content = streamReader.ReadToEnd();
-					var file = JsonConvert.DeserializeObject<MarkerLayerFile>(content);
+				var file = MarkerLayer.Deserialize(markerTilePath);
 
-					TileAlpha = file.TileAlpha;
-					MirrorMode = file.MirrorMode;
-					NumSides = file.NumSides;
-					AxisAngle = file.AxisAngle;
+				TileAlpha = file.TileAlpha;
+				MirrorMode = file.MirrorMode;
+				NumSides = file.NumSides;
+				AxisAngle = file.AxisAngle;
 
-					var savedTilesHashSetDictionary = file.Tiles.ToDictionary(x => x.Key, x => x.Value.Select(bits => new CPos(bits)).ToHashSet());
-					SetAll(savedTilesHashSetDictionary);
-				}
+				SetAll(file.Tiles.ToDictionary(d => d.Key, d => new HashSet<CPos>(d.Value)));
 			}
 			catch (Exception e)
 			{
 				Log.Write("debug", "Failed to load map editor marker tiles.");
 				Log.Write("debug", e);
 			}
-		}
-
-		public MarkerLayerFile ToFile()
-		{
-			var tilesBitsDictionary = Tiles.ToDictionary(x => x.Key, x => x.Value.Select(cpos => cpos.Bits).ToList());
-			return new MarkerLayerFile
-			{
-				Tiles = tilesBitsDictionary,
-				TileAlpha = TileAlpha,
-				MirrorMode = MirrorMode,
-				NumSides = NumSides,
-				AxisAngle = AxisAngle,
-			};
 		}
 
 		void UpdateTileAlpha()
@@ -362,7 +380,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (Tiles.TryGetValue(tileType.Value, out set))
 					set.Add(target);
 				else
-					Tiles.Add(tileType.Value, new HashSet<CPos> { target });
+					Tiles.Add(tileType.Value, [target]);
 
 				CellLayer[target] = tileType;
 			}
@@ -378,17 +396,7 @@ namespace OpenRA.Mods.Common.Traits
 			disposed = true;
 		}
 
-		readonly struct MapLine
-		{
-			public readonly float2 Start;
-			public readonly float2 End;
-
-			public MapLine(float2 start, float2 end)
-			{
-				Start = start;
-				End = end;
-			}
-		}
+		readonly record struct MapLine(float2 Start, float2 End);
 
 		IEnumerable<IRenderable> IRenderAnnotations.RenderAnnotations(Actor self, WorldRenderer wr)
 		{

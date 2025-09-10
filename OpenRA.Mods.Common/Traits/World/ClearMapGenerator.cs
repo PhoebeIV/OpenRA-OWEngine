@@ -9,42 +9,49 @@
  */
 #endregion
 
-using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
+using System.Linq;
 using OpenRA.Mods.Common.MapGenerator;
-using OpenRA.Mods.Common.Terrain;
 using OpenRA.Support;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	[TraitLocation(SystemActors.World | SystemActors.EditorWorld)]
+	[TraitLocation(SystemActors.EditorWorld)]
 	[Desc("A map generator that clears a map.")]
-	public sealed class ClearMapGeneratorInfo : TraitInfo, IMapGeneratorInfo
+	public sealed class ClearMapGeneratorInfo : TraitInfo, IEditorMapGeneratorInfo
 	{
 		[FieldLoader.Require]
 		[Desc("Human-readable name this generator uses.")]
 		[FluentReference]
 		public readonly string Name = null;
 
+		[FieldLoader.Require]
+		[Desc("Internal id for this map generator.")]
+		public readonly string Type = null;
+
+		[FieldLoader.Require]
+		[Desc("Tilesets that are compatible with this map generator.")]
+		public readonly string[] Tilesets = null;
+
+		[FluentReference]
+		[Desc("The title to use for generated maps.")]
+		public readonly string MapTitle = "label-random-map";
+
+		[Desc("The widget tree to open when the tool is selected.")]
+		public readonly string PanelWidget = "MAP_GENERATOR_TOOL_PANEL";
+
 		// This is purely of interest to the linter.
 		[FieldLoader.LoadUsing(nameof(FluentReferencesLoader))]
 		[FluentReference]
 		public readonly List<string> FluentReferences = null;
 
-		[FieldLoader.Require]
-		[Desc("Internal id for this map generator.")]
-		public readonly string Type = null;
-
 		[FieldLoader.LoadUsing(nameof(SettingsLoader))]
 		public readonly MiniYaml Settings;
 
 		string IMapGeneratorInfo.Type => Type;
-
 		string IMapGeneratorInfo.Name => Name;
-
-		public override object Create(ActorInitializer init) { return new ClearMapGenerator(this); }
+		string IMapGeneratorInfo.MapTitle => MapTitle;
 
 		static MiniYaml SettingsLoader(MiniYaml my)
 		{
@@ -53,63 +60,59 @@ namespace OpenRA.Mods.Common.Traits
 
 		static List<string> FluentReferencesLoader(MiniYaml my)
 		{
-			return MapGeneratorSettings.DumpFluent(my.NodeWithKey("Settings").Value);
+			return new MapGeneratorSettings(null, my.NodeWithKey("Settings").Value)
+				.Options.SelectMany(o => o.GetFluentReferences()).ToList();
 		}
+
+		public IMapGeneratorSettings GetSettings()
+		{
+			return new MapGeneratorSettings(this, Settings);
+		}
+
+		public Map Generate(ModData modData, MapGenerationArgs args)
+		{
+			var random = new MersenneTwister();
+			var terrainInfo = modData.DefaultTerrainInfo[args.Tileset];
+
+			if (!Exts.TryParseUshortInvariant(args.Settings.NodeWithKey("Tile").Value.Value, out var tileType))
+				throw new YamlException("Illegal tile type");
+
+			if (!terrainInfo.TryGetTerrainInfo(new TerrainTile(tileType, 0), out var _))
+				throw new MapGenerationException("Illegal tile type");
+
+			var map = new Map(modData, terrainInfo, args.Size);
+			var terraformer = new Terraformer(args, map, modData, [], Symmetry.Mirror.None, 1);
+
+			terraformer.InitMap();
+
+			foreach (var mpos in map.AllCells.MapCoords)
+				map.Tiles[mpos] = terraformer.PickTile(random, tileType);
+
+			terraformer.BakeMap();
+
+			return map;
+		}
+
+		public override object Create(ActorInitializer init)
+		{
+			return new ClearMapGenerator(this);
+		}
+
+		string[] IEditorMapGeneratorInfo.Tilesets => Tilesets;
 	}
 
-	public sealed class ClearMapGenerator : IMapGenerator
+	public class ClearMapGenerator : IEditorTool
 	{
-		readonly ClearMapGeneratorInfo info;
-
-		IMapGeneratorInfo IMapGenerator.Info => info;
+		public string Label { get; }
+		public string PanelWidget { get; }
+		public TraitInfo TraitInfo { get; }
+		public bool IsEnabled => true;
 
 		public ClearMapGenerator(ClearMapGeneratorInfo info)
 		{
-			this.info = info;
-		}
-
-		public MapGeneratorSettings GetSettings(Map map)
-		{
-			return MapGeneratorSettings.LoadSettings(info.Settings, map);
-		}
-
-		public void Generate(Map map, MiniYaml settings)
-		{
-			var random = new MersenneTwister();
-
-			var tileset = map.Rules.TerrainInfo;
-
-			if (!Exts.TryParseUshortInvariant(settings.NodeWithKey("Tile").Value.Value, out var tileType))
-				throw new YamlException("Illegal tile type");
-
-			var tile = new TerrainTile(tileType, 0);
-			if (!tileset.TryGetTerrainInfo(tile, out var _))
-				throw new MapGenerationException("Illegal tile type");
-
-			// If the default terrain tile is part of a PickAny template, pick
-			// a random tile index. Otherwise, just use the default tile.
-			Func<TerrainTile> tilePicker;
-			if (map.Rules.TerrainInfo is ITemplatedTerrainInfo templatedTerrainInfo &&
-				templatedTerrainInfo.Templates.TryGetValue(tileType, out var template) &&
-				template.PickAny)
-			{
-				tilePicker = () => new TerrainTile(tileType, (byte)random.Next(0, template.TilesCount));
-			}
-			else
-			{
-				tilePicker = () => tile;
-			}
-
-			foreach (var cell in map.AllCells)
-			{
-				var mpos = cell.ToMPos(map);
-				map.Tiles[mpos] = tilePicker();
-				map.Resources[mpos] = new ResourceTile(0, 0);
-				map.Height[mpos] = 0;
-			}
-
-			map.PlayerDefinitions = new MapPlayers(map.Rules, 0).ToMiniYaml();
-			map.ActorDefinitions = ImmutableArray<MiniYamlNode>.Empty;
+			Label = info.Name;
+			PanelWidget = info.PanelWidget;
+			TraitInfo = info;
 		}
 	}
 }

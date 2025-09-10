@@ -14,7 +14,9 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using OpenRA.FileSystem;
+using OpenRA.Graphics;
 using OpenRA.Mods.Common.MapGenerator;
+using OpenRA.Mods.Common.UtilityCommands;
 using OpenRA.Primitives;
 using OpenRA.Support;
 
@@ -66,12 +68,14 @@ namespace OpenRA.Mods.Common.Terrain
 		}
 	}
 
-	public class DefaultTerrain : ITemplatedTerrainInfo, ITerrainInfoNotifyMapCreated
+	public class DefaultTerrain : ITemplatedTerrainInfo, IDumpSheetsTerrainInfo, ITerrainInfoNotifyMapCreated
 	{
+		[FluentReference]
 		public readonly string Name;
 		public readonly string Id;
+		public readonly Size TileSize = new(24, 24);
 		public readonly int SheetSize = 512;
-		public readonly Color[] HeightDebugColors = { Color.Red };
+		public readonly Color[] HeightDebugColors = [Color.Red];
 		public readonly string[] EditorTemplateOrder;
 		public readonly bool IgnoreTileSpriteOffsets;
 		public readonly bool EnableDepth = false;
@@ -82,13 +86,11 @@ namespace OpenRA.Mods.Common.Terrain
 		[FieldLoader.Ignore]
 		public readonly IReadOnlyDictionary<ushort, TerrainTemplateInfo> Templates;
 		[FieldLoader.Ignore]
-		public readonly IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> SegmentsToTemplates;
-		[FieldLoader.Ignore]
 		public readonly IReadOnlyDictionary<string, IEnumerable<MultiBrushInfo>> MultiBrushCollections;
 
 		[FieldLoader.Ignore]
 		public readonly TerrainTypeInfo[] TerrainInfo;
-		readonly Dictionary<string, byte> terrainIndexByType = new();
+		readonly Dictionary<string, byte> terrainIndexByType = [];
 		readonly byte defaultWalkableTerrainIndex;
 
 		public DefaultTerrain(IReadOnlyFileSystem fileSystem, string filepath)
@@ -123,11 +125,6 @@ namespace OpenRA.Mods.Common.Terrain
 			// Templates
 			Templates = yaml["Templates"].ToDictionary().Values
 				.Select(y => (TerrainTemplateInfo)new DefaultTerrainTemplateInfo(this, y)).ToDictionary(t => t.Id);
-
-			SegmentsToTemplates = ImmutableDictionary.CreateRange(
-				Templates.Values.SelectMany(
-					template => template.Segments.Select(
-						segment => new KeyValuePair<TemplateSegment, TerrainTemplateInfo>(segment, template))));
 
 			MultiBrushCollections =
 				yaml.TryGetValue("MultiBrushCollections", out var collectionDefinitions)
@@ -176,6 +173,8 @@ namespace OpenRA.Mods.Common.Terrain
 		}
 
 		string ITerrainInfo.Id => Id;
+		string ITerrainInfo.Name => Name;
+		Size ITerrainInfo.TileSize => TileSize;
 		TerrainTypeInfo[] ITerrainInfo.TerrainTypes => TerrainInfo;
 		TerrainTileInfo ITerrainInfo.GetTerrainInfo(TerrainTile r) { return GetTileInfo(r); }
 		bool ITerrainInfo.TryGetTerrainInfo(TerrainTile r, out TerrainTileInfo info) { return TryGetTileInfo(r, out info); }
@@ -183,12 +182,23 @@ namespace OpenRA.Mods.Common.Terrain
 		IEnumerable<Color> ITerrainInfo.RestrictedPlayerColors { get { return TerrainInfo.Where(ti => ti.RestrictPlayerColor).Select(ti => ti.Color); } }
 		float ITerrainInfo.MinHeightColorBrightness => MinHeightColorBrightness;
 		float ITerrainInfo.MaxHeightColorBrightness => MaxHeightColorBrightness;
+
 		TerrainTile ITerrainInfo.DefaultTerrainTile => new(Templates.First().Key, 0);
 
 		string[] ITemplatedTerrainInfo.EditorTemplateOrder => EditorTemplateOrder;
 		IReadOnlyDictionary<ushort, TerrainTemplateInfo> ITemplatedTerrainInfo.Templates => Templates;
-		IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> ITemplatedTerrainInfo.SegmentsToTemplates => SegmentsToTemplates;
 		IReadOnlyDictionary<string, IEnumerable<MultiBrushInfo>> ITemplatedTerrainInfo.MultiBrushCollections => MultiBrushCollections;
+
+		void IDumpSheetsTerrainInfo.DumpSheets(string terrainName, ImmutablePalette palette, ref int sheetCount)
+		{
+			var tileCache = new DefaultTileCache(this);
+			var sb = tileCache.GetSheetBuilder(SheetType.Indexed);
+			foreach (var s in sb.AllSheets)
+				DumpSequenceSheetsCommand.CommitSheet(sb, s, terrainName, palette, ref sheetCount);
+
+			foreach (var s in tileCache.GetSheetBuilder(SheetType.BGRA).AllSheets)
+				DumpSequenceSheetsCommand.CommitSheet(null, s, terrainName, palette, ref sheetCount);
+		}
 
 		void ITerrainInfoNotifyMapCreated.MapCreated(Map map)
 		{

@@ -98,11 +98,11 @@ namespace OpenRA.FileSystem
 		{
 			readonly MemoryStream pkgStream = new();
 
-			public ReadWriteZipFile(string filename, bool create = false)
+			public ReadWriteZipFile(string filename = null, bool create = false)
 			{
 				// SharpZipLib breaks when asked to update archives loaded from outside streams or files
 				// We can work around this by creating a clean in-memory-only file, cutting all outside references
-				if (!create)
+				if (!string.IsNullOrEmpty(filename) && !create)
 				{
 					using (var copy = new MemoryStream(File.ReadAllBytes(filename)))
 					{
@@ -120,9 +120,27 @@ namespace OpenRA.FileSystem
 					entry.ExtraData = null;
 			}
 
+			public ReadWriteZipFile(byte[] data)
+			{
+				using (var copy = new MemoryStream(data))
+				{
+					pkgStream.Capacity = (int)copy.Length;
+					copy.CopyTo(pkgStream);
+				}
+
+				pkgStream.Position = 0;
+				pkg = new ZipFile(pkgStream);
+				Name = null;
+
+				// Remove subfields that can break ZIP updating.
+				foreach (ZipEntry entry in pkg)
+					entry.ExtraData = null;
+			}
+
 			void Commit()
 			{
-				File.WriteAllBytes(Name, pkgStream.ToArray());
+				if (!string.IsNullOrEmpty(Name))
+					File.WriteAllBytes(Name, pkgStream.ToArray());
 			}
 
 			public void Update(string filename, byte[] contents)
@@ -139,6 +157,16 @@ namespace OpenRA.FileSystem
 				pkg.Delete(filename);
 				pkg.CommitUpdate();
 				Commit();
+			}
+
+			public static ReadWriteZipFile FromBase64String(string data)
+			{
+				return new ReadWriteZipFile(Convert.FromBase64String(data));
+			}
+
+			public string ToBase64String()
+			{
+				return Convert.ToBase64String(pkgStream.ToArray());
 			}
 		}
 

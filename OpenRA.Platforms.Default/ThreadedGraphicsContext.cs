@@ -24,9 +24,9 @@ namespace OpenRA.Platforms.Default
 	sealed class ThreadedGraphicsContext : IGraphicsContext
 	{
 		// PERF: Maintain several object pools to reduce allocations.
-		readonly Dictionary<Type, object> vertexBufferPools = new();
-		readonly Stack<Message> messagePool = new();
-		readonly Queue<Message> messages = new();
+		readonly Dictionary<Type, object> vertexBufferPools = [];
+		readonly Stack<Message> messagePool = [];
+		readonly Queue<Message> messages = [];
 
 		public readonly int VertexBatchSize;
 		public readonly int IndexBatchSize;
@@ -45,6 +45,7 @@ namespace OpenRA.Platforms.Default
 		Func<ITexture> getCreateTexture;
 		Func<object, IFrameBuffer> getCreateFrameBuffer;
 		Func<object, IShader> getCreateShader;
+		Func<object, object> getCreateEmptyVertexBuffer;
 		Func<object, object> getCreateVertexBuffer;
 		Func<object, IIndexBuffer> getCreateIndexBuffer;
 		Action<object> doDrawPrimitives;
@@ -81,11 +82,11 @@ namespace OpenRA.Platforms.Default
 					context.InitializeOpenGL();
 
 					doClear = () => { context.Clear(); return null; };
-					doClearDepthBuffer = () => context.ClearDepthBuffer();
-					doDisableDepthBuffer = () => context.DisableDepthBuffer();
-					doEnableDepthBuffer = () => context.EnableDepthBuffer();
-					doDisableScissor = () => context.DisableScissor();
-					doPresent = () => context.Present();
+					doClearDepthBuffer = context.ClearDepthBuffer;
+					doDisableDepthBuffer = context.DisableDepthBuffer;
+					doEnableDepthBuffer = context.EnableDepthBuffer;
+					doDisableScissor = context.DisableScissor;
+					doPresent = context.Present;
 					getGLVersion = () => context.GLVersion;
 					getCreateTexture = () => new ThreadedTexture(this, (ITextureInternal)context.CreateTexture());
 					getCreateFrameBuffer =
@@ -96,12 +97,26 @@ namespace OpenRA.Platforms.Default
 								context.CreateFrameBuffer(t.Item1, (ITextureInternal)CreateTexture(), t.Item2));
 						};
 					getCreateShader = bindings => new ThreadedShader(this, context.CreateShader((IShaderBindings)bindings));
-					getCreateVertexBuffer =
+					getCreateEmptyVertexBuffer =
 						tuple =>
 						{
 							(object t, var type) = ((int, Type))tuple;
-							var vertexBuffer = context.GetType().GetMethod(nameof(CreateVertexBuffer)).MakeGenericMethod(type).Invoke(context, new[] { t });
-							return typeof(ThreadedVertexBuffer<>).MakeGenericType(type).GetConstructors()[0].Invoke(new[] { this, vertexBuffer });
+							var vertexBuffer = context.GetType()
+								.GetMethod(nameof(CreateEmptyVertexBuffer))
+								.MakeGenericMethod(type)
+								.Invoke(context, [t]);
+
+							return typeof(ThreadedVertexBuffer<>).MakeGenericType(type).GetConstructors()[0].Invoke([this, vertexBuffer]);
+						};
+					getCreateVertexBuffer =
+						tuple =>
+						{
+							var (array, dynamic, type) = ((object, bool, Type))tuple;
+							var vertexBuffer = context.GetType()
+								.GetMethod(nameof(CreateVertexBuffer))
+								.MakeGenericMethod(type)
+								.Invoke(context, [array, dynamic]);
+							return typeof(ThreadedVertexBuffer<>).MakeGenericType(type).GetConstructors()[0].Invoke([this, vertexBuffer]);
 						};
 					getCreateIndexBuffer = indices => new ThreadedIndexBuffer(this, context.CreateIndexBuffer((uint[])indices));
 					doDrawPrimitives =
@@ -426,9 +441,14 @@ namespace OpenRA.Platforms.Default
 			return Send(getCreateTexture);
 		}
 
-		public IVertexBuffer<T> CreateVertexBuffer<T>(int size) where T : struct
+		public IVertexBuffer<T> CreateEmptyVertexBuffer<T>(int size) where T : struct
 		{
-			return (IVertexBuffer<T>)Send(getCreateVertexBuffer, (size, typeof(T)));
+			return (IVertexBuffer<T>)Send(getCreateEmptyVertexBuffer, (size, typeof(T)));
+		}
+
+		public IVertexBuffer<T> CreateVertexBuffer<T>(T[] data, bool dynamic = true) where T : struct
+		{
+			return (IVertexBuffer<T>)Send(getCreateVertexBuffer, ((object)data, dynamic, typeof(T)));
 		}
 
 		public IIndexBuffer CreateIndexBuffer(uint[] indices)
@@ -659,7 +679,7 @@ namespace OpenRA.Platforms.Default
 			setScaleFilter = value => texture.ScaleFilter = (TextureScaleFilter)value;
 			getSize = () => texture.Size;
 			setEmpty = tuple => { var t = ((int, int))tuple; texture.SetEmpty(t.Item1, t.Item2); };
-			getData = () => texture.GetData();
+			getData = texture.GetData;
 			setData1 = tuple => { var t = ((byte[], int, int))tuple; texture.SetData(t.Item1, t.Item2, t.Item3); };
 			setData2 = tuple => { setData1(tuple); return null; };
 			setData3 = tuple => { var t = ((float[], int, int))tuple; texture.SetFloatData(t.Item1, t.Item2, t.Item3); };

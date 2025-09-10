@@ -75,7 +75,7 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 	{
 		enum Format : ushort { XORPrev = 0x20, XORLCW = 0x40, LCW = 0x80 }
 
-		class TrimmedFrame : ISpriteFrame
+		sealed class TrimmedFrame : ISpriteFrame
 		{
 			public SpriteFrameType Type => SpriteFrameType.Indexed8;
 			public Size Size { get; }
@@ -110,7 +110,7 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 					}
 				}
 
-				// Keep a 1px empty border to work avoid rounding issues in the gpu shader.
+				// Keep a 1px empty border to work avoid rounding issues in the GPU shader.
 				if (left > 0)
 					left--;
 
@@ -288,7 +288,7 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 
 		public static void Write(Stream s, Size size, IEnumerable<byte[]> frames)
 		{
-			var compressedFrames = frames.Select(f => LCWCompression.Encode(f)).ToList();
+			var compressedFrames = frames.Select(LCWCompression.Encode).ToList();
 
 			// note: end-of-file and all-zeroes headers
 			var dataOffset = 14 + (compressedFrames.Count + 2) * 8;

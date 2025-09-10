@@ -16,6 +16,7 @@ using OpenRA.Mods.Common.Activities;
 using OpenRA.Primitives;
 using OpenRA.Support;
 using OpenRA.Traits;
+using static OpenRA.Mods.Common.Traits.DockActorTargeter;
 
 namespace OpenRA.Mods.Common.Traits
 {
@@ -33,8 +34,13 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly BooleanExpression RequireForceMoveCondition = null;
 
 		[CursorReference]
-		[Desc("Cursor to display when able to dock at target actor.")]
+		[Desc($"Default cursor to display when able to dock at target actor. Can be overriden using {nameof(EnterCursorOverrides)}.")]
 		public readonly string EnterCursor = "enter";
+
+		[CursorReference(dictionaryReference: LintDictionaryReference.Values)]
+		[Desc($"Cursor to display when able to dock at target actor. Overrides the default cursor specified in {nameof(EnterCursor)}",
+			"A dictionary of [DockType]: [cursor name].")]
+		public readonly Dictionary<string, string> EnterCursorOverrides = [];
 
 		[CursorReference]
 		[Desc("Cursor to display when unable to dock at target actor.")]
@@ -101,7 +107,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		/// <summary>In addition returns true if reservation was succesful or we have already been reserved at <paramref name="host"/>.</summary>
+		/// <summary>In addition returns true if reservation was successful or we have already been reserved at <paramref name="host"/>.</summary>
 		public bool ReserveHost(Actor hostActor, IDockHost host)
 		{
 			if (host == null)
@@ -155,13 +161,38 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			get
 			{
-				yield return new DockActorTargeter(
-					6,
-					Info.EnterCursor,
-					Info.EnterBlockedCursor,
-					() => requireForceMove,
-					CanQueueDockAt,
-					(target, forceEnter) => CanDockAt(target, forceEnter, true));
+				yield return new DockActorTargeter(6,
+					context =>
+					{
+						if (requireForceMove && !context.ForceEnter)
+							return CanTargetResult.Blocked(Info.EnterCursor);
+
+						if (IsTraitDisabled)
+							return CanTargetResult.Blocked(Info.EnterBlockedCursor);
+
+						var availableDockHosts = GetDockableHosts(context.Target.Actor, context.ForceEnter, context.IsQueued).ToList();
+						if (availableDockHosts.Count == 0)
+							return CanTargetResult.Blocked(Info.EnterCursor);
+
+						var canDock = availableDockHosts.Any(
+							host => dockClients.Any(client => client.CanDockAt(context.Target.Actor, host, context.ForceEnter, true)));
+
+						var cursor = context.IsQueued || canDock
+							? GetCursorOverride(availableDockHosts) ?? Info.EnterCursor
+							: Info.EnterBlockedCursor;
+
+						return CanTargetResult.Allowed(cursor);
+
+						string GetCursorOverride(IEnumerable<IDockHost> dockHosts)
+						{
+							foreach (var dockHost in dockHosts)
+								foreach (var dockType in dockHost.GetDockType)
+									if (Info.EnterCursorOverrides.TryGetValue(dockType, out var cursor))
+										return cursor;
+
+							return null;
+						}
+					});
 			}
 		}
 
@@ -231,7 +262,7 @@ namespace OpenRA.Mods.Common.Traits
 			return !IsTraitDisabled && dockClients.Any(client => client.CanDock(type, forceEnter));
 		}
 
-		/// <summary>Does this <paramref name="target"/> contain at least one enabled <see cref="IDockHost"/> with maching <see cref="DockType"/>.</summary>
+		/// <summary>Does this <paramref name="target"/> contain at least one enabled <see cref="IDockHost"/> with matching <see cref="DockType"/>.</summary>
 		public bool CanDock(Actor target, bool forceEnter = false)
 		{
 			return !IsTraitDisabled &&
@@ -259,6 +290,12 @@ namespace OpenRA.Mods.Common.Traits
 			return !IsTraitDisabled
 				&& target.TraitsImplementing<IDockHost>()
 				.Any(host => dockClients.Any(client => client.CanQueueDockAt(target, host, forceEnter, isQueued)));
+		}
+
+		IEnumerable<IDockHost> GetDockableHosts(Actor target, bool forceEnter, bool isQueued)
+		{
+			return target.TraitsImplementing<IDockHost>()
+				.Where(host => dockClients.Any(client => client.CanQueueDockAt(target, host, forceEnter, isQueued)));
 		}
 
 		/// <summary>Find the closest viable <see cref="IDockHost"/>.</summary>
@@ -298,22 +335,13 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class DockActorTargeter : IOrderTargeter
 	{
-		readonly string enterCursor;
-		readonly string enterBlockedCursor;
-		readonly Func<bool> requireForceMove;
-		readonly Func<Actor, bool, bool, bool> canTarget;
-		readonly Func<Actor, bool, bool> useEnterCursor;
+		readonly Func<CanTargetContext, CanTargetResult> canTarget;
 
-		public DockActorTargeter(int priority, string enterCursor, string enterBlockedCursor,
-			Func<bool> requireForceMove, Func<Actor, bool, bool, bool> canTarget, Func<Actor, bool, bool> useEnterCursor)
+		public DockActorTargeter(int priority, Func<CanTargetContext, CanTargetResult> canTarget)
 		{
 			OrderID = "Dock";
 			OrderPriority = priority;
-			this.enterCursor = enterCursor;
-			this.enterBlockedCursor = enterBlockedCursor;
-			this.requireForceMove = requireForceMove;
 			this.canTarget = canTarget;
-			this.useEnterCursor = useEnterCursor;
 		}
 
 		public string OrderID { get; private set; }
@@ -326,25 +354,43 @@ namespace OpenRA.Mods.Common.Traits
 			if (target.Type != TargetType.Actor)
 				return false;
 
-			cursor = enterCursor;
-			IsQueued = modifiers.HasModifier(TargetModifiers.ForceQueue);
 			var forceEnter = modifiers.HasModifier(TargetModifiers.ForceMove);
+			IsQueued = modifiers.HasModifier(TargetModifiers.ForceQueue);
 			OrderID = forceEnter ? "ForceDock" : "Dock";
 
-			if (requireForceMove() && !forceEnter)
-				return false;
-
-			if (!canTarget(target.Actor, forceEnter, IsQueued))
-				return false;
-
-			cursor = IsQueued || useEnterCursor(target.Actor, forceEnter)
-				? enterCursor
-				: enterBlockedCursor;
-
-			return true;
+			var context = new CanTargetContext { Target = target, IsQueued = IsQueued, ForceEnter = forceEnter };
+			var result = canTarget(context);
+			cursor = result.Cursor;
+			return result.CanTarget;
 		}
 
 		public virtual bool IsQueued { get; protected set; }
+
+		public readonly record struct CanTargetContext
+		{
+			public required Target Target { get; init; }
+
+			public bool ForceEnter { get; init; }
+
+			public bool IsQueued { get; init; }
+		}
+
+		public readonly record struct CanTargetResult
+		{
+			public string Cursor { get; init; }
+
+			public bool CanTarget { get; init; }
+
+			public static CanTargetResult Blocked(string cursor = null)
+			{
+				return new() { CanTarget = false, Cursor = cursor };
+			}
+
+			public static CanTargetResult Allowed(string cursor)
+			{
+				return new() { CanTarget = true, Cursor = cursor };
+			}
+		}
 	}
 
 	public static class DockExts
@@ -373,7 +419,7 @@ namespace OpenRA.Mods.Common.Traits
 					});
 
 				if (path.Count > 0)
-					return lookup[path.Last()];
+					return lookup[path[^1]];
 			}
 			else
 			{
@@ -381,6 +427,7 @@ namespace OpenRA.Mods.Common.Traits
 					.OrderBy(dock =>
 						(clientActor.Location - clientActor.World.Map.CellContaining(dock.Trait.DockPosition)).LengthSquared +
 						dock.Trait.ReservationCount * client.OccupancyCostModifier)
+					.Cast<TraitPair<IDockHost>?>()
 					.FirstOrDefault();
 			}
 

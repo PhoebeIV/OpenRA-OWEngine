@@ -74,17 +74,7 @@ namespace OpenRA.Mods.Common.Graphics
 		}
 	}
 
-	public struct SpriteSequenceField<T>
-	{
-		public string Key;
-		public T DefaultValue;
-
-		public SpriteSequenceField(string key, T defaultValue)
-		{
-			Key = key;
-			DefaultValue = defaultValue;
-		}
-	}
+	public readonly record struct SpriteSequenceField<T>(string Key, T DefaultValue);
 
 	[Desc("Generic sprite sequence implementation, mostly unencumbered with game- or artwork-specific logic.")]
 	public class DefaultSpriteSequence : ISpriteSequence
@@ -206,12 +196,12 @@ namespace OpenRA.Mods.Common.Graphics
 		protected static readonly SpriteSequenceField<float2> DepthSpriteOffset = new(nameof(DepthSpriteOffset), float2.Zero);
 
 		protected static readonly MiniYaml NoData = new(null);
-		protected static readonly int[] FirstFrame = { 0 };
+		protected static readonly int[] FirstFrame = [0];
 
 		protected readonly ISpriteSequenceLoader Loader;
 
 		protected string image;
-		protected List<SpriteReservation> spritesToLoad = new();
+		protected List<SpriteReservation> spritesToLoad = [];
 		protected Sprite[] sprites;
 		protected Sprite[] shadowSprites;
 		protected bool reverseFacings;
@@ -354,7 +344,7 @@ namespace OpenRA.Mods.Common.Graphics
 			var filename = LoadField(Filename, data, defaults, out var location);
 
 			var loadFrames = CalculateFrameIndices(start, length, stride ?? length ?? 0, facings, frames, transpose, reverseFacings, shadowStart);
-			return new[] { new ReservationInfo(filename, loadFrames, frames, location) };
+			return [new ReservationInfo(filename, loadFrames, frames, location)];
 		}
 
 		protected virtual IEnumerable<ReservationInfo> ParseCombineFilenames(ModData modData, string tileset, int[] frames, MiniYaml data)
@@ -403,7 +393,7 @@ namespace OpenRA.Mods.Common.Graphics
 
 			var depthSprite = LoadField(DepthSprite, data, defaults, out var depthSpriteLocation);
 			if (!string.IsNullOrEmpty(depthSprite))
-				depthSpriteReservation = cache.ReserveSprites(depthSprite, new[] { LoadField(DepthSpriteFrame, data, defaults) }, depthSpriteLocation);
+				depthSpriteReservation = cache.ReserveSprites(depthSprite, [LoadField(DepthSpriteFrame, data, defaults)], depthSpriteLocation);
 
 			depthSpriteOffset = LoadField(DepthSpriteOffset, data, defaults);
 

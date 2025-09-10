@@ -30,39 +30,9 @@ namespace OpenRA.Mods.Common.UpdateRules
 		// with the prep playtest-to-playtest-to-release paths and finally a new/modified
 		// release-to-bleed path.
 		static readonly UpdatePath[] Paths =
-		{
-			new("release-20210321", "release-20230225", new UpdateRule[]
-			{
-				new RenameMPTraits(),
-				new RemovePlayerHighlightPalette(),
-				new ReplaceWithColoredOverlayPalette(),
-				new RemoveRenderSpritesScale(),
-				new RemovePlaceBuildingPalette(),
-				new ReplaceShadowPalette(),
-				new ReplaceResourceValueModifiers(),
-				new RemoveResourceType(),
-				new ConvertBoundsToWDist(),
-				new RemoveSmokeTrailWhenDamaged(),
-				new ReplaceCrateSecondsWithTicks(),
-				new UseMillisecondsForSounds(),
-				new RenameSupportPowerDescription(),
-				new AttackBomberFacingTolerance(),
-				new AttackFrontalFacingTolerance(),
-				new RenameCloakTypes(),
-				new SplitNukePowerMissileImage(),
-				new ReplaceSequenceEmbeddedPalette(),
-				new UnhardcodeVeteranProductionIconOverlay(),
-				new RenameContrailProperties(),
-				new RemoveDomainIndex(),
-				new AddControlGroups(),
-
-				// Execute these rules last to avoid premature yaml merge crashes.
-				new UnhardcodeSquadManager(),
-				new UnhardcodeBaseBuilderBotModule(),
-			}),
-
-			new("release-20230225", "release-20231010", new UpdateRule[]
-			{
+		[
+			new("release-20230225", "release-20231010",
+			[
 				new TextNotificationsDisplayWidgetRemoveTime(),
 				new RenameEngineerRepair(),
 				new ProductionTabsWidgetAddTabButtonCollection(),
@@ -76,11 +46,9 @@ namespace OpenRA.Mods.Common.UpdateRules
 				new ExplicitSequenceFilenames(),
 				new RemoveSequenceHasEmbeddedPalette(),
 				new RemoveNegativeSequenceLength(),
-			}),
+			]),
 
-			new("release-20231010", new UpdateRule[]
-			{
-				// bleed only changes here.
+			new("release-20231010", "release-20250303", [
 				new RemoveValidRelationsFromCapturable(),
 				new ExtractResourceStorageFromHarvester(),
 				new ReplacePaletteModifiers(),
@@ -96,15 +64,22 @@ namespace OpenRA.Mods.Common.UpdateRules
 				// Execute these rules last to avoid premature yaml merge crashes.
 				new ReplaceCloakPalette(),
 				new AbstractDocking(),
-			}),
-		};
+			]),
+			new("release-20250303", "release-20250330", []),
+			new("release-20250330", [
+
+				// bleed only changes here.
+				new ReplaceBaseAttackNotifier(),
+				new RemoveBuildingInfoAllowPlacementOnResources(),
+			]),
+		];
 
 		public static IReadOnlyCollection<UpdateRule> FromSource(ObjectCreator objectCreator, string source, bool chain = true)
 		{
 			// Use reflection to identify types
 			var namedType = objectCreator.FindType(source);
 			if (namedType != null && namedType.IsSubclassOf(typeof(UpdateRule)))
-				return new[] { (UpdateRule)objectCreator.CreateBasic(namedType) };
+				return [(UpdateRule)objectCreator.CreateBasic(namedType)];
 
 			return Paths.FirstOrDefault(p => p.source == source)?.Rules(chain);
 		}

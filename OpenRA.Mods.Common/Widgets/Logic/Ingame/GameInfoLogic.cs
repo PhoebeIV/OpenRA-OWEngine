@@ -150,15 +150,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		void SetupMapPanel(ButtonWidget mapTabButton, Widget mapPanelContainer)
 		{
-			Game.LoadWidget(world, "MAP_PANEL", mapPanelContainer, new WidgetArgs());
+			Game.LoadWidget(world, "MAP_PANEL", mapPanelContainer, []);
 		}
 
 		void SetupLobbyOptionsPanel(ButtonWidget mapTabButton, Widget optionsPanelContainer)
 		{
 			Game.LoadWidget(world, "LOBBY_OPTIONS_PANEL", optionsPanelContainer, new WidgetArgs()
 			{
-				{ "getMap", (Func<MapPreview>)(() => modData.MapCache[world.Map.Uid]) },
-				{ "configurationDisabled", (Func<bool>)(() => true) }
+				{ "getMap", () => modData.MapCache[world.Map.Uid] },
+				{ "configurationDisabled", () => true }
 			});
 		}
 
@@ -167,7 +167,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (debugTabButton != null)
 				debugTabButton.IsDisabled = () => world.IsGameOver;
 
-			Game.LoadWidget(world, "DEBUG_PANEL", debugPanelContainer, new WidgetArgs());
+			Game.LoadWidget(world, "DEBUG_PANEL", debugPanelContainer, []);
 
 			if (activePanel == IngameInfoPanel.AutoSelect)
 				activePanel = IngameInfoPanel.Debug;

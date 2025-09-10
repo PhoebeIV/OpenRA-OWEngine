@@ -88,7 +88,6 @@ namespace OpenRA.Mods.Common.Orders
 		readonly World world;
 		protected readonly ProductionQueue Queue;
 		readonly PlaceBuildingInfo placeBuildingInfo;
-		readonly IResourceLayer resourceLayer;
 		readonly Viewport viewport;
 		readonly VariantWrapper[] variants;
 		int variant;
@@ -98,7 +97,6 @@ namespace OpenRA.Mods.Common.Orders
 			Queue = queue;
 			world = queue.Actor.World;
 			placeBuildingInfo = queue.Actor.Owner.PlayerActor.Info.TraitInfo<PlaceBuildingInfo>();
-			resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();
 			viewport = worldRenderer.Viewport;
 
 			// Clear selection if using Left-Click Orders
@@ -145,7 +143,7 @@ namespace OpenRA.Mods.Common.Orders
 				return ret;
 			}
 
-			return Enumerable.Empty<Order>();
+			return [];
 		}
 
 		CPos TopLeft
@@ -154,7 +152,7 @@ namespace OpenRA.Mods.Common.Orders
 			{
 				var offsetPos = Viewport.LastMousePos;
 				if (variants[variant].Preview != null)
-					offsetPos += variants[variant].Preview.TopLeftScreenOffset;
+					offsetPos = viewport.WorldToViewPx(viewport.ViewToWorldPx(offsetPos) + variants[variant].Preview.TopLeftScreenOffset);
 
 				return viewport.ViewToWorld(offsetPos);
 			}
@@ -294,21 +292,16 @@ namespace OpenRA.Mods.Common.Orders
 			{
 				var isCloseEnough = buildingInfo.IsCloseEnoughToBase(world, world.LocalPlayer, actorInfo, topLeft);
 				foreach (var t in buildingInfo.Tiles(topLeft))
-					footprint.Add(
-						t,
-						MakeCellType(
-							isCloseEnough &&
-							world.IsCellBuildable(t, actorInfo, buildingInfo) &&
-							(resourceLayer == null || resourceLayer.GetResource(t).Type == null)));
+					footprint.Add(t, MakeCellType(isCloseEnough && world.IsCellBuildable(t, actorInfo, buildingInfo)));
 			}
 
-			return preview?.Render(wr, topLeft, footprint) ?? Enumerable.Empty<IRenderable>();
+			return preview?.Render(wr, topLeft, footprint) ?? [];
 		}
 
 		IEnumerable<IRenderable> IOrderGenerator.RenderAnnotations(WorldRenderer wr, World world)
 		{
 			var preview = variants[variant].Preview;
-			return preview?.RenderAnnotations(wr, TopLeft) ?? Enumerable.Empty<IRenderable>();
+			return preview?.RenderAnnotations(wr, TopLeft) ?? [];
 		}
 
 		public virtual string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)

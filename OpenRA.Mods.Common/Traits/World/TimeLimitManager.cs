@@ -19,6 +19,7 @@ using OpenRA.Widgets;
 namespace OpenRA.Mods.Common.Traits
 {
 	[TraitLocation(SystemActors.World)]
+	[IncludeStaticFluentReferences(typeof(TimeLimitManager))]
 	[Desc("This trait allows setting a time limit on matches. Attach this to the World actor.")]
 	public class TimeLimitManagerInfo : TraitInfo, ILobbyOptions, IRulesetLoaded
 	{
@@ -31,7 +32,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string TimeLimitDescription = "dropdown-time-limit.description";
 
 		[Desc("Time Limit options that will be shown in the lobby dropdown. Values are in minutes.")]
-		public readonly int[] TimeLimitOptions = { 0, 10, 20, 30, 40, 60, 90 };
+		public readonly int[] TimeLimitOptions = [0, 10, 20, 30, 40, 60, 90];
 
 		[Desc("List of remaining minutes of game time when a text and optional speech notification should be made to players.")]
 		public readonly Dictionary<int, string> TimeLimitWarnings = new()

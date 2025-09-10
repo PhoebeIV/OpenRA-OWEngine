@@ -42,7 +42,7 @@ button-text-input-prompt-accept = OK
 
 ## editor.yaml
 label-new-map-bg-title = New Map
-label-bg-tileset = Tileset:
+label-bg-tileset = Environment:
 label-bg-width = Width:
 label-bg-height = Height:
 button-new-map-bg-create = Create
@@ -76,9 +76,17 @@ label-marker-layer-num-sides = Number of Sides
 label-marker-alpha = Tile Alpha
 label-marker-mirror-mode = Mirror Mode
 label-marker-axis-angle = Axis Angle
-label-map-generator-generator = Generator
 button-map-generator-generate = Generate
 button-map-generator-generate-random = Generate Random
+label-tiling-path-type-start = Start type
+label-tiling-path-type-inner = Inner type
+label-tiling-path-type-end = End type
+label-tiling-path-deviation = Deviation limit
+checkbox-tiling-path-closed-loops = Loops use only inner types
+button-tiling-path-reverse = Reverse path
+button-tiling-path-reset = Discard path
+button-tiling-path-randomize = Re-randomize tiling
+button-tiling-path-paint = Paint tiling to map
 
 button-map-editor-tab-container-select-tooltip = Selection
 button-map-editor-tab-container-tiles-tooltip = Tiles
@@ -88,35 +96,35 @@ button-map-editor-tab-container-tools-tooltip = Tools
 button-map-editor-tab-container-history-tooltip = History
 
 button-delete-area =
-   .label = Delete
-   .tooltip = Remove everything in the selected area
+    .label = Delete
+    .tooltip = Remove everything in the selected area
 
 button-delete-actor =
-   .label = Delete
-   .tooltip = Remove the selected actor
+    .label = Delete
+    .tooltip = Remove the selected actor
 
 button-editor-world-root-copy =
-   .label = Copy
-   .tooltip = Copy the selected area
+    .label = Copy
+    .tooltip = Copy the selected area
 
 button-editor-world-root-paste =
-   .label = Paste
-   .tooltip = Paste the saved area
+    .label = Paste
+    .tooltip = Paste the saved area
 
 button-editor-world-root-undo =
-   .label = Undo
-   .tooltip = Undo last step
+    .label = Undo
+    .tooltip = Undo last step
 
 button-editor-world-root-redo =
-   .label = Redo
-   .tooltip = Redo last step
+    .label = Redo
+    .tooltip = Redo last step
 
 dropdownbutton-editor-world-root-overlay-button = Overlays
 button-select-categories-buttons-all = All
 button-select-categories-buttons-none = None
 
 label-tool-marker-tiles = Marker Tiles
-label-tool-map-generator = Map Generator
+label-tool-tiling-path = Path Tiler
 
 ## encyclopedia.yaml, mainmenu.yaml
 label-encyclopedia-title = EVA Database
@@ -137,8 +145,8 @@ label-gamesave-loading-screen-desc = Press Escape to cancel loading and return t
 
 ## ingame-chat.yaml, ingame-infochat.yaml
 button-chat-chrome-mode =
-   .label = Team
-   .tooltip = Toggle chat mode
+    .label = Team
+    .tooltip = Toggle chat mode
 
 ## ingame-debug.yaml
 label-debug-panel-title = Debug Options
@@ -190,20 +198,20 @@ button-replay-player-pause-tooltip = Pause
 button-replay-player-play-tooltip = Play
 
 button-replay-player-slow =
-   .tooltip = Slow speed
-   .label = 50%
+    .tooltip = Slow speed
+    .label = 50%
 
 button-replay-player-regular =
-   .tooltip = Regular speed
-   .label = 100%
+    .tooltip = Regular speed
+    .label = 100%
 
 button-replay-player-fast =
-   .tooltip = Fast speed
-   .label = 200%
+    .tooltip = Fast speed
+    .label = 200%
 
 button-replay-player-maximum =
-   .tooltip = Maximum speed
-   .label = MAX
+    .tooltip = Maximum speed
+    .label = MAX
 
 label-basic-stats-player-header = Player
 label-basic-stats-cash-header = Cash
@@ -239,12 +247,13 @@ label-combat-stats-army-value-header = Army Value
 label-combat-stats-vision-header = Vision
 
 supportpowers-support-powers-palette =
-   .ready = Ready
-   .hold = On Hold
+    .ready = Ready
+    .hold = On Hold
 
 button-command-bar-attack-move =
-   .tooltip = Attack Move
-   .tooltipdesc = Selected units will move to the desired location
+    .tooltip = Attack Move
+    .tooltipdesc =
+    Selected units will move to the desired location
     and attack any enemies they encounter en route.
 
     Hold <(Ctrl)> while targeting to order an Assault Move
@@ -253,8 +262,9 @@ button-command-bar-attack-move =
     Left-click icon then right-click on target location.
 
 button-command-bar-force-move =
-   .tooltip = Force Move
-   .tooltipdesc = Selected units will move to the desired location
+    .tooltip = Force Move
+    .tooltipdesc =
+    Selected units will move to the desired location
      - Default activity for the target is suppressed
      - Vehicles will attempt to crush enemies at the target location
      - Helicopters will land at the target location
@@ -263,8 +273,9 @@ button-command-bar-force-move =
     Hold <(Alt)> to activate temporarily while commanding units.
 
 button-command-bar-force-attack =
-   .tooltip = Force Attack
-   .tooltipdesc = Selected units will attack the targeted unit or location
+    .tooltip = Force Attack
+    .tooltipdesc =
+    Selected units will attack the targeted unit or location
      - Default activity for the target is suppressed
      - Allows targeting of own or ally forces
      - Long-range artillery units will always target the
@@ -274,14 +285,16 @@ button-command-bar-force-attack =
     Hold <(Ctrl)> to activate temporarily while commanding units.
 
 button-command-bar-guard =
-   .tooltip = Guard
-   .tooltipdesc = Selected units will follow the targeted unit.
+    .tooltip = Guard
+    .tooltipdesc =
+    Selected units will follow the targeted unit.
 
     Left-click icon then right-click on target unit.
 
 button-command-bar-deploy =
-   .tooltip = Deploy
-   .tooltipdesc = Selected units will perform their default deploy activity
+    .tooltip = Deploy
+    .tooltipdesc =
+    Selected units will perform their default deploy activity
      - MCVs will unpack into a Construction Yard
      - Construction Yards will re-pack into a MCV
      - Transports will unload their passengers
@@ -289,22 +302,25 @@ button-command-bar-deploy =
     Acts immediately on selected units.
 
 button-command-bar-scatter =
-   .tooltip = Scatter
-   .tooltipdesc = Selected units will stop their current activity
+    .tooltip = Scatter
+    .tooltipdesc =
+    Selected units will stop their current activity
     and move to a nearby location.
 
     Acts immediately on selected units.
 
 button-command-bar-stop =
-   .tooltip = Stop
-   .tooltipdesc = Selected units will stop their current activity.
+    .tooltip = Stop
+    .tooltipdesc =
+    Selected units will stop their current activity.
     Selected buildings will reset their rally point.
 
     Acts immediately on selected targets.
 
 button-command-bar-queue-orders =
-   .tooltip = Waypoint Mode
-   .tooltipdesc = Use Waypoint Mode to give multiple linking commands
+    .tooltip = Waypoint Mode
+    .tooltipdesc =
+    Use Waypoint Mode to give multiple linking commands
     to the selected units. Units will execute the commands
     immediately upon receiving them.
 
@@ -312,26 +328,30 @@ button-command-bar-queue-orders =
     Hold <(Shift)> to activate temporarily while commanding units.
 
 button-stance-bar-attackanything =
-   .tooltip = Attack Anything Stance
-   .tooltipdesc = Set the selected units to Attack Anything stance:
+    .tooltip = Attack Anything Stance
+    .tooltipdesc =
+    Set the selected units to Attack Anything stance:
      - Units will attack enemy units and structures on sight
      - Units will pursue attackers across the battlefield
 
 button-stance-bar-defend =
-   .tooltip = Defend Stance
-   .tooltipdesc = Set the selected units to Defend stance:
+    .tooltip = Defend Stance
+    .tooltipdesc =
+    Set the selected units to Defend stance:
      - Units will attack enemy units on sight
      - Units will not move or pursue enemies
 
 button-stance-bar-returnfire =
-   .tooltip = Return Fire Stance
-   .tooltipdesc = Set the selected units to Return Fire stance:
+    .tooltip = Return Fire Stance
+    .tooltipdesc =
+    Set the selected units to Return Fire stance:
      - Units will retaliate against enemies that attack them
      - Units will not move or pursue enemies
 
 button-stance-bar-holdfire =
-   .tooltip = Hold Fire Stance
-   .tooltipdesc = Set the selected units to Hold Fire stance:
+    .tooltip = Hold Fire Stance
+    .tooltipdesc =
+    Set the selected units to Hold Fire stance:
      - Units will not fire upon enemies
      - Units will not move or pursue enemies
 
@@ -347,8 +367,8 @@ button-production-types-vehicle-tooltip = Vehicles
 button-production-types-aircraft-tooltip = Aircraft
 
 productionpalette-player-widgets-production-palette =
-   .ready = Ready
-   .hold = On Hold
+    .ready = Ready
+    .hold = On Hold
 
 ## lobby-kickdialogs.yaml
 label-kick-client-dialog-text-a = You may also apply a temporary ban, preventing
@@ -368,6 +388,7 @@ button-force-start-dialog-start = Start
 label-map-incompatible-status-a = This map is not compatible
 label-map-incompatible-status-b = with this version of OpenRA
 label-map-validating-status = Validating...
+label-map-generating-status = Generating...
 button-map-download-available-install = Install Map
 button-map-preview-update = Update Map
 button-map-update-download-available-install = Install Map
@@ -430,8 +451,8 @@ button-multiplayer-tabs-servers-tab = Servers
 button-bg-changemap = Change Map
 
 button-lobbychat-chat-mode =
-   .label = Team
-   .tooltip = Toggle chat mode
+    .label = Team
+    .tooltip = Toggle chat mode
 
 button-server-lobby-disconnect = Leave Game
 button-server-lobby-start-game = Start Game
@@ -504,9 +525,6 @@ button-settings-title = Settings
 
 ## mapchooser.yaml
 label-mapchooser-panel-title = Select Map
-button-bg-system-maps-tab = Official Maps
-button-bg-remote-maps-tab = Server Maps
-button-bg-user-maps-tab = Custom Maps
 label-filter-order-controls-desc = Filter:
 label-filter-order-controls-desc-joiner = in
 label-filter-order-controls-orderby = Order by:
@@ -514,6 +532,14 @@ button-bg-randommap = Random
 button-bg-delete-map = Delete Map
 button-bg-delete-all-maps = Delete All Maps
 button-bg-ok = Ok
+
+label-mapchooser-random-map-title = Random Map
+label-mapchooser-random-map-generating = Generating...
+label-mapchooser-random-map-error = Map Generation Failed
+button-mapchooser-random-map-generate = Generate
+label-mapchooser-random-map-tileset = Environment:
+label-mapchooser-random-map-size = Map Size:
+label-mapchooser-random-map-error-desc = Adjust the settings or try again.
 
 ## missionbrowser.yaml
 button-missionbrowser-panel-mission-info = Mission Info
@@ -523,6 +549,12 @@ button-missionbrowser-panel-stop-briefing-video = Stop Briefing
 button-missionbrowser-panel-start-info-video = Watch Info Video
 button-missionbrowser-panel-stop-info-video = Stop Info Video
 button-missionbrowser-panel-play = Play
+dropdown-missionbrowser-difficulty =
+    .label = Difficulty
+    .description = The difficulty of the mission
+
+dropdown-missionbrowser-gamespeed = Speed:
+label-missionbrowser-normal-difficulty = Normal
 
 ## multiplayer-browser.yaml
 image-bg-password-protected-tooltip = Requires Password
@@ -643,8 +675,8 @@ checkbox-mute-sound-container = Mute Sound
 label-sound-volume-container = Sound Volume:
 
 checkbox-mute-background-music-container =
-   .label = Mute Menu Music
-   .tooltip = Mute background music when no specific track is playing
+    .label = Mute Menu Music
+    .tooltip = Mute background music when no specific track is playing
 
 label-music-title-volume-container = Music Volume:
 label-audio-device-container = Audio Device:
@@ -661,16 +693,16 @@ label-target-lines-dropdown-container = Target Lines:
 label-status-bar-dropdown-container-bars = Status Bars:
 
 checkbox-player-stance-colors-container =
-   .label = Player Relationship Colors
-   .tooltip = Change player colors based on relationship (own, enemy, ally, neutral)
+    .label = Player Relationship Colors
+    .tooltip = Change player colors based on relationship (own, enemy, ally, neutral)
 
 checkbox-ui-feedback-container =
-   .label = Show UI Feedback Notifications
-   .tooltip = Show transient text notifications for UI events
+    .label = Show UI Feedback Notifications
+    .tooltip = Show transient text notifications for UI events
 
 checkbox-transients-container =
-   .label = Show Game Event Notifications
-   .tooltip = Show transient text notifications for game events
+    .label = Show Game Event Notifications
+    .tooltip = Show transient text notifications for game events
 
 checkbox-hide-replay-chat-container = Hide Chat in Replays
 label-video-section-header = Video
@@ -704,12 +736,12 @@ label-notices-readonly-notice = This hotkey cannot be modified
 button-hotkey-remap-dialog-override = Override
 
 button-hotkey-remap-dialog-clear =
-   .label = Clear
-   .tooltip = Unbind the hotkey
+    .label = Clear
+    .tooltip = Unbind the hotkey
 
 button-hotkey-remap-dialog-reset =
-   .label = Reset
-   .tooltip = Reset to default
+    .label = Reset
+    .tooltip = Reset to default
 
 ## settings-input.yaml
 label-zoom-modifier-container = Zoom Modifier:

@@ -14,13 +14,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
 using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapGenerator
 {
-	/// <summary>Path to be tiled onto a map using TemplateSegments.</summary>
+	/// <summary>Path to be tiled onto a map using MultiBrushSegments.</summary>
 	public sealed class TilingPath
 	{
 		/// <summary>Describes the type and direction of the start or end of a TilingPath.</summary>
@@ -32,11 +31,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 			/// Direction to use for this terminal.
 			/// If the direction here is null, it will be determined automatically later.
 			/// </summary>
-			public int? Direction;
+			public Direction? Direction;
 
 			/// <summary>
-			/// A string which can match the format used by
-			/// OpenRA.Mods.Common.Terrain.TemplateSegment's Start or End.
+			/// A string which can match the format used by MultiBrushSegment's Start or End.
 			/// </summary>
 			public readonly string SegmentType
 			{
@@ -44,11 +42,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 				{
 					var direction =
 						Direction ?? throw new InvalidOperationException("Direction is null");
-					return $"{Type}.{MapGenerator.Direction.ToString(direction)}";
+					return $"{Type}.{direction}";
 				}
 			}
 
-			public Terminal(string type, int? direction)
+			public Terminal(string type, Direction? direction)
 			{
 				Type = type;
 				Direction = direction;
@@ -56,34 +54,30 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
-		/// Describes the permitted start, middle, and end segments/templates that can be used to
-		/// tile the path.
+		/// Describes the permitted start, middle, and end segments/MultiBrushes that can be used
+		/// to tile a path.
 		/// </summary>
 		public sealed class PermittedSegments
 		{
-			public readonly ITemplatedTerrainInfo TemplatedTerrainInfo;
-			public readonly ImmutableArray<TemplateSegment> Start;
-			public readonly ImmutableArray<TemplateSegment> Inner;
-			public readonly ImmutableArray<TemplateSegment> End;
-			public IEnumerable<TemplateSegment> All => Start.Union(Inner).Union(End);
+			public readonly ImmutableArray<MultiBrush> Start;
+			public readonly ImmutableArray<MultiBrush> Inner;
+			public readonly ImmutableArray<MultiBrush> End;
+			public IEnumerable<MultiBrush> All => Start.Union(Inner).Union(End);
 
 			public PermittedSegments(
-				ITemplatedTerrainInfo templatedTerrainInfo,
-				IEnumerable<TemplateSegment> start,
-				IEnumerable<TemplateSegment> inner,
-				IEnumerable<TemplateSegment> end)
+				IEnumerable<MultiBrush> start,
+				IEnumerable<MultiBrush> inner,
+				IEnumerable<MultiBrush> end)
 			{
-				TemplatedTerrainInfo = templatedTerrainInfo;
 				Start = start.ToImmutableArray();
 				Inner = inner.ToImmutableArray();
 				End = end.ToImmutableArray();
 			}
 
 			public PermittedSegments(
-				ITemplatedTerrainInfo templatedTerrainInfo,
-				IEnumerable<TemplateSegment> all)
+				IReadOnlyList<MultiBrush> multiBrushes,
+				IEnumerable<MultiBrush> all)
 			{
-				TemplatedTerrainInfo = templatedTerrainInfo;
 				var array = all.ToImmutableArray();
 				Start = array;
 				Inner = array;
@@ -94,87 +88,79 @@ namespace OpenRA.Mods.Common.MapGenerator
 			/// Creates a PermittedSegments using only the given types.
 			/// </summary>
 			public static PermittedSegments FromType(
-				ITemplatedTerrainInfo templatedTerrainInfo,
+				IReadOnlyList<MultiBrush> multiBrushes,
 				IEnumerable<string> types)
-				=> new(templatedTerrainInfo, FindSegments(templatedTerrainInfo, types));
+				=> new(multiBrushes, FindSegments(multiBrushes, types));
 
 			/// <summary>
 			/// Creates a PermittedSegments suitable for a path with given inner and terminal types
 			/// at the start and end.
 			/// </summary>
 			public static PermittedSegments FromInnerAndTerminalTypes(
-				ITemplatedTerrainInfo templatedTerrainInfo,
+				IReadOnlyList<MultiBrush> multiBrushes,
 				IEnumerable<string> innerTypes,
 				IEnumerable<string> terminalTypes)
 			{
 				var innerTypesArray = innerTypes.ToImmutableArray();
 				var terminalTypesArray = terminalTypes.ToImmutableArray();
 				return new(
-					templatedTerrainInfo,
-					FindSegments(templatedTerrainInfo, terminalTypesArray, innerTypesArray, innerTypesArray),
-					FindSegments(templatedTerrainInfo, innerTypesArray),
-					FindSegments(templatedTerrainInfo, innerTypesArray, innerTypesArray, terminalTypesArray));
+					FindSegments(multiBrushes, terminalTypesArray, innerTypesArray, innerTypesArray),
+					FindSegments(multiBrushes, innerTypesArray),
+					FindSegments(multiBrushes, innerTypesArray, innerTypesArray, terminalTypesArray));
 			}
 
 			/// <summary>
-			/// Equivalent to FindSegments(templatedTerrainInfo, types, types, types).
+			/// Creates a PermittedSegments suitable for a path with given inner and terminal types
+			/// at the start and end.
 			/// </summary>
-			public static IEnumerable<TemplateSegment> FindSegments(
-				ITemplatedTerrainInfo templatedTerrainInfo,
-				IEnumerable<string> types)
-			{
-				var array = types.ToImmutableArray();
-				return FindSegments(templatedTerrainInfo, array, array, array);
-			}
-
-			/// <summary>
-			/// Find templates that use some combination of the given start, inner, and end types.
-			/// </summary>
-			public static IEnumerable<TemplateSegment> FindSegments(
-				ITemplatedTerrainInfo templatedTerrainInfo,
+			public static PermittedSegments FromTypes(
+				IReadOnlyList<MultiBrush> multiBrushes,
 				IEnumerable<string> startTypes,
 				IEnumerable<string> innerTypes,
 				IEnumerable<string> endTypes)
 			{
-				var templateSegments = new List<TemplateSegment>();
-				foreach (var templateInfo in templatedTerrainInfo.Templates.Values.OrderBy(tti => tti.Id))
-					foreach (var segment in templateInfo.Segments)
+				var startTypesArray = startTypes.ToImmutableArray();
+				var innerTypesArray = innerTypes.ToImmutableArray();
+				var endTypesArray = endTypes.ToImmutableArray();
+				return new(
+					FindSegments(multiBrushes, startTypesArray, innerTypesArray, innerTypesArray),
+					FindSegments(multiBrushes, innerTypesArray),
+					FindSegments(multiBrushes, innerTypesArray, innerTypesArray, endTypesArray));
+			}
+
+			/// <summary>
+			/// Equivalent to FindSegments(multiBrushes, types, types, types).
+			/// </summary>
+			public static IEnumerable<MultiBrush> FindSegments(
+				IReadOnlyList<MultiBrush> multiBrushes,
+				IEnumerable<string> types)
+			{
+				var array = types.ToImmutableArray();
+				return FindSegments(multiBrushes, array, array, array);
+			}
+
+			/// <summary>
+			/// Filter MultiBrushes to segments that use the given start, inner, and end types.
+			/// </summary>
+			public static IEnumerable<MultiBrush> FindSegments(
+				IReadOnlyList<MultiBrush> multiBrushes,
+				IEnumerable<string> startTypes,
+				IEnumerable<string> innerTypes,
+				IEnumerable<string> endTypes)
+			{
+				var filtered = new List<MultiBrush>();
+				var startTypesArray = startTypes.ToImmutableArray();
+				var innerTypesArray = innerTypes.ToImmutableArray();
+				var endTypesArray = endTypes.ToImmutableArray();
+				foreach (var multiBrush in multiBrushes)
+					if (startTypesArray.Any(multiBrush.Segment.HasStartType) &&
+						innerTypesArray.Any(multiBrush.Segment.HasInnerType) &&
+						endTypesArray.Any(multiBrush.Segment.HasEndType))
 					{
-						if (startTypes.Any(segment.HasStartType) &&
-							innerTypes.Any(segment.HasInnerType) &&
-							endTypes.Any(segment.HasEndType))
-						{
-							templateSegments.Add(segment);
-						}
+						filtered.Add(multiBrush);
 					}
 
-				return templateSegments.ToArray();
-			}
-
-			/// <summary>
-			/// Returns all possible templates that could be layed, ordered by template id.
-			/// </summary>
-			public IEnumerable<TerrainTemplateInfo> PossibleTemplates()
-			{
-				var templates = new List<TerrainTemplateInfo>();
-				var segments = Start.Union(Inner).Union(End).ToHashSet();
-				foreach (var template in TemplatedTerrainInfo.Templates.Values.OrderBy(tti => tti.Id))
-					if (template.Segments.Any(segment => segments.Contains(segment)))
-						templates.Add(template);
-				return templates;
-			}
-
-			/// <summary>
-			/// Returns all possible tiles that could be layed, ordered by template id, tile index.
-			/// </summary>
-			public IEnumerable<TerrainTile> PossibleTiles()
-			{
-				var tiles = new List<TerrainTile>();
-				foreach (var template in PossibleTemplates())
-					for (var index = 0; index < template.TilesCount; index++)
-						if (template[index] != null)
-							tiles.Add(new TerrainTile(template.Id, (byte)index));
-				return tiles;
+				return [.. filtered];
 			}
 		}
 
@@ -182,9 +168,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		/// <summary>
 		/// <para>
-		/// Target point sequence to fit TemplateSegments to. Whether these CPos positions
+		/// Target point sequence to fit MultiBrushSegments to. Whether these CPos positions
 		/// represent cell corners or cell centers is dependent on the system used by the path's
-		/// PermittedSegments' TemplateSegments.
+		/// PermittedSegments' MultiBrushSegments.
 		/// </para>
 		/// <para>
 		/// If null, Tiling will be a no-op. If non-null, must have at least two points.
@@ -196,7 +182,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public CPos[] Points;
 
 		/// <summary>
-		/// Maximum permitted Chebychev distance that layed TemplateSegments may be from the
+		/// Maximum permitted Chebyshev distance that layed MultiBrushSegments may be from the
 		/// specified points.
 		/// </summary>
 		public int MaxDeviation;
@@ -213,6 +199,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public int MinSeparation;
 
 		/// <summary>
+		/// If the path cannot be tiled exactly, the resulting tiling is allowed to deviate from
+		/// target end point by this Chebychev distance. Ignored for loops. This will be capped to
+		/// MaxDeviation at tiling time.
+		/// </summary>
+		public int MaxEndDeviation;
+
+		/// <summary>
 		/// Stores start type and direction.
 		/// </summary>
 		public Terminal Start;
@@ -221,7 +214,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// Stores end type and direction.
 		/// </summary>
 		public Terminal End;
-		public PermittedSegments Segments;
+		public PermittedSegments Brushes;
 
 		/// <summary>Whether the start and end points are the same.</summary>
 		public bool IsLoop
@@ -242,78 +235,114 @@ namespace OpenRA.Mods.Common.MapGenerator
 			MaxDeviation = maxDeviation;
 			MaxSkip = 0;
 			MinSeparation = 0;
+			MaxEndDeviation = 0;
 			Start = new Terminal(startType, null);
 			End = new Terminal(endType, null);
-			Segments = permittedTemplates;
+			Brushes = permittedTemplates;
+		}
+
+		/// <summary>
+		/// Convenience method to create TilingPaths using common settings.
+		/// Start and end terminal types are the same.
+		/// PermittedSegments are derived from brushes and inner/terminal types.
+		/// Loops will automatically use only the inner type.
+		/// Uses automatic end deviation and loop optimization.
+		/// </summary>
+		public static TilingPath QuickCreate(
+			Map map,
+			IReadOnlyList<MultiBrush> brushes,
+			CPos[] points,
+			int maxDeviation,
+			string innerSegmentType,
+			string terminalSegmentType)
+		{
+			var nonLoopedRoadPermittedTemplates =
+				PermittedSegments.FromInnerAndTerminalTypes(
+					brushes, [innerSegmentType], [terminalSegmentType]);
+			var loopedRoadPermittedTemplates =
+				PermittedSegments.FromType(brushes, [innerSegmentType]);
+
+			var isLoop = points[0] == points[^1];
+			TilingPath path;
+			if (isLoop)
+				path = new TilingPath(
+					map,
+					points,
+					maxDeviation,
+					innerSegmentType,
+					innerSegmentType,
+					loopedRoadPermittedTemplates);
+			else
+				path = new TilingPath(
+					map,
+					points,
+					maxDeviation,
+					terminalSegmentType,
+					terminalSegmentType,
+					nonLoopedRoadPermittedTemplates);
+
+			path
+				.SetAutoEndDeviation()
+				.OptimizeLoop();
+
+			return path;
 		}
 
 		sealed class TilingSegment
 		{
-			public readonly TerrainTemplateInfo TemplateInfo;
-			public readonly TemplateSegment TemplateSegment;
+			public readonly MultiBrush MultiBrush;
 			public readonly int StartTypeId;
 			public readonly int EndTypeId;
 			public readonly CVec Offset;
 			public readonly CVec Moves;
 			public readonly CVec[] RelativePoints;
-			public readonly int[] Directions;
-			public readonly int[] DirectionMasks;
-			public readonly int[] ReverseDirectionMasks;
+			public readonly Direction EndDirection;
 
-			public TilingSegment(TerrainTemplateInfo templateInfo, TemplateSegment templateSegment, int startId, int endId)
+			public TilingSegment(MultiBrush multiBrush, int startId, int endId)
 			{
-				TemplateInfo = templateInfo;
-				TemplateSegment = templateSegment;
+				MultiBrush = multiBrush;
 				StartTypeId = startId;
 				EndTypeId = endId;
-				Offset = templateSegment.Points[0];
-				Moves = templateSegment.Points[^1] - Offset;
-				RelativePoints = templateSegment.Points
-					.Select(p => p - templateSegment.Points[0])
+				Offset = multiBrush.Segment.Points[0];
+				Moves = multiBrush.Segment.Points[^1] - Offset;
+				RelativePoints = multiBrush.Segment.Points
+					.Select(p => p - multiBrush.Segment.Points[0])
 					.ToArray();
+				EndDirection = multiBrush.Segment.EndDirection;
 
-				Directions = new int[RelativePoints.Length];
-				DirectionMasks = new int[RelativePoints.Length];
-				ReverseDirectionMasks = new int[RelativePoints.Length];
-
-				// Last point has no direction.
-				Directions[^1] = Direction.None;
-				DirectionMasks[^1] = 0;
-				ReverseDirectionMasks[^1] = 0;
 				for (var i = 0; i < RelativePoints.Length - 1; i++)
 				{
-					var direction = Direction.FromCVec(RelativePoints[i + 1] - RelativePoints[i]);
+					var direction = DirectionExts.FromCVec(RelativePoints[i + 1] - RelativePoints[i]);
 					if (direction == Direction.None)
-						throw new ArgumentException("TemplateSegment has duplicate points in sequence");
-					Directions[i] = direction;
-					DirectionMasks[i] = 1 << direction;
-					ReverseDirectionMasks[i] = 1 << Direction.Reverse(direction);
+						throw new ArgumentException("MultiBrushSegment has duplicate points in sequence");
 				}
 			}
 		}
 
 		/// <summary>
 		/// <para>
-		/// Attempt to tile the given path onto a map.
+		/// Attempt to tile the given path, producing a new MultiBrush if the path could be tiled,
+		/// or null if the path could not be tiled within constraints.
 		/// </para>
 		/// <para>
-		/// If the path could be tiled, returns the sequence of points actually traversed by the
-		/// chosen TemplateSegments. Returns null if the path could not be tiled within constraints.
+		/// The resulting MultiBrush is created from stitching MultiBrushes from the
+		/// PermittedSegments together, and will contain a segment that represents the stitched
+		/// segments of the constituent MultiBrushes.
 		/// </para>
 		/// </summary>
-		public CPos[] Tile(MersenneTwister random)
+		public MultiBrush Tile(MersenneTwister random)
 		{
 			// This is essentially a Dijkstra's algorithm best-first search.
 			//
 			// The search is performed over a 3-dimensional space: (x, y, connection type).
-			// Connection types correspond to the .Start or .End values of TemplateSegments.
+			// Connection types correspond to the .Start or .End values of MultiBrushSegments.
 			//
 			// The best found costs of the nodes in this space are stored as an array of matrices.
 			// There is a matrix for each possible connection type, and each matrix stores the
 			// (current) best costs at the (x, y) locations for that given connection type.
 			//
 			// The directed edges between the nodes of this 3-dimensional space are defined by the
-			// TemplateSegments within the permitted set of templates. For example, a segment
+			// MultiBrushSegments within the permitted set of segments. For example, a segment
 			// defined as
 			//
 			//   Segment:
@@ -325,10 +354,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 			// "Beach.D" matrix. (The overall point displacement is (2,3) - (3,1) = (-1, +2))
 			//
 			// The cost of a transition/link/edge between nodes is defined by how well the
-			// template segment fits the path (how little "deviation" is accumulates). However, in
+			// MultiBrushSegment fits the path (how little "deviation" is accumulates). However, in
 			// order for a transition to be allowed at all, it must satisfy some constraints:
 			//
 			// - It must not regress backward along the path (but no immediate progress is OK).
+			// - If it makes exactly zero progress, it must end facing towards increasing progress.
 			// - It must not deviate at any point in the segment beyond MaxDeviation from the path.
 			// - It must not skip to much later path points (which may be within MaxDeviation).
 			//
@@ -337,23 +367,26 @@ namespace OpenRA.Mods.Common.MapGenerator
 			// The search is conducted from the path start node until the best possible cost of
 			// the end node is confirmed. This also populates possible intermediate nodes' costs.
 			//
-			// Then, from the end node, it works backwards. It finds any (random) suitable template
+			// If the original target end node is unreachable (at MaxCost), a nearby node may be
+			// selected as a fallback end point, provided the target path isn't a loop.
+			//
+			// Then, from the end node, it works backwards. It finds any (random) suitable
 			// segment which connects back to a previous node where the difference in cost is
-			// that of the template segment's cost, implying that that previous node is on an
+			// that of the segment's cost, implying that the previous node is on an
 			// optimal path towards the end node. This process repeats until the start node is
-			// reached, painting templates along the way.
+			// reached, merging MultiBrushes into a result along the way.
 			//
 			// Note that this algorithm makes a few (reasonable) assumptions about the shapes of
-			// templates, such as that they don't individually snake around too much. The actual
-			// tiles of a template are ignored during the search, with only the segment being used
-			// to calculate transition cost and validity.
+			// MultiBrushes, such as that they don't individually snake around too much. The actual
+			// tiles of a MultiBrush are ignored during the search, with only the segment being
+			// used to calculate transition cost and validity.
 			if (Points == null)
 				return null;
 
 			var start = Start;
 			var end = End;
-			start.Direction ??= Direction.FromCVec(Points[1] - Points[0]);
-			end.Direction ??= Direction.FromCVec(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
+			start.Direction ??= DirectionExts.FromCVec(Points[1] - Points[0]);
+			end.Direction ??= DirectionExts.FromCVec(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
 
 			var maxSkip = MaxSkip > 0 ? MaxSkip : (2 * MaxDeviation + 1);
 
@@ -475,7 +508,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 					lows.Clear();
 					highs.Clear();
-					foreach (var offset in Direction.Spread8)
+					foreach (var offset in DirectionExts.Spread8)
 					{
 						var neighbor = xy + offset;
 						if (!deviations.ContainsXY(neighbor) ||
@@ -505,7 +538,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 					size,
 					progressSeeds,
 					ProgressFiller,
-					Direction.Spread8);
+					DirectionExts.Spread8);
 
 				var separationSeeds = new List<(int2, int)>();
 
@@ -524,7 +557,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 						if (MinSeparation > 0)
 						{
-							foreach (var offset in Direction.Spread8)
+							foreach (var offset in DirectionExts.Spread8)
 							{
 								var neighbor = xy + offset;
 								if (!deviations.ContainsXY(neighbor) ||
@@ -556,19 +589,32 @@ namespace OpenRA.Mods.Common.MapGenerator
 					size,
 					separationSeeds,
 					SeparationFiller,
-					Direction.Spread8);
+					DirectionExts.Spread8);
 			}
 
 			var pathStart = points[0];
 			var pathEnd = points[^1];
-			var orderedPermittedSegments = Segments.All.ToImmutableArray();
-			var permittedSegments = orderedPermittedSegments.ToImmutableHashSet();
+			var orderedPermittedBrushes = Brushes.All.ToImmutableArray();
+			var permittedBrushes = orderedPermittedBrushes.ToImmutableHashSet();
+			var permittedStartBrushes = Brushes.Start.ToImmutableHashSet();
+			var permittedInnerBrushes = Brushes.Inner.ToImmutableHashSet();
+			var permittedEndBrushes = Brushes.End.ToImmutableHashSet();
 
 			const int MaxCost = int.MaxValue;
 			var segmentTypeToId = new Dictionary<string, int>();
-			var segmentsByStart = new List<List<TilingSegment>>();
-			var segmentsByEnd = new List<List<TilingSegment>>();
-			var costs = new List<Matrix<int>>();
+			var segmentsByStart = new List<List<(TilingSegment Segment, bool CanStart, bool CanInner, bool CanEnd)>>();
+			var segmentsByEnd = new List<List<(TilingSegment Segment, bool CanStart, bool CanInner, bool CanEnd)>>();
+
+			// We store the end costs of valid end segments separately to inner costs.
+			//
+			// Note also that:
+			// - The start cost is always zero and only applies to a single node.
+			// - Permitted end and inner segments may be distinct, but the end terminal could exist
+			//   in the permitted inner segments and shouldn't be a valid intermediate cost.
+			// - Avoids confusing start, inner, and end costs when processing looped paths.
+			// - We may be interested in multiple end costs if MaxEndDeviation is non-zero.
+			var endCosts = new Matrix<int>(size).Fill(MaxCost);
+			var innerCosts = new List<Matrix<int>>();
 			{
 				void RegisterSegmentType(string type)
 				{
@@ -576,21 +622,26 @@ namespace OpenRA.Mods.Common.MapGenerator
 						return;
 					var newId = segmentTypeToId.Count;
 					segmentTypeToId.Add(type, newId);
-					segmentsByStart.Add(new List<TilingSegment>());
-					segmentsByEnd.Add(new List<TilingSegment>());
-					costs.Add(new Matrix<int>(size).Fill(MaxCost));
+					segmentsByStart.Add([]);
+					segmentsByEnd.Add([]);
+					innerCosts.Add(new Matrix<int>(size).Fill(MaxCost));
 				}
 
-				foreach (var segment in orderedPermittedSegments)
+				foreach (var multiBrush in orderedPermittedBrushes)
 				{
-					var template = Segments.TemplatedTerrainInfo.SegmentsToTemplates[segment];
+					var segment = multiBrush.Segment;
 					RegisterSegmentType(segment.Start);
 					RegisterSegmentType(segment.End);
 					var startTypeId = segmentTypeToId[segment.Start];
 					var endTypeId = segmentTypeToId[segment.End];
-					var tilePathSegment = new TilingSegment(template, segment, startTypeId, endTypeId);
-					segmentsByStart[startTypeId].Add(tilePathSegment);
-					segmentsByEnd[endTypeId].Add(tilePathSegment);
+					var tilePathSegment = new TilingSegment(multiBrush, startTypeId, endTypeId);
+					var tuple = (
+						tilePathSegment,
+						permittedStartBrushes.Contains(multiBrush) && segment.Start == start.SegmentType,
+						permittedInnerBrushes.Contains(multiBrush),
+						permittedEndBrushes.Contains(multiBrush) && segment.End == end.SegmentType);
+					segmentsByStart[startTypeId].Add(tuple);
+					segmentsByEnd[endTypeId].Add(tuple);
 				}
 			}
 
@@ -608,45 +659,22 @@ namespace OpenRA.Mods.Common.MapGenerator
 				return (typeId, new CVec(xy % size.X, xy / size.X), priority);
 			}
 
-			var pathStartTypeId = segmentTypeToId[start.SegmentType];
-			var pathEndTypeId = segmentTypeToId[end.SegmentType];
-			var innerTypeIds = Segments.Inner
-				.SelectMany(segment => new[] { segment.Start, segment.End })
-				.Select(segmentType => segmentTypeToId[segmentType])
-				.ToImmutableHashSet();
+			if (!segmentTypeToId.TryGetValue(start.SegmentType, out var pathStartTypeId))
+				return null;
+			if (!segmentTypeToId.TryGetValue(end.SegmentType, out var pathEndTypeId))
+				return null;
 
 			// Lower (closer to zero) costs are better matches.
 			// MaxScore means totally unacceptable.
 			int ScoreSegment(TilingSegment segment, CVec from)
 			{
-				if (from == pathStart)
-				{
-					if (segment.StartTypeId != pathStartTypeId)
-						return MaxCost;
-				}
-				else
-				{
-					if (!innerTypeIds.Contains(segment.StartTypeId))
-						return MaxCost;
-				}
-
 				var to = from + segment.Moves;
-				if (to == pathEnd)
-				{
-					if (segment.EndTypeId != pathEndTypeId)
-						return MaxCost;
-				}
-				else
-				{
-					if (!innerTypeIds.Contains(segment.EndTypeId))
-						return MaxCost;
 
-					if (isLoop && lowProgress[from.X, from.Y] > highProgress[to.X, to.Y] && highProgress[to.X, to.Y] != 0)
-					{
-						// We've missed the start/end of the loop and have potentially gone past it
-						// (as far as low and high progress are concerned).
-						return MaxCost;
-					}
+				if (isLoop && to != pathEnd && lowProgress[from.X, from.Y] > highProgress[to.X, to.Y] && highProgress[to.X, to.Y] != 0)
+				{
+					// We've missed the start/end of the loop and have potentially gone past it
+					// (as far as low and high progress are concerned).
+					return MaxCost;
 				}
 
 				var deviationAcc = 0;
@@ -696,14 +724,45 @@ namespace OpenRA.Mods.Common.MapGenerator
 					return MaxCost;
 				}
 
+				// If it's a zero-progress segment without deviation, only allow it if it directs
+				// towards a positive progression.
+				if (lowProgressionAcc == 0 && highProgressionAcc == 0)
+				{
+					var point = to;
+					var pointNext = to + segment.EndDirection.ToCVec();
+					if (!deviations.ContainsXY(pointNext.X, pointNext.Y) || deviations[pointNext.X, pointNext.Y] == OverDeviation)
+					{
+						// Projected point escapes bounds or is in an excluded position.
+						return MaxCost;
+					}
+
+					lowProgressionAcc = Progress(lowProgress[point.X, point.Y], lowProgress[pointNext.X, pointNext.Y]);
+					highProgressionAcc = Progress(highProgress[point.X, point.Y], highProgress[pointNext.X, pointNext.Y]);
+					if (lowProgressionAcc < 0 || highProgressionAcc < 0 || (lowProgressionAcc == 0 && highProgressionAcc == 0))
+						return MaxCost;
+				}
+
 				// Satisfies all requirements.
 				return deviationAcc;
 			}
 
-			void UpdateFrom(CVec from, int fromTypeId, int fromCost)
+			void UpdateFrom(CVec from, int fromTypeId, bool isForStart)
 			{
-				foreach (var segment in segmentsByStart[fromTypeId])
+				var fromCost = isForStart ? 0 : innerCosts[fromTypeId][from.X, from.Y];
+
+				foreach (var (segment, canStart, canInner, canEnd) in segmentsByStart[fromTypeId])
 				{
+					if (isForStart)
+					{
+						if (!canStart)
+							continue;
+					}
+					else
+					{
+						if (!(canEnd || canInner))
+							continue;
+					}
+
 					var to = from + segment.Moves;
 					if (to.X < 0 || to.X >= size.X || to.Y < 0 || to.Y >= size.Y)
 						continue;
@@ -721,44 +780,61 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 					var toCost = fromCost + segmentCost;
 					var toTypeId = segment.EndTypeId;
-					if (toCost < costs[toTypeId][to.X, to.Y])
+
+					if ((canStart || canInner) && toCost < innerCosts[toTypeId][to.X, to.Y])
 					{
-						costs[toTypeId][to.X, to.Y] = toCost;
+						innerCosts[toTypeId][to.X, to.Y] = toCost;
 						SetPriorityAt(toTypeId, to, toCost);
 					}
+
+					if (canEnd && toCost < endCosts[to.X, to.Y])
+						endCosts[to.X, to.Y] = toCost;
 				}
 
 				SetPriorityAt(fromTypeId, from, MaxCost);
 			}
 
-			// costs[pathStartTypeId][pathStart.X, pathStart.Y] is preset to
-			// MaxCost, but we pass in a cost of 0 for the first iteration. We
-			// leave it like this in case this is a looped path with a shared
-			// start and end point. We set it to 0 later when tracing back.
-			UpdateFrom(pathStart, pathStartTypeId, 0);
+			UpdateFrom(pathStart, pathStartTypeId, true);
 
 			while (true)
 			{
 				var (fromTypeId, from, priority) = GetNextPriority();
 
-				if (priority == MaxCost || from == pathEnd)
+				if (priority == MaxCost)
 					break;
 
-				UpdateFrom(from, fromTypeId, costs[fromTypeId][from.X, from.Y]);
+				UpdateFrom(from, fromTypeId, false);
 			}
 
 			// Trace back and update tiles
-			var resultPoints = new List<CPos>
-			{
-				new(pathEnd.X + minPoint.X, pathEnd.Y + minPoint.Y)
-			};
+			var resultPoints = new List<CVec>();
 
-			(CVec From, int FromTypeId) TraceBackStep(CVec to, int toTypeId, int toCost)
+			var compositeBrush = new MultiBrush();
+
+			(CVec From, int FromTypeId) TraceBackStep(CVec to, int toTypeId, bool isForEnd)
 			{
+				var toCost = isForEnd ? endCosts[to.X, to.Y] : innerCosts[toTypeId][to.X, to.Y];
 				var candidates = new List<TilingSegment>();
-				foreach (var segment in segmentsByEnd[toTypeId])
+				foreach (var (segment, canStart, canInner, canEnd) in segmentsByEnd[toTypeId])
 				{
+					if (isForEnd)
+					{
+						if (!canEnd)
+							continue;
+					}
+					else
+					{
+						if (!(canStart || canInner))
+							continue;
+					}
+
 					var from = to - segment.Moves;
+					var mustStart =
+						from == pathStart && segment.StartTypeId == pathStartTypeId;
+
+					if (mustStart && !canStart)
+						continue;
+
 					if (from.X < 0 || from.X >= size.X || from.Y < 0 || from.Y >= size.Y)
 						continue;
 
@@ -774,19 +850,27 @@ namespace OpenRA.Mods.Common.MapGenerator
 						continue;
 
 					var fromCost = toCost - segmentCost;
-					if (fromCost == costs[segment.StartTypeId][from.X, from.Y])
+					var requiredFromCost =
+						mustStart ? 0 : innerCosts[segment.StartTypeId][from.X, from.Y];
+					if (fromCost == requiredFromCost)
 						candidates.Add(segment);
 				}
 
 				Debug.Assert(candidates.Count >= 1, "TraceBack didn't find an original route");
-				var chosenSegment = candidates[random.Next(candidates.Count)];
+				var weights = candidates
+					.Select(c => c.MultiBrush.Weight)
+					.ToArray();
+				var chosenSegment = candidates[random.PickWeighted(weights)];
 				var chosenFrom = to - chosenSegment.Moves;
-				PaintTemplate(Map, chosenFrom - chosenSegment.Offset + minPoint, chosenSegment.TemplateInfo);
+				compositeBrush.MergeFrom(
+					chosenSegment.MultiBrush,
+					chosenFrom - chosenSegment.Offset + minPoint - CPos.Zero,
+					Map.Grid.Type);
 
-				// Skip end point as it is recorded in the previous template.
+				// Skip end point as it is recorded in the previous segment.
 				for (var i = chosenSegment.RelativePoints.Length - 2; i >= 0; i--)
 				{
-					var point = chosenFrom + chosenSegment.RelativePoints[i] + minPoint;
+					var point = chosenFrom + chosenSegment.RelativePoints[i] + minPoint - CPos.Zero;
 					resultPoints.Add(point);
 				}
 
@@ -794,46 +878,93 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			{
-				var to = pathEnd;
 				var toTypeId = pathEndTypeId;
-				var bestCost = costs[toTypeId][to.X, to.Y];
-				if (bestCost == MaxCost)
-					return null;
 
-				// For non-loops, this remained unset at MaxCost. For loops,
-				// this was the shared start and end point and got set to
-				// bestCost. We set it to 0 for traceback, but perform the
-				// first iteration using bestCost. (The opposite of how we
-				// traced forward.)
-				costs[pathStartTypeId][pathStart.X, pathStart.Y] = 0;
+				if (endCosts[pathEnd.X, pathEnd.Y] == MaxCost)
+				{
+					// There isn't a tiling solution to the exact target end point. If enabled,
+					// search for an alternative, nearby end point.
+					var maxEndDeviation = Math.Min(MaxEndDeviation, MaxDeviation);
+					if (maxEndDeviation == 0 || isLoop)
+						return null;
 
-				(to, toTypeId) = TraceBackStep(to, toTypeId, bestCost);
+					// Find the closest points which are near the original target end point and
+					// have a tiling solution.
+					const int Unreached = int.MaxValue;
+					const int Unsolved = int.MaxValue - 1;
+					var fallbackDistances =
+						new Matrix<int>(maxEndDeviation * 2 + 1, maxEndDeviation * 2 + 1)
+							.Fill(Unreached);
+
+					int? FallbacksFiller(int2 xy, int distance)
+					{
+						if (fallbackDistances[xy] != Unreached)
+							return null;
+
+						var p = new int2(pathEnd.X - maxEndDeviation, pathEnd.Y - maxEndDeviation) + xy;
+
+						if (!deviations.ContainsXY(p.X, p.Y) || deviations[p.X, p.Y] == OverDeviation)
+						{
+							fallbackDistances[xy] = Unsolved;
+							return null;
+						}
+
+						fallbackDistances[xy] =
+							endCosts[p.X, p.Y] != MaxCost ? distance : Unsolved;
+						return distance + 1;
+					}
+
+					MatrixUtils.FloodFill(
+						fallbackDistances.Size,
+						[(new int2(maxEndDeviation, maxEndDeviation), 0)],
+						FallbacksFiller,
+						DirectionExts.Spread4);
+
+					var bestDistance = fallbackDistances.Data.Min();
+					if (bestDistance == Unreached || bestDistance == Unsolved)
+						return null;
+
+					// Find the lowest cost candidate end point.
+					var fallbackCosts = new Matrix<int>(maxEndDeviation * 2 + 1, maxEndDeviation * 2 + 1);
+					for (var y = -maxEndDeviation; y <= maxEndDeviation; y++)
+						for (var x = -maxEndDeviation; x <= maxEndDeviation; x++)
+						{
+							var fallbackXy = new int2(x + maxEndDeviation, y + maxEndDeviation);
+							var p = new int2(x + pathEnd.X, y + pathEnd.Y);
+							fallbackCosts[fallbackXy] =
+								(fallbackDistances[fallbackXy] == bestDistance) ? endCosts[p] : MaxCost;
+						}
+
+					var (chosenXy, _) = MatrixUtils.FindRandomBest(
+						fallbackCosts,
+						random,
+						(a, b) => b.CompareTo(a));
+
+					pathEnd = new CVec(chosenXy.X - maxEndDeviation, chosenXy.Y - maxEndDeviation) + pathEnd;
+				}
+
+				var to = pathEnd;
+
+				resultPoints.Add(new(to.X + minPoint.X, to.Y + minPoint.Y));
+
+				(to, toTypeId) = TraceBackStep(to, toTypeId, true);
 
 				// No need to check direction. If that is an issue, I have bigger problems to worry about.
-				while (to != pathStart)
-					(to, toTypeId) = TraceBackStep(to, toTypeId, costs[toTypeId][to.X, to.Y]);
+				while (to != pathStart || toTypeId != pathStartTypeId)
+					(to, toTypeId) = TraceBackStep(to, toTypeId, false);
 			}
 
 			// Traced back in reverse, so reverse the reversal.
 			resultPoints.Reverse();
-			return resultPoints.ToArray();
-		}
+			var compositeSegment = new MultiBrushSegment(
+				start.SegmentType,
+				"(Tiled Path)",
+				end.SegmentType,
+				[.. resultPoints]);
 
-		static void PaintTemplate(Map map, CPos at, TerrainTemplateInfo template)
-		{
-			if (template.PickAny)
-				throw new ArgumentException("PaintTemplate does not expect PickAny");
-			for (var y = 0; y < template.Size.Y; y++)
-				for (var x = 0; x < template.Size.X; x++)
-				{
-					var i = (byte)(y * template.Size.X + x);
-					if (template[i] == null)
-						continue;
-					var tile = new TerrainTile(template.Id, i);
-					var mpos = new CPos(at.X + x, at.Y + y).ToMPos(map);
-					if (map.Tiles.Contains(mpos))
-						map.Tiles[mpos] = tile;
-				}
+			compositeBrush.ReplaceSegment(compositeSegment);
+
+			return compositeBrush;
 		}
 
 		/// <summary>
@@ -869,17 +1000,17 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			if (inertialRange > points.Length - 1)
 				inertialRange = points.Length - 1;
-			var sd = Direction.FromCVecNonDiagonal(points[inertialRange] - points[0]);
-			var ed = Direction.FromCVecNonDiagonal(points[^1] - points[^(inertialRange + 1)]);
+			var sd = DirectionExts.FromCVecNonDiagonal(points[inertialRange] - points[0]);
+			var ed = DirectionExts.FromCVecNonDiagonal(points[^1] - points[^(inertialRange + 1)]);
 			var newPoints = new CPos[points.Length + extensionLength * 2];
 
 			for (var i = 0; i < extensionLength; i++)
-				newPoints[i] = points[0] - Direction.ToCVec(sd) * (extensionLength - i);
+				newPoints[i] = points[0] - sd.ToCVec() * (extensionLength - i);
 
 			Array.Copy(points, 0, newPoints, extensionLength, points.Length);
 
 			for (var i = 0; i < extensionLength; i++)
-				newPoints[extensionLength + points.Length + i] = points[^1] + Direction.ToCVec(ed) * (i + 1);
+				newPoints[extensionLength + points.Length + i] = points[^1] + ed.ToCVec() * (i + 1);
 
 			return newPoints;
 		}
@@ -944,7 +1075,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				if (ox == oy)
 				{
 					// We're either not on an edge or we're at a corner, so don't extend.
-					return Array.Empty<CPos>();
+					return [];
 				}
 
 				var offset = new CVec(ox, oy);
@@ -1267,13 +1398,67 @@ namespace OpenRA.Mods.Common.MapGenerator
 			for (var i = 1; i < points.Length; i++)
 			{
 				var offset = lastPoint - points[i];
-				if (Direction.ToCVec(Direction.FromCVecNonDiagonal(offset)) != offset)
+				if (DirectionExts.FromCVecNonDiagonal(offset).ToCVec() != offset)
 					return false;
 
 				lastPoint = points[i];
 			}
 
 			return true;
+		}
+
+		/// <summary>Applies StraightenEndsPathPoints to this TilingPath, returning this.</summary>
+		public TilingPath StraightenEnds(
+			int shrink,
+			int grow,
+			int minimumLength,
+			int growthInertialRange)
+		{
+			Points = StraightenEndsPathPoints(
+				Points,
+				CellLayerUtils.CellBounds(Map),
+				shrink,
+				grow,
+				minimumLength,
+				growthInertialRange);
+			return this;
+		}
+
+		/// <summary>
+		/// Straighten the start and end of a path by shrinking and regrowing a straight section.
+		/// </summary>
+		/// <param name="points">Points of the path.</param>
+		/// <param name="bounds">Map bounds, used to identify paths touching edges.</param>
+		/// <param name="shrink">Distance to shrink path ends (before regrowing them).</param>
+		/// <param name="grow">Distance to regrow path ends with straightening (after shrinking).</param>
+		/// <param name="minimumLength">The minimum length (after shrinking, before growth) that paths may be.</param>
+		/// <param name="growthInertialRange">How many points are used to decide the regrowth direction.</param>
+		public static CPos[] StraightenEndsPathPoints(
+			CPos[] points,
+			Rectangle bounds,
+			int shrink,
+			int grow,
+			int minimumLength,
+			int growthInertialRange)
+		{
+			points = ExtendEdgePathPoints(points, bounds, 2 * shrink + minimumLength);
+			points = ShrinkPathPoints(points, shrink, minimumLength);
+			points = InertiallyExtendPathPoints(points, grow, growthInertialRange);
+			return points;
+		}
+
+		/// <summary>Set MaxEndDeviation.</summary>
+		public TilingPath SetMaxEndDeviation(int maxEndDeviation)
+		{
+			MaxEndDeviation = maxEndDeviation;
+			return this;
+		}
+
+		/// <summary>Allow end point deviation as far as MaxDeviation will allow.</summary>
+		public TilingPath SetAutoEndDeviation()
+		{
+			MaxEndDeviation = int.MaxValue;
+			return this;
 		}
 	}
 }

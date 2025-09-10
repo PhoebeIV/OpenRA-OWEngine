@@ -160,12 +160,9 @@ trike:
 	RevealsShroud:
 		Range: 4c768
 	WithMuzzleOverlay:
-	Armament@damage:
+	Armament:
 		Weapon: HMG
-		LocalOffset: 50,0,0
-	Armament@muzzle:
-		Weapon: HMG_muzzle
-		LocalOffset: 50,0,0
+		LocalOffset: 100,0,0
 		MuzzleSequence: muzzle
 	AttackFrontal:
 		FacingTolerance: 0
@@ -445,6 +442,10 @@ devastator:
 		Delay: 240
 		RequiresCondition: overload
 		GrantsCondition: meltdown
+	AmbientSound@onMeltDown:
+		SoundFiles: DEVASTATORMELTDOWN.WAV
+		RequiresCondition: overload
+		Interval: 250
 	AttractsWorms:
 		Intensity: 700
 	ChangesHealth:
@@ -487,11 +488,8 @@ raider:
 	WithMuzzleOverlay:
 	Armament@damage:
 		Weapon: HMGo
-		LocalOffset: 100,0,0
-	Armament@muzzle:
-		Weapon: HMGo_muzzle
-		LocalOffset: 100,0,0
 		MuzzleSequence: muzzle
+		LocalOffset: 100,0,0
 	AttackFrontal:
 		FacingTolerance: 0
 	FireWarheadsOnDeath:

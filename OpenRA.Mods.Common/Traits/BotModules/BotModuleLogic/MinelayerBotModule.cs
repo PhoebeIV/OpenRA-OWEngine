@@ -49,7 +49,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly BitSet<TargetableType> AwayFromEnemyTargetTypes = default;
 
 		[Desc("Minefield location check distance to AwayFromAlliedTargettype and AwayFromEnemyTargettype.",
-			"In addition, if any emeny actor within this range and minefield location is not cancelled,",
+			"In addition, if any enemy actor within this range and minefield location is not cancelled,",
 			"minelayer will try lay mines at the 3/4 path to minefield location")]
 		public readonly int AwayFromCellDistance = 9;
 
@@ -87,8 +87,8 @@ namespace OpenRA.Mods.Common.Traits
 			player = self.Owner;
 			unitCannotBeOrdered = a => a == null || a.IsDead || !a.IsInWorld || a.Owner != player;
 			unitCannotBeOrderedOrIsBusy = a => unitCannotBeOrdered(a) || !a.IsIdle;
-			conflictPositionQueue = new CPos?[MaxPositionCacheLength] { null, null, null, null, null };
-			favoritePositions = new CPos?[MaxPositionCacheLength] { null, null, null, null, null };
+			conflictPositionQueue = new CPos?[MaxPositionCacheLength];
+			favoritePositions = new CPos?[MaxPositionCacheLength];
 		}
 
 		protected override void TraitEnabled(Actor self)
@@ -140,7 +140,7 @@ namespace OpenRA.Mods.Common.Traits
 						if (minelayers.Length == 0)
 							return;
 
-						var enemies = world.Actors.Where(a => IsPreferredEnemyUnit(a)).ToArray();
+						var enemies = world.Actors.Where(IsPreferredEnemyUnit).ToArray();
 						if (enemies.Length == 0)
 							return;
 
@@ -149,7 +149,7 @@ namespace OpenRA.Mods.Common.Traits
 						foreach (var minelayer in minelayers)
 						{
 							var cells = pathFinder.FindPathToTargetCell(
-								minelayer.Actor, new[] { minelayer.Actor.Location }, enemy.Location, BlockedByActor.Immovable, laneBias: false);
+								minelayer.Actor, [minelayer.Actor.Location], enemy.Location, BlockedByActor.Immovable, laneBias: false);
 							if (cells != null && cells.Count != 0)
 							{
 								AIUtils.BotDebug($"{player}: try find a location to lay mine.");
@@ -194,7 +194,7 @@ namespace OpenRA.Mods.Common.Traits
 				foreach (var minelayer in minelayers)
 				{
 					var cells = pathFinder.FindPathToTargetCell(
-						minelayer.Actor, new[] { minelayer.Actor.Location }, minelayingPosition, BlockedByActor.Immovable, laneBias: false);
+						minelayer.Actor, [minelayer.Actor.Location], minelayingPosition, BlockedByActor.Immovable, laneBias: false);
 					if (cells != null && cells.Count != 0)
 					{
 						orderedActors.Add(minelayer.Actor);

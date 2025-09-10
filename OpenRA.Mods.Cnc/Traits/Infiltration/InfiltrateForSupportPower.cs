@@ -66,10 +66,12 @@ namespace OpenRA.Mods.Cnc.Traits
 			TextNotificationsManager.AddTransientLine(self.Owner, info.InfiltratedTextNotification);
 			TextNotificationsManager.AddTransientLine(infiltrator.Owner, info.InfiltrationTextNotification);
 
-			infiltrator.World.AddFrameEndTask(w => w.CreateActor(info.Proxy, new TypeDictionary
-			{
+			infiltrator.Owner.PlayerActor.TraitOrDefault<PlayerExperience>()?.GiveExperience(info.PlayerExperience);
+
+			infiltrator.World.AddFrameEndTask(w => w.CreateActor(info.Proxy,
+			[
 				new OwnerInit(infiltrator.Owner)
-			}));
+			]));
 		}
 	}
 }

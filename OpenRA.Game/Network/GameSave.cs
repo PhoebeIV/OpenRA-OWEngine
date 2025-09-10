@@ -86,22 +86,23 @@ namespace OpenRA.Network
 		// Loaded from file and updated during gameplay
 		public int LastOrdersFrame { get; private set; }
 		public int LastSyncFrame { get; private set; }
-		byte[] lastSyncPacket = Array.Empty<byte>();
+		byte[] lastSyncPacket = [];
 
 		// Loaded from file or set on game start
 		public Session.Global GlobalSettings { get; private set; }
 		public Dictionary<string, Session.Slot> Slots { get; private set; }
 		public Dictionary<string, SlotClient> SlotClients { get; private set; }
-		public Dictionary<int, MiniYaml> TraitData = new();
+		public Dictionary<int, MiniYaml> TraitData = [];
+		public string MapData;
 
 		// Set on game start
-		int[] clientsBySlotIndex = Array.Empty<int>();
+		int[] clientsBySlotIndex = [];
 		int firstBotSlotIndex = -1;
 
 		public GameSave()
 		{
 			LastOrdersFrame = -1;
-			Slots = new Dictionary<string, Session.Slot>();
+			Slots = [];
 		}
 
 		public GameSave(string filepath)
@@ -123,10 +124,10 @@ namespace OpenRA.Network
 				lastSyncPacket = rs.ReadBytes(Order.SyncHashOrderLength);
 
 				var globalSettings = MiniYaml.FromString(rs.ReadLengthPrefixedString(Encoding.UTF8, Connection.MaxOrderLength), $"{filepath}:globalSettings");
-				GlobalSettings = Session.Global.Deserialize(globalSettings[0].Value);
+				GlobalSettings = Session.Global.Deserialize(globalSettings.First().Value);
 
 				var slots = MiniYaml.FromString(rs.ReadLengthPrefixedString(Encoding.UTF8, Connection.MaxOrderLength), $"{filepath}:slots");
-				Slots = new Dictionary<string, Session.Slot>();
+				Slots = [];
 				foreach (var s in slots)
 				{
 					var slot = Session.Slot.Deserialize(s.Value);
@@ -134,12 +135,14 @@ namespace OpenRA.Network
 				}
 
 				var slotClients = MiniYaml.FromString(rs.ReadLengthPrefixedString(Encoding.UTF8, Connection.MaxOrderLength), $"{filepath}:slotClients");
-				SlotClients = new Dictionary<string, SlotClient>();
+				SlotClients = [];
 				foreach (var s in slotClients)
 				{
 					var slotClient = SlotClient.Deserialize(s.Value);
 					SlotClients.Add(slotClient.Slot, slotClient);
 				}
+
+				MapData = rs.ReadLengthPrefixedString(Encoding.UTF8, Connection.MaxOrderLength);
 
 				if (rs.Position != traitDataOffset || rs.ReadInt32() != TraitDataMarker)
 					throw new InvalidDataException("Invalid orasav file");
@@ -155,6 +158,9 @@ namespace OpenRA.Network
 
 		public void StartGame(Session lobbyInfo, MapPreview map)
 		{
+			if (map.Class == MapClassification.Generated)
+				MapData = map.ToBase64String();
+
 			// Game orders are mapped from a client index to the slot that they occupy
 			// Orders from spectators are ignored, which is not a problem in practice
 			// because all immediate orders are also ignored
@@ -166,8 +172,8 @@ namespace OpenRA.Network
 
 			// Perform a deep clone by round-tripping the data
 			GlobalSettings = Session.Global.Deserialize(lobbyInfo.GlobalSettings.Serialize().Value);
-			Slots = new Dictionary<string, Session.Slot>();
-			SlotClients = new Dictionary<string, SlotClient>();
+			Slots = [];
+			SlotClients = [];
 			foreach (var s in lobbyInfo.Slots)
 			{
 				Slots[s.Key] = Session.Slot.Deserialize(s.Value.Serialize().Value);
@@ -305,6 +311,8 @@ namespace OpenRA.Network
 					.Select(s => s.Value.Serialize(s.Key))
 					.ToList();
 				file.WriteLengthPrefixedString(Encoding.UTF8, slotClientNodes.WriteToString());
+
+				file.WriteLengthPrefixedString(Encoding.UTF8, MapData);
 
 				var traitDataOffset = file.Length;
 				file.Write(TraitDataMarker);

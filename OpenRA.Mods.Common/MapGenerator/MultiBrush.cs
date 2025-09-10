@@ -13,7 +13,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text.RegularExpressions;
+using OpenRA.Graphics;
+using OpenRA.Mods.Common.EditorBrushes;
 using OpenRA.Mods.Common.Terrain;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapGenerator
@@ -24,70 +28,247 @@ namespace OpenRA.Mods.Common.MapGenerator
 	/// </summary>
 	public sealed class MultiBrushInfo
 	{
-		public readonly int Weight;
-		public readonly ImmutableArray<string> Actors;
-		public readonly TerrainTile? BackingTile;
-		public readonly ImmutableArray<ushort> Templates;
-		public readonly ImmutableArray<TerrainTile> Tiles;
+		public sealed class ActorInfo
+		{
+			[FieldLoader.Ignore]
+			public readonly string Type;
+			public readonly WVec Offset = new(0, 0, 0);
 
-		// Currently doesn't support specifying offsets. Add this capability if/when needed.
+			public ActorInfo(MiniYaml my)
+			{
+				if (string.IsNullOrEmpty(my.Value))
+					throw new YamlException("Missing actor type");
+
+				Type = my.Value;
+				FieldLoader.Load(this, my);
+			}
+		}
+
+		public sealed class TemplateInfo
+		{
+			[FieldLoader.Ignore]
+			public readonly ushort Type;
+			public readonly CVec Offset = new(0, 0);
+
+			public TemplateInfo(ushort type)
+			{
+				Type = type;
+			}
+
+			public TemplateInfo(MiniYaml my)
+			{
+				if (string.IsNullOrEmpty(my.Value))
+					throw new YamlException("Missing template type");
+
+				if (!Exts.TryParseUshortInvariant(my.Value, out Type))
+					throw new YamlException($"Invalid MultiBrush Template `${my.Value}`");
+
+				FieldLoader.Load(this, my);
+			}
+		}
+
+		public sealed class TileInfo
+		{
+			[FieldLoader.Ignore]
+			public readonly TerrainTile Type;
+			public readonly CVec Offset = new(0, 0);
+
+			public TileInfo(MiniYaml my)
+			{
+				if (string.IsNullOrEmpty(my.Value))
+					throw new YamlException("Missing tile type");
+
+				if (!TerrainTile.TryParse(my.Value, out Type))
+					throw new YamlException($"Invalid MultiBrush Tile `${my.Value}`");
+
+				FieldLoader.Load(this, my);
+			}
+		}
+
+		public readonly int Weight;
+
+		public readonly ImmutableArray<ActorInfo> Actors;
+		public readonly TerrainTile? BackingTile;
+		public readonly ImmutableArray<TemplateInfo> Templates;
+		public readonly ImmutableArray<TileInfo> Tiles;
+		public readonly MultiBrushSegment Segment;
+
+		public MultiBrushInfo(TemplateInfo templateInfo)
+		{
+			Weight = MultiBrush.DefaultWeight;
+			Actors = [];
+			BackingTile = null;
+			Templates = [templateInfo];
+			Tiles = [];
+			Segment = null;
+		}
+
 		public MultiBrushInfo(MiniYaml my)
 		{
 			Weight = MultiBrush.DefaultWeight;
-			var actors = new List<string>();
-			var templates = new List<ushort>();
-			var tiles = new List<TerrainTile>();
+			var actors = new List<ActorInfo>();
+			var templates = new List<TemplateInfo>();
+			var tiles = new List<TileInfo>();
 			foreach (var node in my.Nodes)
 				switch (node.Key.Split('@')[0])
 				{
 					case "Weight":
 						if (!Exts.TryParseInt32Invariant(node.Value.Value, out Weight))
-							throw new YamlException($"Invalid MultiBrush Weight `${node.Value.Value}`");
+							throw new YamlException($"Invalid MultiBrush Weight `{node.Value.Value}`");
 						break;
 					case "Actor":
-						actors.Add(node.Value.Value);
+						actors.Add(new ActorInfo(node.Value));
 						break;
 					case "BackingTile":
 						if (TerrainTile.TryParse(node.Value.Value, out var backingTile))
 							BackingTile = backingTile;
 						else
-							throw new YamlException($"Invalid MultiBrush BackingTile `${node.Value.Value}`");
+							throw new YamlException($"Invalid MultiBrush BackingTile `{node.Value.Value}`");
 						break;
 					case "Template":
-						if (Exts.TryParseUshortInvariant(node.Value.Value, out var template))
-							templates.Add(template);
-						else
-							throw new YamlException($"Invalid MultiBrush Template `${node.Value.Value}`");
+						templates.Add(new TemplateInfo(node.Value));
 						break;
 					case "Tile":
-						if (TerrainTile.TryParse(node.Value.Value, out var tile))
-							Tiles.Add(tile);
-						else
-							throw new YamlException($"Invalid MultiBrush Tile `${node.Value.Value}`");
+						tiles.Add(new TileInfo(node.Value));
+						break;
+					case "Segment":
+						if (Segment != null)
+							throw new YamlException("Multiple MultiBrush Segment definitions");
+						Segment = new MultiBrushSegment(node.Value);
 						break;
 					default:
 						throw new YamlException($"Unrecognized MultiBrush key {node.Key.Split('@')[0]}");
 				}
 
-			Actors = actors.ToImmutableArray();
-			Templates = templates.ToImmutableArray();
-			Tiles = tiles.ToImmutableArray();
+			Actors = [.. actors];
+			Templates = [.. templates];
+			Tiles = [.. tiles];
 		}
 
 		public static ImmutableArray<MultiBrushInfo> ParseCollection(MiniYaml my)
 		{
 			var brushes = new List<MultiBrushInfo>();
 			foreach (var node in my.Nodes)
-				if (node.Key.Split('@')[0] == "MultiBrush")
-					brushes.Add(new MultiBrushInfo(node.Value));
-				else
-					throw new YamlException($"Expected `MultiBrush@*` but got `{node.Key}`");
+			{
+				switch (node.Key.Split('@')[0])
+				{
+					case "MultiBrush":
+						brushes.Add(new MultiBrushInfo(node.Value));
+						break;
+					case "FromTemplates":
+						foreach (var part in node.Value.Value.Split(","))
+						{
+							if (!Exts.TryParseUshortInvariant(part, out var type))
+								throw new YamlException($"Invalid MultiBrush Template `{part}`");
+							brushes.Add(new MultiBrushInfo(new TemplateInfo(type)));
+						}
+
+						break;
+					default:
+						throw new YamlException($"Invalid MultiBrush collection key `{node.Key}`");
+				}
+			}
+
 			return brushes.ToImmutableArray();
 		}
 	}
 
+	/// <summary>
+	/// Information about how certain MultiBrushes (like cliffs, beaches, roads) link together.
+	/// </summary>
+	public sealed class MultiBrushSegment
+	{
+		/// <summary>Start type, including a direction. E.g. "Cliff.R".</summary>
+		[FieldLoader.Require]
+		public readonly string Start;
+
+		/// <summary>
+		/// Inner type. Does not include a direction. E.g. "Cliff".
+		/// A null (absent) inner type implies that both the start and end types can be considered
+		/// valid inner types.
+		/// </summary>
+		public readonly string Inner = null;
+
+		/// <summary>End type, including a direction. E.g. "Cliff.R".</summary>
+		[FieldLoader.Require]
+		public readonly string End;
+
+		/// <summary>
+		/// Point sequence, where points are -X-Y corners of template tiles.
+		/// </summary>
+		[FieldLoader.Ignore]
+		public readonly ImmutableArray<CVec> Points;
+
+		/// <summary>
+		/// Create a Segment from a point sequence and given start, inner, and end types.
+		/// </summary>
+		public MultiBrushSegment(string start, string inner, string end, ImmutableArray<CVec> points)
+		{
+			Start = start;
+			Inner = inner;
+			End = end;
+			Points = points;
+		}
+
+		public MultiBrushSegment(MiniYaml my)
+		{
+			FieldLoader.Load(this, my);
+			{
+				// Unlike FieldLoader.ParseInt2Array, whitespace is ignored.
+				var value = my.NodeWithKey("Points").Value.Value;
+				var parts = Regex.Replace(value, @"\s+", string.Empty)
+					.Split(',', StringSplitOptions.RemoveEmptyEntries);
+				if (parts.Length % 2 != 0)
+					FieldLoader.InvalidValueAction(value, typeof(int2[]), "Points");
+
+				var points = new CVec[parts.Length / 2];
+				for (var i = 0; i < points.Length; i++)
+				{
+					points[i] = new CVec(Exts.ParseInt32Invariant(parts[2 * i]), Exts.ParseInt32Invariant(parts[2 * i + 1]));
+					if (i > 0)
+					{
+						var step = points[i] - points[i - 1];
+						if (Math.Abs(step.X) + Math.Abs(step.Y) != 1)
+							throw new YamlException($"Points sequence {value} has non-unit steps");
+					}
+				}
+
+				Points = [.. points];
+			}
+		}
+
+		public static bool MatchesType(string type, string matcher)
+		{
+			if (type == matcher)
+				return true;
+
+			return type.StartsWith($"{matcher}.", StringComparison.InvariantCulture);
+		}
+
+		public bool HasStartType(string matcher)
+			=> MatchesType(Start, matcher);
+		public bool HasInnerType(string matcher)
+			=> Inner != null
+				? MatchesType(Inner, matcher)
+				: (MatchesType(Start, matcher) || MatchesType(End, matcher));
+		public bool HasEndType(string matcher)
+			=> MatchesType(End, matcher);
+
+		public static Direction TypeDirection(string type)
+		{
+			if (!Enum.TryParse(type.Split('.')[^1], out Direction direction))
+				throw new InvalidOperationException("MultiBrushSegment has invalid direction");
+			return direction;
+		}
+
+		public Direction StartDirection
+			=> TypeDirection(Start);
+		public Direction EndDirection
+			=> TypeDirection(End);
+	}
+
 	/// <summary>A super template that can be used to paint both tiles and actors.</summary>
-	sealed class MultiBrush
+	public sealed class MultiBrush
 	{
 		public const int DefaultWeight = 1000;
 
@@ -106,17 +287,63 @@ namespace OpenRA.Mods.Common.MapGenerator
 			Any = 3,
 		}
 
+		readonly struct TileRange
+		{
+			public readonly ushort Type;
+			public readonly byte MinIndex;
+			public readonly byte MaxIndex;
+
+			public TileRange(ushort type, byte minIndex, byte maxIndex)
+			{
+				Type = type;
+				MinIndex = minIndex;
+				MaxIndex = maxIndex;
+			}
+
+			public TileRange(ushort type, byte index)
+				: this(type, index, index) { }
+
+			public TileRange(TerrainTile tile)
+				: this(tile.Type, tile.Index) { }
+
+			/// <summary>Pick a non-randomized tile.</summary>
+			public TerrainTile DefaultTile => new(Type, MinIndex);
+
+			/// <summary>
+			/// Pick a (possibly randomized) tile. random can be null to fall back to DefaultTile.
+			/// </summary>
+			public TerrainTile Pick(MersenneTwister random)
+			{
+				if (random == null)
+					return DefaultTile;
+
+				return new TerrainTile(Type, (byte)random.Next(MinIndex, MaxIndex + 1));
+			}
+		}
+
 		public int Weight;
-		readonly List<(CVec, TerrainTile)> tiles;
+		readonly List<(CVec XY, TileRange TileRange)> tiles;
 		readonly List<ActorPlan> actorPlans;
+		public MultiBrushSegment Segment { get; private set; }
+
+		// A cache for the shape/footprint of the brush.
+		// Null means the shape is dirty and must be recomputed.
 		CVec[] shape;
 
-		public IEnumerable<(CVec XY, TerrainTile Tile)> Tiles => tiles;
-		public IEnumerable<ActorPlan> ActorPlans => actorPlans;
 		public bool HasTiles => tiles.Count != 0;
 		public bool HasActors => actorPlans.Count != 0;
-		public IEnumerable<CVec> Shape => shape;
-		public int Area => shape.Length;
+		public IEnumerable<CVec> Shape => GetShape();
+
+		/// <summary>Total area covered by the MultiBrush.</summary>
+		public int Area => GetShape().Length;
+
+		/// <summary>
+		/// The CVec of the first cell covered by the MultiBrush. This is the left-most cell in the
+		/// top-row. Note that this does not necessarily correspond to the top-left corner of the
+		/// rectangular bounds of the MultiBrush.
+		/// </summary>
+		public CVec FirstCell => GetShape()[0];
+
 		public Replaceability Contract()
 		{
 			var hasTiles = tiles.Count != 0;
@@ -137,31 +364,45 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public MultiBrush()
 		{
 			Weight = DefaultWeight;
-			tiles = new List<(CVec, TerrainTile)>();
-			actorPlans = new List<ActorPlan>();
-			shape = Array.Empty<CVec>();
+			tiles = [];
+			actorPlans = [];
+			Segment = null;
+			shape = null;
 		}
 
 		MultiBrush(MultiBrush other)
 		{
 			Weight = other.Weight;
-			tiles = new List<(CVec, TerrainTile)>(other.tiles);
-			actorPlans = new List<ActorPlan>(other.actorPlans);
-			shape = other.shape.ToArray();
+			tiles = [.. other.tiles];
+			actorPlans = [.. other.actorPlans];
+			Segment = null;
+			shape = [.. other.shape];
 		}
 
 		public MultiBrush(Map map, MultiBrushInfo info)
 			: this()
 		{
 			WithWeight(info.Weight);
-			foreach (var actor in info.Actors)
-				WithActor(new ActorPlan(map, actor).AlignFootprint());
+			foreach (var actorInfo in info.Actors)
+			{
+				var actor = new ActorPlan(map, actorInfo.Type)
+				{
+					WPosLocation = WPos.Zero + actorInfo.Offset
+				};
+
+				WithActor(actor);
+			}
+
 			if (info.BackingTile != null)
 				WithBackingTile((TerrainTile)info.BackingTile);
-			foreach (var template in info.Templates)
-				WithTemplate(map, template);
-			foreach (var tile in info.Tiles)
-				WithTile(tile);
+
+			foreach (var templateInfo in info.Templates)
+				WithTemplate(map, templateInfo.Type, templateInfo.Offset);
+
+			foreach (var tileInfo in info.Tiles)
+				WithTile(tileInfo.Type, tileInfo.Offset);
+
+			ReplaceSegment(info.Segment);
 		}
 
 		/// <summary>Load a named MultiBrush collection from a map's tileset.</summary>
@@ -195,7 +436,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 			if (xys.Count != 0)
 				shape = xys.OrderBy(xy => (xy.Y, xy.X)).ToArray();
 			else
-				shape = new[] { new CVec(0, 0) };
+				shape = [new CVec(0, 0)];
+		}
+
+		CVec[] GetShape()
+		{
+			if (shape == null)
+				UpdateShape();
+
+			return shape;
 		}
 
 		/// <summary>
@@ -203,7 +452,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// default, it will be auto-offset such that the first tile is
 		/// under (0, 0).
 		/// </summary>
-		public MultiBrush WithTemplate(Map map, ushort templateId, CVec? offset = null)
+		public MultiBrush WithTemplate(Map map, ushort templateId, CVec offset)
 		{
 			var tileset = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
 			if (!tileset.Templates.TryGetValue(templateId, out var templateInfo))
@@ -211,24 +460,24 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return WithTemplate(templateInfo, offset);
 		}
 
-		public MultiBrush WithTemplate(TerrainTemplateInfo templateInfo, CVec? offset = null)
+		public MultiBrush WithTemplate(TerrainTemplateInfo templateInfo, CVec offset)
 		{
 			if (templateInfo.PickAny)
-				throw new ArgumentException("PickAny not supported - create separate MultiBrushes using WithTile instead.");
-			for (var y = 0; y < templateInfo.Size.Y; y++)
-				for (var x = 0; x < templateInfo.Size.X; x++)
-				{
-					var i = y * templateInfo.Size.X + x;
-					if (templateInfo[i] != null)
+			{
+				tiles.Add((offset, new(templateInfo.Id, 0, (byte)(templateInfo.TilesCount - 1))));
+			}
+			else
+			{
+				for (var y = 0; y < templateInfo.Size.Y; y++)
+					for (var x = 0; x < templateInfo.Size.X; x++)
 					{
-						if (offset == null)
-							offset = new CVec(-x, -y);
-						var tile = new TerrainTile(templateInfo.Id, (byte)i);
-						tiles.Add((new CVec(x, y) + (CVec)offset, tile));
+						var i = y * templateInfo.Size.X + x;
+						if (templateInfo[i] != null)
+							tiles.Add((new CVec(x, y) + offset, new(templateInfo.Id, (byte)i)));
 					}
-				}
+			}
 
-			UpdateShape();
+			shape = null;
 			return this;
 		}
 
@@ -236,10 +485,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// Add a single tile, optionally with a given offset. By default, it
 		/// will be positioned under (0, 0).
 		/// </summary>
-		public MultiBrush WithTile(TerrainTile tile, CVec? offset = null)
+		public MultiBrush WithTile(TerrainTile tile, CVec offset)
 		{
-			tiles.Add((offset ?? new CVec(0, 0), tile));
-			UpdateShape();
+			tiles.Add((offset, new(tile)));
+			shape = null;
 			return this;
 		}
 
@@ -247,7 +496,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public MultiBrush WithActor(ActorPlan actor)
 		{
 			actorPlans.Add(actor);
-			UpdateShape();
+			shape = null;
 			return this;
 		}
 
@@ -260,8 +509,17 @@ namespace OpenRA.Mods.Common.MapGenerator
 			if (Area == 0)
 				throw new InvalidOperationException("No area");
 			foreach (var xy in shape)
-				tiles.Add((xy, tile));
+				tiles.Add((xy, new(tile)));
 
+			return this;
+		}
+
+		/// <summary>
+		/// Adds a Segment to this MultiBrush for later use with TilingPath.
+		/// </summary>
+		public MultiBrush ReplaceSegment(MultiBrushSegment segment)
+		{
+			Segment = segment;
 			return this;
 		}
 
@@ -275,45 +533,72 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Add the tiles and actors from another MultiBrush into this one at a given offset.
+		/// (Does not copy segments.)
+		/// </summary>
+		public void MergeFrom(MultiBrush other, CVec at, MapGridType mapGridType)
+		{
+			foreach (var original in other.actorPlans)
+			{
+				var actorPlan = original.Clone();
+				actorPlan.WPosLocation += CellLayerUtils.CVecToWVec(at, mapGridType);
+				actorPlans.Add(actorPlan);
+			}
+
+			foreach (var (xy, tile) in other.tiles)
+				tiles.Add((xy + at, tile));
+
+			shape = null;
+		}
+
+		/// <summary>
 		/// <para>Paint tiles onto the map and/or add actors to actorPlans at the given location.</para>
 		/// <para>contract specifies whether tiles or actors are allowed to be painted.</para>
+		/// <para>An optional MersenneTwister can be provided to vary randomizable elements.</para>
 		/// <para>If nothing could be painted, throws ArgumentException.</para>
 		/// </summary>
-		public void Paint(Map map, List<ActorPlan> actorPlans, CPos paintAt, Replaceability contract)
+		public void Paint(
+			Map map,
+			List<ActorPlan> actorPlans,
+			CPos paintAt,
+			Replaceability contract,
+			MersenneTwister random)
 		{
 			switch (contract)
 			{
 				case Replaceability.None:
 					throw new ArgumentException("Cannot paint: Replaceability.None");
 				case Replaceability.Any:
-					if (this.actorPlans.Count > 0)
-						PaintActors(map, actorPlans, paintAt);
-					else if (tiles.Count > 0)
-						PaintTiles(map, paintAt);
-					else
+					if (this.actorPlans.Count == 0 && tiles.Count == 0)
 						throw new ArgumentException("Cannot paint: no tiles or actors");
+
+					PaintTiles(map, paintAt, random);
+					PaintActors(map, actorPlans, paintAt);
+
 					break;
 				case Replaceability.Tile:
 					if (tiles.Count == 0)
 						throw new ArgumentException("Cannot paint: no tiles");
-					PaintTiles(map, paintAt);
+
+					PaintTiles(map, paintAt, random);
 					PaintActors(map, actorPlans, paintAt);
 					break;
 				case Replaceability.Actor:
 					if (this.actorPlans.Count == 0)
 						throw new ArgumentException("Cannot paint: no actors");
+
 					PaintActors(map, actorPlans, paintAt);
 					break;
 			}
 		}
 
-		void PaintTiles(Map map, CPos paintAt)
+		void PaintTiles(Map map, CPos paintAt, MersenneTwister random)
 		{
 			foreach (var (xy, tile) in tiles)
 			{
 				var mpos = (paintAt + xy).ToMPos(map);
 				if (map.Tiles.Contains(mpos))
-					map.Tiles[mpos] = tile;
+					map.Tiles[mpos] = tile.Pick(random);
 			}
 		}
 
@@ -345,7 +630,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			foreach (var brush in availableBrushes)
 			{
 				if (!brushesByAreaDict.ContainsKey(brush.Area))
-					brushesByAreaDict.Add(brush.Area, new List<MultiBrush>());
+					brushesByAreaDict.Add(brush.Area, []);
 				brushesByAreaDict[brush.Area].Add(brush);
 			}
 
@@ -363,8 +648,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var size = map.MapSize;
 			var replaceMposes = new List<MPos>();
 			var remaining = new CellLayer<bool>(map);
-			for (var v = 0; v < size.Y; v++)
-				for (var u = 0; u < size.X; u++)
+			for (var v = 0; v < size.Height; v++)
+			{
+				for (var u = 0; u < size.Width; u++)
 				{
 					var mpos = new MPos(u, v);
 					if (replace[mpos] != Replaceability.None)
@@ -377,8 +663,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 						remaining[mpos] = false;
 					}
 				}
+			}
 
-			var mposes = new MPos[size.X * size.Y];
+			var mposes = new MPos[size.Width * size.Height];
 			int mposCount;
 
 			void RefreshIndices()
@@ -446,16 +733,95 @@ namespace OpenRA.Mods.Common.MapGenerator
 				foreach (var mpos in mposes)
 				{
 					var brush = brushes[random.PickWeighted(brushWeights)];
-					var paintAt = mpos.ToCPos(map);
+					var paintAt = mpos.ToCPos(map) - brush.FirstCell;
 					var contract = ReserveShape(paintAt, brush.Shape, brush.Contract());
 					if (contract != Replaceability.None)
-						brush.Paint(map, actorPlans, paintAt, contract);
+						brush.Paint(map, actorPlans, paintAt, contract, random);
 
 					remainingQuota -= brushArea;
 					if (remainingQuota <= 0)
 						break;
 				}
 			}
+		}
+
+		/// <summary>
+		/// Create a sparse EditorBlitSource from this MultiBrush. The EditorBlitSource will have
+		/// the minimum bounding CellRegion fully containing all content. An optional
+		/// MersenneTwister can be provided to vary randomizable elements. For actors without a
+		/// preconfigured owner, a default owner can be specified or derived automatically.
+		/// </summary>
+		public EditorBlitSource ToEditorBlitSource(
+			WorldRenderer worldRenderer,
+			MersenneTwister random,
+			PlayerReference defaultActorOwner = null)
+		{
+			var world = worldRenderer.World;
+			var map = world.Map;
+
+			if (defaultActorOwner == null)
+			{
+				var editorActorLayer = world.WorldActor.Trait<EditorActorLayer>();
+				if (editorActorLayer != null)
+					defaultActorOwner = editorActorLayer.Players.Players.Values.First();
+			}
+
+			var players = world.Players.ToDictionary(
+				player => player.InternalName,
+				player => player.PlayerReference);
+
+			var topLeft = new CPos(
+				Shape.Min(cvec => cvec.X),
+				Shape.Min(cvec => cvec.Y));
+			var bottomRight = new CPos(
+				Shape.Max(cvec => cvec.X),
+				Shape.Max(cvec => cvec.Y));
+			var cellRegion = new CellRegion(map.Grid.Type, topLeft, bottomRight);
+
+			var actorPreviews = new Dictionary<string, EditorActorPreview>();
+			for (var i = 0; i < actorPlans.Count; i++)
+			{
+				// A (non-revert) EditorBlitSource's actors' names are generally unimportant beyond
+				// needing to be distinct. They will get renamed when blitting.
+				var name = $"Actor{i}";
+				var actorReference = actorPlans[i].Reference.Clone();
+				var ownerInit = actorReference.Get<OwnerInit>();
+				if (!players.TryGetValue(ownerInit.InternalName, out var owner))
+					owner = defaultActorOwner;
+
+				if (owner == null)
+					throw new InvalidOperationException("MultiBrush actor has invalid (or no) owner and no default available.");
+
+				actorPreviews[name] = new EditorActorPreview(
+					worldRenderer,
+					name,
+					actorReference,
+					owner);
+			}
+
+			var blitTiles =
+				tiles
+					.Where(t => map.Tiles.Contains(CPos.Zero + t.XY))
+					.DistinctBy(t => t.XY)
+					.Select(t => (t.XY, Tile: t.TileRange.Pick(random)))
+					.ToDictionary(
+						t => CPos.Zero + t.XY,
+						t => new BlitTile(t.Tile, default, null, map.Height[CPos.Zero + t.XY]));
+
+			return new EditorBlitSource(
+				cellRegion,
+				actorPreviews,
+				blitTiles);
+		}
+
+		/// <summary>All possible tiles that may be painted by this MultiBrush.</summary>
+		public HashSet<TerrainTile> PossibleTiles()
+		{
+			var possible = new HashSet<TerrainTile>();
+			foreach (var (_, tileRange) in tiles)
+				for (int i = tileRange.MinIndex; i <= tileRange.MaxIndex; i++)
+					possible.Add(new(tileRange.Type, (byte)i));
+			return possible;
 		}
 	}
 }

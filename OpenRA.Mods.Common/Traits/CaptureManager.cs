@@ -66,7 +66,7 @@ namespace OpenRA.Mods.Common.Traits
 		int beingCapturedToken = Actor.InvalidConditionToken;
 		bool enteringCurrentTarget;
 
-		readonly HashSet<Actor> currentCaptors = new();
+		readonly HashSet<Actor> currentCaptors = [];
 
 		public bool BeingCaptured { get; private set; }
 
@@ -189,7 +189,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (target != currentTarget)
 			{
 				if (currentTargetManager != null)
-					CancelCapture(currentTargetManager);
+					CancelCapture(currentTarget, currentTargetManager);
 
 				targetManager.currentCaptors.Add(self);
 				currentTarget = target;
@@ -239,12 +239,11 @@ namespace OpenRA.Mods.Common.Traits
 		/// This method revokes the capturing conditions on the captor and target
 		/// and resets any capturing progress.
 		/// </summary>
-		public void CancelCapture(CaptureManager targetManager)
+		public void CancelCapture(Actor target, CaptureManager targetManager)
 		{
 			if (currentTarget == null)
 				return;
 
-			var target = targetManager.self;
 			foreach (var w in progressWatchers)
 				w.Update(self, self, target, 0, 0);
 
@@ -288,7 +287,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		bool IDisableEnemyAutoTarget.DisableEnemyAutoTarget(Actor self, Actor attacker)
 		{
-			return info.PreventsAutoTarget && currentCaptors.Any(c => attacker.AppearsFriendlyTo(c));
+			return info.PreventsAutoTarget && currentCaptors.Any(attacker.AppearsFriendlyTo);
 		}
 	}
 }

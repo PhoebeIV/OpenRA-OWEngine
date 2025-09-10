@@ -127,7 +127,24 @@ namespace OpenRA.Mods.Common.Activities
 				}
 			}
 
-			// We don't want to allow TakeOff to be cancelled
+			// Return once we are in the pickup state and the pickup activities have completed.
+			return TickChild(self) && state == PickupState.Pickup;
+		}
+
+		public override void Cancel(Actor self, bool keepQueue = false)
+		{
+			base.Cancel(self, keepQueue);
+
+			// We are safe to bail here as base won't set IsCanceling to true if not interruptible.
+			if (!IsInterruptible)
+				return;
+
+			// This nulls carryall storage, so to avoid deleting units make sure it is not called while carrying one.
+			if (carryall.State == Carryall.CarryallState.Reserved)
+				carryall.UnreserveCarryable(self);
+
+			// TakeOff is not interruptible, but this activity is. To deal with it we bail. We transfer
+			// priority both to dispose of this activity and to make sure TakeOff is not disposed with it.
 			if (ChildActivity is TakeOff)
 				ChildHasPriority = true;
 

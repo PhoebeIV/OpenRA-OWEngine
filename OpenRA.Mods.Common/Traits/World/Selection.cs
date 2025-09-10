@@ -26,8 +26,8 @@ namespace OpenRA.Mods.Common.Traits
 		public int Hash { get; private set; }
 		public IReadOnlyCollection<Actor> Actors => actors;
 
-		readonly HashSet<Actor> actors = new();
-		readonly List<Actor> rolloverActors = new();
+		readonly HashSet<Actor> actors = [];
+		readonly List<Actor> rolloverActors = [];
 		World world;
 
 		INotifySelection[] worldNotifySelection;
@@ -179,10 +179,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData(Actor self)
 		{
-			return new List<MiniYamlNode>()
-			{
+			return
+			[
 				new("Selection", FieldSaver.FormatValue(Actors.Select(a => a.ActorID).ToArray()))
-			};
+			];
 		}
 
 		void IGameSaveTraitData.ResolveTraitData(Actor self, MiniYaml data)
@@ -191,7 +191,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (selectionNode != null)
 			{
 				var selected = FieldLoader.GetValue<uint[]>("Selection", selectionNode.Value.Value)
-					.Select(a => self.World.GetActorById(a)).Where(a => a != null);
+					.Select(self.World.GetActorById).Where(a => a != null);
 				Combine(self.World, selected, false, false);
 			}
 		}

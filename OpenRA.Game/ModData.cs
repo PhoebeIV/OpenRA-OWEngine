@@ -12,7 +12,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using OpenRA.FileSystem;
 using OpenRA.Graphics;
@@ -50,7 +49,7 @@ namespace OpenRA
 
 		public ModData(Manifest mod, InstalledMods mods, bool useLoadScreen = false)
 		{
-			Languages = Array.Empty<string>();
+			Languages = [];
 
 			// Take a local copy of the manifest
 			Manifest = new Manifest(mod.Id, mod.Package);
@@ -83,19 +82,19 @@ namespace OpenRA
 
 			var terrainFormat = Manifest.Get<TerrainFormat>();
 			var terrainLoader = ObjectCreator.FindType(terrainFormat.Type + "Loader");
-			var terrainCtor = terrainLoader?.GetConstructor(new[] { typeof(ModData) });
+			var terrainCtor = terrainLoader?.GetConstructor([typeof(ModData)]);
 			if (terrainLoader == null || !terrainLoader.GetInterfaces().Contains(typeof(ITerrainLoader)) || terrainCtor == null)
 				throw new InvalidOperationException($"Unable to find a terrain loader for type '{terrainFormat.Type}'.");
 
-			TerrainLoader = (ITerrainLoader)terrainCtor.Invoke(new[] { this });
+			TerrainLoader = (ITerrainLoader)terrainCtor.Invoke([this]);
 
 			var sequenceFormat = Manifest.Get<SpriteSequenceFormat>();
 			var sequenceLoader = ObjectCreator.FindType(sequenceFormat.Type + "Loader");
-			var sequenceCtor = sequenceLoader?.GetConstructor(new[] { typeof(ModData) });
+			var sequenceCtor = sequenceLoader?.GetConstructor([typeof(ModData)]);
 			if (sequenceLoader == null || !sequenceLoader.GetInterfaces().Contains(typeof(ISpriteSequenceLoader)) || sequenceCtor == null)
 				throw new InvalidOperationException($"Unable to find a sequence loader for type '{sequenceFormat.Type}'.");
 
-			SpriteSequenceLoader = (ISpriteSequenceLoader)sequenceCtor.Invoke(new[] { this });
+			SpriteSequenceLoader = (ISpriteSequenceLoader)sequenceCtor.Invoke([this]);
 
 			Hotkeys = new HotkeyManager(ModFiles, Game.Settings.Keys, Manifest);
 
@@ -141,16 +140,9 @@ namespace OpenRA
 
 		public IEnumerable<string> Languages { get; }
 
-		public Map PrepareMap(string uid)
+		public void PrepareMap(Map map)
 		{
 			LoadScreen?.Display();
-
-			if (MapCache[uid].Status != MapStatus.Available)
-				throw new InvalidDataException($"Invalid map uid: {uid}");
-
-			Map map;
-			using (new Support.PerfTimer("Map"))
-				map = new Map(this, MapCache[uid].Package);
 
 			// Reinitialize all our assets
 			InitializeLoaders(map);
@@ -160,14 +152,12 @@ namespace OpenRA
 			using (new Support.PerfTimer("Map.Music"))
 				foreach (var entry in map.Rules.Music)
 					entry.Value.Load(map);
-
-			return map;
 		}
 
-		public List<MiniYamlNode>[] GetRulesYaml()
+		public MiniYamlNode[][] GetRulesYaml()
 		{
 			var stringPool = new HashSet<string>(); // Reuse common strings in YAML
-			return Manifest.Rules.Select(s => MiniYaml.FromStream(DefaultFileSystem.Open(s), s, stringPool: stringPool)).ToArray();
+			return Manifest.Rules.Select(s => MiniYaml.FromStream(DefaultFileSystem.Open(s), s, stringPool: stringPool).ToArray()).ToArray();
 		}
 
 		public void Dispose()

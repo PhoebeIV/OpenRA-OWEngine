@@ -45,7 +45,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		[ActorReference]
 		[Desc("Actor types that should be treated as veins for adjacency.")]
-		public readonly HashSet<string> VeinholeActors = new();
+		public readonly HashSet<string> VeinholeActors = [];
 
 		void IMapPreviewSignatureInfo.PopulateMapPreviewSignatureCells(Map map, ActorInfo ai, ActorReference s, List<(MPos Uv, Color Color)> destinationBuffer)
 		{
@@ -74,9 +74,9 @@ namespace OpenRA.Mods.Cnc.Traits
 			var terrainInfo = map.Rules.TerrainInfo;
 			var info = terrainInfo.TerrainTypes[terrainInfo.GetTerrainIndex(terrainType)];
 
-			for (var i = 0; i < map.MapSize.X; i++)
+			for (var i = 0; i < map.MapSize.Width; i++)
 			{
-				for (var j = 0; j < map.MapSize.Y; j++)
+				for (var j = 0; j < map.MapSize.Height; j++)
 				{
 					var uv = new MPos(i, j);
 
@@ -140,22 +140,22 @@ namespace OpenRA.Mods.Cnc.Traits
 			{ Adjacency.MinusX | Adjacency.PlusX | Adjacency.MinusY | Adjacency.PlusY, new[] { 45, 46, 47 } },
 		};
 
-		static readonly int[] HeavyIndices = { 48, 49, 50, 51 };
-		static readonly int[] LightIndices = { 52 };
-		static readonly int[] Ramp1Indices = { 53, 54 };
-		static readonly int[] Ramp2Indices = { 55, 56 };
-		static readonly int[] Ramp3Indices = { 57, 58 };
-		static readonly int[] Ramp4Indices = { 59, 60 };
+		static readonly int[] HeavyIndices = [48, 49, 50, 51];
+		static readonly int[] LightIndices = [52];
+		static readonly int[] Ramp1Indices = [53, 54];
+		static readonly int[] Ramp2Indices = [55, 56];
+		static readonly int[] Ramp3Indices = [57, 58];
+		static readonly int[] Ramp4Indices = [59, 60];
 
 		readonly TSVeinsRendererInfo info;
 		readonly World world;
 		readonly IResourceLayer resourceLayer;
 		readonly CellLayer<int[]> renderIndices;
 		readonly CellLayer<Adjacency> borders;
-		readonly HashSet<CPos> dirty = new();
-		readonly Queue<CPos> cleanDirty = new();
-		readonly HashSet<CPos> veinholeCells = new();
-		readonly int maxDensity;
+		readonly HashSet<CPos> dirty = [];
+		readonly Queue<CPos> cleanDirty = [];
+		readonly HashSet<CPos> veinholeCells = [];
+		readonly byte maxDensity;
 		readonly Color veinRadarColor;
 
 		ISpriteSequence veinSequence;

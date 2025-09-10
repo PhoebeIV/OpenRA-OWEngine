@@ -40,25 +40,18 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class ExternalCondition : ITick, INotifyCreated, INotifyOwnerChanged
 	{
-		readonly struct TimedToken
+		readonly struct TimedToken(int token, Actor self, object source, int duration)
 		{
-			public readonly int Expires;
-			public readonly int Token;
-			public readonly object Source;
-
-			public TimedToken(int token, Actor self, object source, int duration)
-			{
-				Token = token;
-				Expires = self.World.WorldTick + duration;
-				Source = source;
-			}
+			public readonly int Expires = self.World.WorldTick + duration;
+			public readonly int Token = token;
+			public readonly object Source = source;
 		}
 
 		public readonly ExternalConditionInfo Info;
-		readonly Dictionary<object, HashSet<int>> permanentTokens = new();
+		readonly Dictionary<object, HashSet<int>> permanentTokens = [];
 
 		// Tokens are sorted on insert/remove by ascending expiry time
-		readonly List<TimedToken> timedTokens = new();
+		readonly List<TimedToken> timedTokens = [];
 		IConditionTimerWatcher[] watchers;
 		int duration;
 		int expires;
@@ -147,7 +140,7 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 			else if (permanent == null)
-				permanentTokens.Add(source, new HashSet<int> { token });
+				permanentTokens.Add(source, [token]);
 			else
 				permanent.Add(token);
 

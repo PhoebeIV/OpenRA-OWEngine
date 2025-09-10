@@ -48,6 +48,41 @@ namespace OpenRA
 		}
 	}
 
+	[AttributeUsage(AttributeTargets.Class)]
+	public sealed class IncludeStaticFluentReferencesAttribute : Attribute
+	{
+		public readonly Type[] Types;
+
+		public IncludeStaticFluentReferencesAttribute(params Type[] types)
+		{
+			Types = types;
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Class)]
+	public sealed class IncludeChromeLogicArgsFluentReferencesAttribute : Attribute
+	{
+		public readonly string[] MethodNames;
+
+		public IncludeChromeLogicArgsFluentReferencesAttribute(params string[] methodNames)
+		{
+			MethodNames = methodNames;
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Field)]
+	public sealed class IncludeFluentReferencesAttribute : Attribute
+	{
+		public readonly LintDictionaryReference DictionaryReference;
+
+		public IncludeFluentReferencesAttribute() { }
+
+		public IncludeFluentReferencesAttribute(LintDictionaryReference dictionaryReference = LintDictionaryReference.None)
+		{
+			DictionaryReference = dictionaryReference;
+		}
+	}
+
 	public class FluentBundle
 	{
 		readonly Linguini.Bundle.FluentBundle bundle;
@@ -111,8 +146,7 @@ namespace OpenRA
 
 		public bool TryGetMessage(string key, out string value, object[] args = null)
 		{
-			if (key == null)
-				throw new ArgumentNullException(nameof(key));
+			ArgumentNullException.ThrowIfNull(key);
 
 			try
 			{
@@ -129,7 +163,7 @@ namespace OpenRA
 						throw new ArgumentException("Expected a comma separated list of name, value arguments " +
 							"but the number of arguments is not a multiple of two", nameof(args));
 
-					fluentArgs = new Dictionary<string, IFluentType>();
+					fluentArgs = [];
 					for (var i = 0; i < args.Length; i += 2)
 					{
 						var argKey = args[i] as string;

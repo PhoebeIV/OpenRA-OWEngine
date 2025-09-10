@@ -211,7 +211,7 @@ namespace OpenRA
 				{
 					var offset = 0;
 					int read;
-					while ((read = sr.ReadBlock(buffer, offset, buffer.Length - offset)) != 0)
+					while ((read = sr.Read(buffer, offset, buffer.Length - offset)) != 0)
 					{
 						offset += read;
 
@@ -278,7 +278,7 @@ namespace OpenRA
 			if (!string.IsNullOrEmpty(text))
 				bytes = encoding.GetBytes(text);
 			else
-				bytes = Array.Empty<byte>();
+				bytes = [];
 
 			s.Write(bytes.Length);
 			s.Write(bytes);

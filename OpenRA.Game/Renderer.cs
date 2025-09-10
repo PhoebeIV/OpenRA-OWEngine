@@ -27,7 +27,7 @@ namespace OpenRA
 		public SpriteRenderer WorldSpriteRenderer { get; }
 		public RgbaSpriteRenderer WorldRgbaSpriteRenderer { get; }
 		public RgbaColorRenderer WorldRgbaColorRenderer { get; }
-		public IRenderer[] WorldRenderers = Array.Empty<IRenderer>();
+		public IRenderer[] WorldRenderers = [];
 		public RgbaColorRenderer RgbaColorRenderer { get; }
 		public SpriteRenderer SpriteRenderer { get; }
 		public RgbaSpriteRenderer RgbaSpriteRenderer { get; }
@@ -46,7 +46,7 @@ namespace OpenRA
 
 		readonly IVertexBuffer<Vertex> tempVertexBuffer;
 		readonly IIndexBuffer quadIndexBuffer;
-		readonly Stack<Rectangle> scissorState = new();
+		readonly Stack<Rectangle> scissorState = [];
 		readonly ITexture worldBufferSnapshot;
 
 		IFrameBuffer screenBuffer;
@@ -107,7 +107,7 @@ namespace OpenRA
 			RgbaSpriteRenderer = new RgbaSpriteRenderer(SpriteRenderer);
 			RgbaColorRenderer = new RgbaColorRenderer(SpriteRenderer);
 
-			tempVertexBuffer = Context.CreateVertexBuffer<Vertex>(TempVertexBufferSize);
+			tempVertexBuffer = Context.CreateEmptyVertexBuffer<Vertex>(TempVertexBufferSize);
 			quadIndexBuffer = Context.CreateIndexBuffer(Util.CreateQuadIndices(TempIndexBufferSize / 6));
 			worldBufferSnapshot = Context.CreateTexture();
 		}
@@ -155,16 +155,9 @@ namespace OpenRA
 			};
 		}
 
-		public void InitializeDepthBuffer(MapGrid mapGrid)
+		public void SetDepthMargin(float depthMargin)
 		{
-			// The depth buffer needs to be initialized with enough range to cover:
-			//  - the height of the screen
-			//  - the z-offset of tiles from MaxTerrainHeight below the bottom of the screen (pushed into view)
-			//  - additional z-offset from actors on top of MaxTerrainHeight terrain
-			//  - a small margin so that tiles rendered partially above the top edge of the screen aren't pushed behind the clip plane
-			// We need an offset of mapGrid.MaximumTerrainHeight * mapGrid.TileSize.Height / 2 to cover the terrain height
-			// and choose to use mapGrid.MaximumTerrainHeight * mapGrid.TileSize.Height / 4 for each of the actor and top-edge cases
-			depthMargin = mapGrid == null || !mapGrid.EnableDepthBuffer ? 0 : mapGrid.TileSize.Height * mapGrid.MaximumTerrainHeight;
+			this.depthMargin = depthMargin;
 		}
 
 		void BeginFrame()
@@ -413,9 +406,9 @@ namespace OpenRA
 			return Context.CreateShader(bindings);
 		}
 
-		public IVertexBuffer<T> CreateVertexBuffer<T>(int length) where T : struct
+		public IVertexBuffer<T> CreateVertexBuffer<T>(T[] data, bool dynamic) where T : struct
 		{
-			return Context.CreateVertexBuffer<T>(length);
+			return Context.CreateVertexBuffer(data, dynamic);
 		}
 
 		public void EnableScissor(Rectangle rect)

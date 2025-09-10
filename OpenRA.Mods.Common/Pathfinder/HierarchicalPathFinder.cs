@@ -103,7 +103,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 		readonly Locomotor locomotor;
 		readonly IActorMap actorMap;
 		readonly Func<CPos, CPos, int> costEstimator;
-		readonly HashSet<int> dirtyGridIndexes = new();
+		readonly HashSet<int> dirtyGridIndexes = [];
 		readonly HashSet<CPos> cellsWithBlockingActor;
 		Grid mapBounds;
 		int gridXs;
@@ -209,7 +209,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 			void InsertConnections(CPos localCell, CPos abstractCell, Func<CPos, CPos, int> costEstimator)
 			{
 				if (!abstractEdges.TryGetValue(abstractCell, out var edges))
-					edges = new List<GraphConnection>();
+					edges = [];
 				changedEdges[localCell] = edges
 					.Select(e => new GraphConnection(e.Destination, costEstimator(localCell, e.Destination)))
 					.Append(new GraphConnection(abstractCell, costEstimator(localCell, abstractCell)));
@@ -239,7 +239,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 					return changedEdge.ToList();
 				if (abstractEdges.TryGetValue(position, out var abstractEdge))
 					return abstractEdge;
-				return new List<GraphConnection>();
+				return [];
 			}
 		}
 
@@ -319,7 +319,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 						false);
 				}
 
-				return new Grid(CPos.Zero, (CPos)map.MapSize, false);
+				return new Grid(CPos.Zero, new CPos(map.MapSize.Width, map.MapSize.Height), false);
 			}
 
 			mapBounds = GetCPosBounds(world.Map);
@@ -414,7 +414,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 				{
 					var src = accessibleCells.First();
 					using (var search = GetLocalPathSearch(
-						null, new[] { src }, src, customCost, null, BlockedByActor.None, false, grid, 100, null, false, null))
+						null, [src], src, customCost, null, BlockedByActor.None, false, grid, 100, null, false, null))
 					{
 						var localCellsInRegion = search.ExpandAll();
 						var abstractCell = AbstractCellForLocalCells(localCellsInRegion, gridLayer);
@@ -641,7 +641,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 		/// Both this and <see cref="ActorCellIsBlocking"/> must be true for a cell to be blocked.
 		/// </para>
 		/// <para>
-		/// This method is dependant on the logic in
+		/// This method is dependent on the logic in
 		/// <see cref="Locomotor.CanMoveFreelyInto(Actor, CPos, SubCell, BlockedByActor, Actor, bool)"/> and
 		/// <see cref="Locomotor.UpdateCellBlocking"/>. This method must be kept in sync with changes in the locomotor
 		/// rules.
@@ -785,7 +785,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 					var adjacentSourceDomain = abstractDomains[adjacentSourceAbstractCell.Value];
 					if (adjacentSourceDomain != targetDomain)
 					{
-						unpathableNodes ??= new List<CPos>();
+						unpathableNodes ??= [];
 						unpathableNodes.Add(adjacentSource);
 						continue;
 					}
@@ -847,11 +847,15 @@ namespace OpenRA.Mods.Common.Pathfinder
 						source.Layer),
 					false);
 
-				pathFinderOverlay?.NewRecording(self, new[] { source }, target);
+				pathFinderOverlay?.NewRecording(self, [source], target);
 
+				// For paths over a short distance, use a heuristic weight of 100% to force the shortest path to be returned.
+				// We do this as players are likely to be sensitive to suboptimal paths over short distances.
+				// So we prefer optimal paths over suboptimal ones.
+				// Since we have a limited search area, we don't mind the additional performance impact.
 				List<CPos> localPath;
 				using (var search = GetLocalPathSearch(
-					self, new[] { source }, target, customCost, ignoreActor, check, laneBias, gridToSearch, heuristicWeightPercentage,
+					self, [source], target, customCost, ignoreActor, check, laneBias, gridToSearch, 100,
 					null,
 					inReverse,
 					pathFinderOverlay?.RecordLocalEdges(self)))
@@ -861,7 +865,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 					return localPath;
 			}
 
-			pathFinderOverlay?.NewRecording(self, new[] { source }, target);
+			pathFinderOverlay?.NewRecording(self, [source], target);
 
 			RebuildDirtyGrids();
 
@@ -875,7 +879,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 			// Call the other overload which can handle this scenario.
 			var sourceAbstractCell = AbstractCellForLocalCell(source);
 			if (sourceAbstractCell == null)
-				return FindPath(self, new[] { source }, target, check, heuristicWeightPercentage, customCost, ignoreActor, inReverse, laneBias, pathFinderOverlay);
+				return FindPath(self, [source], target, check, heuristicWeightPercentage, customCost, ignoreActor, inReverse, laneBias, pathFinderOverlay);
 
 			// If the source and target belong to different domains, there is no path.
 			RebuildDomains();
@@ -889,7 +893,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 
 			// The new edges will be treated as bi-directional.
 			var fullGraph = new AbstractGraphWithInsertedEdges(
-				abstractGraph, sourceEdge != null ? new[] { sourceEdge.Value } : Array.Empty<GraphEdge>(), targetEdge, costEstimator);
+				abstractGraph, sourceEdge != null ? [sourceEdge.Value] : Array.Empty<GraphEdge>(), targetEdge, costEstimator);
 
 			// Determine an abstract path in both directions, for use in a bidirectional search.
 			var estimatedSearchSize = (abstractGraph.Count + 2) / 8;
@@ -905,12 +909,12 @@ namespace OpenRA.Mods.Common.Pathfinder
 					reverseAbstractSearch.ExpandToTarget();
 
 					using (var fromSrc = GetLocalPathSearch(
-						self, new[] { source }, target, customCost, ignoreActor, check, laneBias, null, heuristicWeightPercentage,
+						self, [source], target, customCost, ignoreActor, check, laneBias, null, heuristicWeightPercentage,
 						Heuristic(reverseAbstractSearch, estimatedSearchSize, null, null),
 						inReverse,
 						pathFinderOverlay?.RecordLocalEdges(self)))
 					using (var fromDest = GetLocalPathSearch(
-						self, new[] { target }, source, customCost, ignoreActor, check, laneBias, null, heuristicWeightPercentage,
+						self, [target], source, customCost, ignoreActor, check, laneBias, null, heuristicWeightPercentage,
 						Heuristic(forwardAbstractSearch, estimatedSearchSize, null, null),
 						!inReverse,
 						pathFinderOverlay?.RecordLocalEdges(self)))

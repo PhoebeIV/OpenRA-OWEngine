@@ -47,7 +47,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				.Where(t => t.Value.Length > 0)
 				.ToDictionary(t => t.Key, t => t.Value);
 
-			var modRules = UpdateUtils.LoadModYaml(modData, UpdateUtils.FilterExternalFiles(modData, modData.Manifest.Rules, new HashSet<string>()));
+			var modRules = UpdateUtils.LoadModYaml(modData, UpdateUtils.FilterExternalFiles(modData, modData.Manifest.Rules, []));
 
 			// Include files referenced in maps.
 			foreach (var package in modData.MapCache.EnumerateMapPackagesWithoutCaching())
@@ -57,10 +57,10 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					if (mapStream == null)
 						continue;
 
-					var yaml = new MiniYamlBuilder(null, MiniYaml.FromStream(mapStream, $"{package.Name}:map.yaml", false));
+					var yaml = new MiniYamlBuilder(null, MiniYaml.FromStream(mapStream, $"{package.Name}:map.yaml", false).ToList());
 					var mapRulesNode = yaml.NodeWithKeyOrDefault("Rules");
 					if (mapRulesNode != null)
-						modRules.AddRange(UpdateUtils.LoadExternalMapYaml(modData, mapRulesNode.Value, new HashSet<string>()));
+						modRules.AddRange(UpdateUtils.LoadExternalMapYaml(modData, mapRulesNode.Value, []));
 				}
 			}
 
@@ -76,12 +76,12 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					if (mapStream == null)
 						continue;
 
-					var yaml = new MiniYamlBuilder(null, MiniYaml.FromStream(mapStream, $"{package.Name}:map.yaml", false));
+					var yaml = new MiniYamlBuilder(null, MiniYaml.FromStream(mapStream, $"{package.Name}:map.yaml", false).ToList());
 					var mapRules = new YamlFileSet() { (package, "map.yaml", yaml.Nodes) };
 
 					var mapRulesNode = yaml.NodeWithKeyOrDefault("Rules");
 					if (mapRulesNode != null)
-						mapRules.AddRange(UpdateUtils.LoadInternalMapYaml(modData, package, mapRulesNode.Value, new HashSet<string>()));
+						mapRules.AddRange(UpdateUtils.LoadInternalMapYaml(modData, package, mapRulesNode.Value, []));
 
 					const string Mapftl = "map.ftl";
 					ExtractFromFile(Path.Combine(package.Name, Mapftl), mapRules, traitInfos, () =>
@@ -91,7 +91,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 						{
 							var value = node.NodeValue<string[]>();
 							if (!value.Contains(Mapftl))
-								node.Value.Value = string.Join(", ", value.Concat(new string[] { Mapftl }).ToArray());
+								node.Value.Value = string.Join(", ", value.Concat([Mapftl]).ToArray());
 						}
 						else
 							yaml.Nodes.Add(new MiniYamlNodeBuilder("FluentMessages", Mapftl));
@@ -118,7 +118,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				if (candidates.Count > 0)
 				{
 					var ruleFilename = file.Split('/').Last();
-					groupedCandidates[new HashSet<string>() { ruleFilename }] = new List<ExtractionCandidate>();
+					groupedCandidates[[ruleFilename]] = [];
 					for (var i = 0; i < candidates.Count; i++)
 					{
 						var candidate = candidates[i];
@@ -167,7 +167,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				if (nHash.Key != null)
 					groupedCandidates[nHash.Key].Add(candidate);
 				else
-					groupedCandidates[newHash] = new List<ExtractionCandidate>() { candidate };
+					groupedCandidates[newHash] = [candidate];
 			}
 
 			addAction?.Invoke();
@@ -214,7 +214,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 							foreach (var candidate in grouping)
 							{
 								var type = candidate.Key;
-								build += $"   .{type} = {candidate.Value}\n";
+								build += $"    .{type} = {candidate.Value}\n";
 
 								foreach (var node in candidate.Nodes)
 									node.Value.Value = $"{key}.{type}";
@@ -229,22 +229,13 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			}
 		}
 
-		struct ExtractionCandidate
+		struct ExtractionCandidate(string actor, string key, string value, MiniYamlNodeBuilder node)
 		{
-			public string Filename;
-			public readonly string Actor;
-			public readonly string Key;
-			public readonly string Value;
-			public readonly List<MiniYamlNodeBuilder> Nodes;
-
-			public ExtractionCandidate(string actor, string key, string value, MiniYamlNodeBuilder node)
-			{
-				Filename = null;
-				Actor = actor;
-				Key = key;
-				Value = value;
-				Nodes = new List<MiniYamlNodeBuilder>() { node };
-			}
+			public string Filename = null;
+			public readonly string Actor = actor;
+			public readonly string Key = key;
+			public readonly string Value = value;
+			public readonly List<MiniYamlNodeBuilder> Nodes = [node];
 		}
 
 		static string ToLowerActor(string actor)

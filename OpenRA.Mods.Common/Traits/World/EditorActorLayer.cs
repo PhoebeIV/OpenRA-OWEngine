@@ -42,7 +42,7 @@ namespace OpenRA.Mods.Common.Traits
 	public class EditorActorLayer : IWorldLoaded, ITickRender, IRender, IRadarSignature, ICreatePlayers, IRenderAnnotations
 	{
 		public readonly EditorActorLayerInfo Info;
-		readonly List<EditorActorPreview> previews = new();
+		readonly List<EditorActorPreview> previews = [];
 
 		int2 cellOffset;
 		SpatiallyPartitioned<EditorActorPreview> cellMap;
@@ -59,9 +59,6 @@ namespace OpenRA.Mods.Common.Traits
 
 		void ICreatePlayers.CreatePlayers(World w, MersenneTwister playerRandom)
 		{
-			if (w.Type != WorldType.Editor)
-				return;
-
 			Players = new MapPlayers(w.Map.PlayerDefinitions);
 
 			worldOwner = Players.Players.Select(kvp => kvp.Value).First(p => !p.Playable && p.OwnsWorld);
@@ -70,9 +67,6 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void WorldLoaded(World world, WorldRenderer wr)
 		{
-			if (world.Type != WorldType.Editor)
-				return;
-
 			worldRenderer = wr;
 
 			foreach (var pr in Players.Players.Values)
@@ -81,12 +75,12 @@ namespace OpenRA.Mods.Common.Traits
 			cellOffset = new int2(world.Map.AllCells.Min(c => c.X), world.Map.AllCells.Min((c) => c.Y));
 			var cellOffsetMax = new int2(world.Map.AllCells.Max(c => c.X), world.Map.AllCells.Max((c) => c.Y));
 			var mapCellSize = cellOffsetMax - cellOffset;
+			var ts = world.Map.Rules.TerrainInfo.TileSize;
 			cellMap = new SpatiallyPartitioned<EditorActorPreview>(
-				mapCellSize.X, mapCellSize.Y, Exts.IntegerDivisionRoundingAwayFromZero(Info.BinSize, world.Map.Grid.TileSize.Width));
+				mapCellSize.X, mapCellSize.Y, Exts.IntegerDivisionRoundingAwayFromZero(Info.BinSize, ts.Width));
 
-			var ts = world.Map.Grid.TileSize;
-			var width = world.Map.MapSize.X * ts.Width;
-			var height = world.Map.MapSize.Y * ts.Height;
+			var width = world.Map.MapSize.Width * ts.Width;
+			var height = world.Map.MapSize.Height * ts.Height;
 			screenMap = new SpatiallyPartitioned<EditorActorPreview>(width, height, Info.BinSize);
 
 			foreach (var kv in world.Map.ActorDefinitions)
@@ -99,21 +93,15 @@ namespace OpenRA.Mods.Common.Traits
 
 		void ITickRender.TickRender(WorldRenderer wr, Actor self)
 		{
-			if (wr.World.Type != WorldType.Editor)
-				return;
-
 			foreach (var p in previews)
 				p.Tick();
 		}
 
-		static readonly IEnumerable<IRenderable> NoRenderables = Enumerable.Empty<IRenderable>();
 		public virtual IEnumerable<IRenderable> Render(Actor self, WorldRenderer wr)
 		{
-			if (wr.World.Type != WorldType.Editor)
-				return NoRenderables;
-
-			return PreviewsInScreenBox(wr.Viewport.TopLeft, wr.Viewport.BottomRight)
-				.SelectMany(p => p.Render());
+			foreach (var p in PreviewsInScreenBox(wr.Viewport.TopLeft, wr.Viewport.BottomRight))
+				foreach (var r in p.Render())
+					yield return r;
 		}
 
 		IEnumerable<Rectangle> IRender.ScreenBounds(Actor self, WorldRenderer wr)
@@ -124,9 +112,6 @@ namespace OpenRA.Mods.Common.Traits
 
 		public IEnumerable<IRenderable> RenderAnnotations(Actor self, WorldRenderer wr)
 		{
-			if (wr.World.Type != WorldType.Editor)
-				return NoRenderables;
-
 			return PreviewsInScreenBox(wr.Viewport.TopLeft, wr.Viewport.BottomRight)
 				.SelectMany(p => p.RenderAnnotations());
 		}
@@ -176,7 +161,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			// Fallback to the actor's CenterPosition for the ActorMap if it has no Footprint
 			if (preview.Footprint.Count == 0)
-				return new[] { worldRenderer.World.Map.CellContaining(preview.CenterPosition) };
+				return [worldRenderer.World.Map.CellContaining(preview.CenterPosition)];
 			return preview.Footprint.Keys;
 		}
 
@@ -238,7 +223,7 @@ namespace OpenRA.Mods.Common.Traits
 					Name = $"Multi{index}",
 					Faction = "Random",
 					Playable = true,
-					Enemies = new[] { "Creeps" }
+					Enemies = ["Creeps"]
 				};
 
 				Players.Players.Add(pr.Name, pr);
@@ -340,7 +325,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void PopulateRadarSignatureCells(Actor self, List<(CPos Cell, Color Color)> destinationBuffer)
 		{
-			foreach (var preview in cellMap.Items)
+			foreach (var preview in cellMap.Keys)
 				foreach (var cell in Footprint(preview))
 					destinationBuffer.Add((cell, preview.RadarColor));
 		}
