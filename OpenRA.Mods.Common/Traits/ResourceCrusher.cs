@@ -54,7 +54,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (resourceValue == 0)
 				return;
 
-			var resourceAmount = resourceLayer.RemoveResource(Info.ResourceType, cell, int.MaxValue);
+			var resourceAmount = resourceLayer.RemoveResource(Info.ResourceType, cell, byte.MaxValue);
 			if (resourceAmount == 0)
 				return;
 

@@ -167,7 +167,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			world = w;
 
-			mapsize = world.Map.MapSize.X * world.Map.MapSize.Y;
+			mapsize = world.Map.MapSize.Width * world.Map.MapSize.Height;
 		}
 	}
 }
