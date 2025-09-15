@@ -123,7 +123,8 @@ namespace OpenRA.Mods.Common.Traits
 		// Units that the bot already knows about. Any unit not on this list needs to be given a role.
 		readonly HashSet<Actor> activeUnits = [];
 
-		public List<Squad> Squads = new();
+		public List<Squad> Squads = [];
+		readonly Stack<Squad> squadsPendingUpdate = [];
 		readonly ActorIndex.NamesAndTrait<BuildingInfo> constructionYardBuildings;
 
 		IBot bot;
@@ -350,7 +351,16 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				attackForceTicks = Info.AttackForceInterval;
 				foreach (var s in Squads)
-					s.Update();
+					squadsPendingUpdate.Push(s);
+			}
+
+			// PERF: Spread out squad updates across multiple ticks.
+			var updateCount = Exts.IntegerDivisionRoundingAwayFromZero(squadsPendingUpdate.Count, attackForceTicks);
+			for (var i = 0; i < updateCount; i++)
+			{
+				var squadPendingUpdate = squadsPendingUpdate.Pop();
+				if (squadPendingUpdate.IsValid)
+					squadPendingUpdate.Update();
 			}
 
 			if (--assignRolesTicks <= 0)
