@@ -64,7 +64,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		protected override void TraitEnabled(Actor self)
 		{
-			if (!allowSpawn)
+			if (!allowSpawn || !self.World.Map.Contains(self.Location + Info.SpawnOffset))
 				return;
 
 			allowSpawn = Info.AllowRespawn;
