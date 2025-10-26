@@ -126,8 +126,8 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var ns in worldNotifySelection)
 				ns.SelectionChanged();
 
-			if (world.IsGameOver)
-				return;
+			//if (world.IsGameOver)
+			//	return;
 
 			// Play the selection voice from one of the selected actors
 			// TODO: This probably should only be considering the newly selected actors

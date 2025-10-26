@@ -75,7 +75,7 @@ namespace OpenRA
 		{
 			if (!IsGameOver)
 			{
-				SetPauseState(true);
+				//SetPauseState(true);
 				IsGameOver = true;
 
 				foreach (var t in WorldActor.TraitsImplementing<IGameOver>())

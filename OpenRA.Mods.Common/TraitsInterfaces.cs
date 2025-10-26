@@ -1026,4 +1026,5 @@ namespace OpenRA.Mods.Common.Traits
 		string[] Tilesets { get; }
 		IMapGeneratorSettings GetSettings();
 	}
+
 }

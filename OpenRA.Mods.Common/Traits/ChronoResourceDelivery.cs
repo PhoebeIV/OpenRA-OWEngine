@@ -1,18 +1,18 @@
 #region Copyright & License Information
-/*
- * Copyright 2015- OpenRA.Mods.AS Developers (see AUTHORS)
- * This file is a part of a third-party plugin for OpenRA, which is
- * free software. It is made available to you under the terms of the
- * GNU General Public License as published by the Free Software
- * Foundation. For more information, see COPYING.
+/**
+ * Copyright (c) The OpenRA Combined Arms Developers (see CREDITS).
+ * This file is part of OpenRA Combined Arms, which is free software.
+ * It is made available to you under the terms of the GNU General Public License
+ * as published by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version. For more information, see COPYING.
  */
 #endregion
 
-using OpenRA.Mods.Common.Effects;
+using OpenRA.Mods.CA.Activities;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.AS.Traits
+namespace OpenRA.Mods.CA.Traits
 {
 	[Desc("When returning to a refinery to deliver resources, this actor will teleport if possible.")]
 	public class ChronoResourceDeliveryInfo : ConditionalTraitInfo, Requires<HarvesterInfo>
@@ -24,11 +24,11 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly string Image = null;
 
 		[Desc("Sequence used for the effect played where the harvester jumped from.")]
-		[SequenceReference(nameof(Image), allowNullImage: true)]
+		[SequenceReference("Image")]
 		public readonly string WarpInSequence = null;
 
 		[Desc("Sequence used for the effect played where the harvester jumped to.")]
-		[SequenceReference(nameof(Image), allowNullImage: true)]
+		[SequenceReference("Image")]
 		public readonly string WarpOutSequence = null;
 
 		[Desc("Palette to render the warp in/out sprites in.")]
@@ -47,33 +47,18 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Volume the WarpInSound and WarpOutSound played at.")]
 		public readonly float SoundVolume = 1;
 
-//		[Desc("Should parasites be teleported along?")]
-//		public readonly bool ExposeInfectors = true;
-
-		[GrantedConditionReference]
-		[Desc("The condition to grant during teleport.")]
-		public readonly string Condition = null;
-
-		public override object Create(ActorInitializer init) { return new ChronoResourceDelivery(this); }
+		public override object Create(ActorInitializer init) { return new ChronoResourceDelivery(init.Self, this); }
 	}
 
-	public class ChronoResourceDelivery : ConditionalTrait<ChronoResourceDeliveryInfo>, INotifyHarvestAction, ITick
+	public class ChronoResourceDelivery : ConditionalTrait<ChronoResourceDeliveryInfo>, INotifyHarvestAction, INotifyDockClientMoving, ITick
 	{
+		Actor destRefinery = null;
 		CPos? destination = null;
+		CPos harvestedField;
 		int ticksTillCheck = 0;
-		WAngle dockFacing;
-		IFacing facing;
-		int token = Actor.InvalidConditionToken;
 
-		public ChronoResourceDelivery(ChronoResourceDeliveryInfo info)
+		public ChronoResourceDelivery(Actor self, ChronoResourceDeliveryInfo info)
 			: base(info) { }
-
-		protected override void Created(Actor self)
-		{
-			facing = self.TraitOrDefault<IFacing>();
-
-			base.Created(self);
-		}
 
 		void ITick.Tick(Actor self)
 		{
@@ -90,92 +75,57 @@ namespace OpenRA.Mods.AS.Traits
 				ticksTillCheck--;
 		}
 
-		public void MovingToResources(Actor self, CPos targetCell)
+		void INotifyHarvestAction.MovingToResources(Actor self, CPos targetCell)
 		{
-			Reset(self);
+			Reset();
 		}
 
-		public void MovingToRefinery(Actor self, Actor refineryActor)
+		void INotifyDockClientMoving.MovingToDock(Actor self, Actor hostActor, IDockHost host)
 		{
-			var iao = refineryActor.Trait<IDockHost>();
-			var location = self.World.Map.CellContaining(iao.DockPosition);
-		
-
-			if (destination != null && destination.Value != location)
+			var deliverypos = hostActor.World.Map.CellContaining(hostActor.Trait<IDockHost>().DockPosition);
+			if (destination != null && destination.Value != deliverypos)
 				ticksTillCheck = 0;
 
-			destination = location;
+			harvestedField = self.World.Map.CellContaining(self.CenterPosition);
+
+			destination = deliverypos;
+			destRefinery = hostActor;
 		}
 
-		public void MovementCancelled(Actor self)
+		void INotifyHarvestAction.MovementCancelled(Actor self)
 		{
-			Reset(self);
+			Reset();
 		}
 
-		public void Harvested(Actor self, string resource) { }
-		public void Docked() { }
-		public void Undocked() { }
+		void INotifyDockClientMoving.MovementCancelled(Actor self)
+		{
+			Reset();
+		}
+
+		void INotifyHarvestAction.Harvested(Actor self, string resourceType) { }
 
 		void TeleportIfPossible(Actor self)
 		{
 			// We're already here; no need to interfere.
 			if (self.Location == destination.Value)
 			{
-				Reset(self);
+				Reset();
 				return;
 			}
-
-			if (token == Actor.InvalidConditionToken && !string.IsNullOrWhiteSpace(Info.Condition))
-				token = self.GrantCondition(Info.Condition);
 
 			var pos = self.Trait<IPositionable>();
 			if (pos.CanEnterCell(destination.Value))
 			{
-				var image = Info.Image ?? self.Info.Name;
-
-				var sourcepos = self.CenterPosition;
-
-				if (Info.WarpInSequence != null)
-					self.World.AddFrameEndTask(w => w.Add(new SpriteEffect(sourcepos, w, image, Info.WarpInSequence, Info.Palette)));
-
-				if (Info.WarpInSound != null && (Info.AudibleThroughFog || !self.World.FogObscures(sourcepos)))
-					Game.Sound.Play(SoundType.World, Info.WarpInSound, self.CenterPosition, Info.SoundVolume);
-
-//				if (Info.ExposeInfectors)
-//					foreach (var i in self.TraitsImplementing<IRemoveInfector>())
-//						i.RemoveInfector(self, false);
-
-				self.World.AddFrameEndTask(w =>
-				{
-					self.Trait<IPositionable>().SetPosition(self, destination.Value);
-					self.Generation++;
-
-					var destinationpos = self.CenterPosition;
-
-					if (facing != null)
-						facing.Facing = dockFacing;
-
-					if (Info.WarpOutSequence != null)
-						w.Add(new SpriteEffect(destinationpos, w, image, Info.WarpOutSequence, Info.Palette));
-
-					if (Info.WarpOutSound != null && (Info.AudibleThroughFog || !self.World.FogObscures(sourcepos)))
-						Game.Sound.Play(SoundType.World, Info.WarpOutSound, self.CenterPosition, Info.SoundVolume);
-
-					Reset(self);
-				});
+				self.QueueActivity(false, new ChronoResourceTeleport(destination.Value, Info, harvestedField, destRefinery));
+				Reset();
 			}
 		}
 
-		void Reset(Actor self)
+		void Reset()
 		{
 			ticksTillCheck = 0;
 			destination = null;
-
-			self.World.AddFrameEndTask(w =>
-			{
-				if (token != Actor.InvalidConditionToken)
-					token = self.RevokeCondition(token);
-			});
+			destRefinery = null;
 		}
 	}
 }

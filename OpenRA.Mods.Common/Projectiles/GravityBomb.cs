@@ -50,7 +50,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		[Desc("Value added to Velocity every tick.")]
 		public readonly WVec Acceleration = new(0, 0, -15);
-	
+
 		[Desc("Type defined for point-defense logic.")]
 		public readonly string PointDefenseType = null;
 
@@ -103,7 +103,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 			if (!string.IsNullOrEmpty(info.PointDefenseType))
 			{
-				var shouldExplode = world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType));
+				var shouldExplode = world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType, args));
 				if (shouldExplode)
 				{
 					var warheadArgs = new WarheadArgs(args)

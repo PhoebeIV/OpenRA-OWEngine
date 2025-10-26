@@ -10,6 +10,8 @@
 #endregion
 
 using System.Collections.Generic;
+using OpenRA.GameRules;
+using OpenRA.Graphics;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -21,10 +23,16 @@ namespace OpenRA.Mods.Common.Traits
 		void RemoveInfector(Actor self, bool kill, AttackInfo e = null);
 	}
 
+
 	[RequireExplicitImplementation]
 	public interface IPointDefense
 	{
-		bool Destroy(WPos position, Player attacker, string type);
+		bool Destroy(WPos position, Player attacker, string type, ProjectileArgs args);
+	}
+
+	public interface INotifyPointDefenseHit
+	{
+		void Hit(int damagePrevented);
 	}
 
 	[RequireExplicitImplementation]
