@@ -52,6 +52,9 @@ namespace OpenRA.Mods.Common.Traits
 		[FluentReference(optional: true)]
 		public readonly string LevelUpTextNotification = null;
 
+		[Desc("Reset experience if transformed into an actor with this trait?")]
+		public readonly bool ResetExperienceOnTransform = false;
+
 		public override object Create(ActorInitializer init) { return new GainsExperience(init, this); }
 	}
 
@@ -147,7 +150,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		void ITransformActorInitModifier.ModifyTransformActorInit(Actor self, TypeDictionary init)
 		{
-			init.Add(new ExperienceInit(info, Experience));
+			if (!info.ResetExperienceOnTransform)
+				init.Add(new ExperienceInit(info, Experience));
 		}
 	}
 
