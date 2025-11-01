@@ -109,7 +109,7 @@ namespace OpenRA.Mods.Common.Traits
 		IBotRequestUnitProduction[] requestUnitProduction;
 		IBotSuggestRefineryProduction[] suggestRefineryProduction;
 
-		readonly Dictionary<Actor, CPos> activeMCVs = [];
+		readonly Dictionary<Actor, CPos?> activeMCVs = [];
 
 		PathFinder pathfinder;
 		ResourceMapBotModule resourceMapModule;
@@ -522,7 +522,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (firstTick)
 			{
-				resourceMapModule = bot.Player.PlayerActor.TraitsImplementing<ResourceMapBotModule>().First(t => t.IsTraitEnabled());
+				resourceMapModule = bot.Player.PlayerActor.TraitsImplementing<ResourceMapBotModule>().FirstOrDefault(t => t.IsTraitEnabled());
 				SwitchExpansionMode(Info.InitialExpansionMode);
 
 				pathDistanceSquareFactor = resourceMapModule.GetIndiceRowCount() * resourceMapModule.GetIndiceRowCount()
@@ -667,7 +667,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (desiredLocation == null)
 					return;
 
-				activeMCVs[mcv] = checkloc.Value;
+				activeMCVs[mcv] = checkloc;
 				if (resLoc != null)
 				{
 					foreach (var srp in suggestRefineryProduction)
