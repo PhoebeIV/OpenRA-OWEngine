@@ -126,7 +126,6 @@ namespace OpenRA.Mods.RA.Traits
 			self.World.AddFrameEndTask(world =>
 			{
 				PlayLaunchSounds();
-				onSuccess();
 
 				if (info.CameraActor != null)
 				{
