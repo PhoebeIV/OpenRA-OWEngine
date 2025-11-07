@@ -22,7 +22,9 @@ namespace OpenRA.Mods.Common.Traits
 	public class GrantExternalConditionPowerOWInfo : SupportPowerInfo
 	{
 		[FieldLoader.Require]
-		[Desc("The condition to apply. Must be included in the target actor's ExternalConditions list.")]
+		[Desc("The condition to apply. Must be included in the target actor's ExternalConditions list.",
+		"This version checks for a NegativeCondition, if the actor can accept a NegativeCondition, then it will not show ",
+		" the coloured selection decoration.")]
 		public readonly string Condition = null;
 
 		public readonly string NegativeCondition = null;

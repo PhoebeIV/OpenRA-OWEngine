@@ -21,6 +21,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.RA.Traits
 {
+	[Desc("Drop actors from the sky in the targeted location. OW version allows the actors to land on occupied spaces.")]
 	public class DropPodsPowerOWInfo : SupportPowerInfo, IRulesetLoaded
 	{
 		[FieldLoader.Require]

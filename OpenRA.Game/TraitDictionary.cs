@@ -81,8 +81,8 @@ namespace OpenRA
 
 		static void CheckDestroyed(Actor actor)
 		{
-			// if (actor.Disposed)
-			// 	throw new InvalidOperationException($"Attempted to get trait from destroyed object ({actor})");
+			if (actor.Disposed)
+				throw new InvalidOperationException($"Attempted to get trait from destroyed object ({actor})");
 		}
 
 		public T Get<T>(Actor actor)

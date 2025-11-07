@@ -16,7 +16,8 @@ namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("A special case trait that re-grants a timed external condition when this actor transforms.",
 		"This trait does not work with permanently granted external conditions.",
-		"This trait changes the external condition source, so cannot be used for conditions that may later be revoked")]
+		"This trait changes the external condition source, so cannot be used for conditions that may later be revoked",
+		"This version allows this trait to be used on actors without the Transform trait, but transform with another trait.")]
 	public class TransferTimedExternalConditionOnTransformOWInfo : TraitInfo
 	{
 		[FieldLoader.Require]
