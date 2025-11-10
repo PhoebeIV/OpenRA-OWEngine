@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks.Dataflow;
 
 namespace OpenRA.Traits
 {
@@ -166,8 +167,12 @@ namespace OpenRA.Traits
 						return terrainCenterPosition;
 					case TargetType.Invalid:
 					default:
+					{
+						Log.Write("debug", "Attempting to query the position of an invalid Target");
 						return terrainCenterPosition;
+
 						// throw new InvalidOperationException("Attempting to query the position of an invalid Target");
+					}
 				}
 			}
 		}

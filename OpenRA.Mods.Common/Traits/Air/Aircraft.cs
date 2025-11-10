@@ -872,7 +872,11 @@ namespace OpenRA.Mods.Common.Traits
 		public void AddInfluence((CPos, SubCell)[] landingCells)
 		{
 			if (HasInfluence())
+			{
+				Log.Write("debug",
+					$"Cannot {nameof(AddInfluence)} until previous influence is removed with {nameof(RemoveInfluence)}, at  ({landingCells}), caused by ({self})");
 				RemoveInfluence();
+			}
 
 			this.landingCells = landingCells;
 			if (self.IsInWorld)

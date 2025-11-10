@@ -1167,10 +1167,10 @@ namespace OpenRA.Mods.Common.Pathfinder
 						}
 					}
 
-//					if (maybeAbstractCell == null)
-//						throw new Exception(
-//							"The abstract path should never be searched for an unreachable point. " +
-//							$"Cell {cell} failed lookup for an abstract cell.");
+					if (maybeAbstractCell == null)
+						Log.Write("debug",
+							"The abstract path should never be searched for an unreachable point. " +
+							$"Cell {cell} failed lookup for an abstract cell.");
 				}
 
 				var abstractCell = maybeAbstractCell.Value;
@@ -1180,10 +1180,10 @@ namespace OpenRA.Mods.Common.Pathfinder
 				if (info.Status != CellStatus.Closed)
 				{
 					abstractSearch.TargetPredicate = c => c == abstractCell;
-//					if (!abstractSearch.ExpandToTarget())
-//						throw new Exception(
-//							"The abstract path should never be searched for an unreachable point. " +
-//							$"Abstract cell {abstractCell} failed to route to abstract cell.");
+					if (!abstractSearch.ExpandToTarget())
+						Log.Write("debug",
+							"The abstract path should never be searched for an unreachable point. " +
+							$"Abstract cell {abstractCell} failed to route to abstract cell.");
 					info = graph[abstractCell];
 				}
 

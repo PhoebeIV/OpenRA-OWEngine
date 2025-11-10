@@ -111,6 +111,9 @@ namespace OpenRA.Mods.Common.Traits
 			if (attackingPlayer == null)
 				return;
 
+			if (!self.World.Map.Contains(self.Location + Info.Offset))
+				return;
+
 			var defeated = self.Owner.WinState == WinState.Lost;
 			if (defeated && !Info.SpawnAfterDefeat)
 				return;
