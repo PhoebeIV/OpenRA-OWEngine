@@ -46,7 +46,7 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 			ticks = info.Duration;
 		}
-		void INotifyBuildingPlaced.BuildingPlaced(Actor self)
+		void INotifyBuildingPlaced.BuildingPlaced(Actor self, Actor building)
 		{
 			if (token == Actor.InvalidConditionToken)
 				token = self.GrantCondition(info.Condition);
