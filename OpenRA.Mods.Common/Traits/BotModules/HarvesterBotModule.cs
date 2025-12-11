@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
@@ -24,10 +25,10 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		[Desc("Actor types that are considered harvesters. If harvester count drops below RefineryTypes count, a new harvester is built.",
 			"Leave empty to disable harvester replacement. Currently only needed by harvester replacement system.")]
-		public readonly HashSet<string> HarvesterTypes = [];
+		public readonly FrozenSet<string> HarvesterTypes = FrozenSet<string>.Empty;
 
 		[Desc("Actor types that are counted as refineries. Currently only needed by harvester replacement system.")]
-		public readonly HashSet<string> RefineryTypes = [];
+		public readonly FrozenSet<string> RefineryTypes = FrozenSet<string>.Empty;
 
 		[Desc("Interval (in ticks) between giving out orders to idle harvesters.")]
 		public readonly int ScanForIdleHarvestersInterval = 50;
@@ -225,7 +226,7 @@ namespace OpenRA.Mods.Common.Traits
 					attraction -= indiceSideLengthSquare << 4;
 				else
 				{
-					var (indiceCount, nearbyEnemyBase, nearbyEnemy) = resourceMapModule.GetNearbyIndicesThreat(i);
+					var (indiceCount, nearbyEnemy, nearbyEnemyBase) = resourceMapModule.GetNearbyIndicesThreat(i);
 					if (nearbyEnemyBase + nearbyEnemy > 0)
 						attraction -= indiceSideLengthSquare >> 5;
 				}

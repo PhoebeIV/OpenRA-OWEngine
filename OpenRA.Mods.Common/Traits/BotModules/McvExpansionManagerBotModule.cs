@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Traits;
@@ -23,13 +24,13 @@ namespace OpenRA.Mods.Common.Traits
 	public class McvExpansionManagerBotModuleInfo : ConditionalTraitInfo, Requires<ResourceMapBotModuleInfo>, NotBefore<ResourceMapBotModuleInfo>
 	{
 		[Desc("Actor types that are considered MCVs (deploy into base builders).")]
-		public readonly HashSet<string> McvTypes = [];
+		public readonly FrozenSet<string> McvTypes = FrozenSet<string>.Empty;
 
 		[Desc("Actor types that are considered construction yards (base builders).")]
-		public readonly HashSet<string> ConstructionYardTypes = [];
+		public readonly FrozenSet<string> ConstructionYardTypes = FrozenSet<string>.Empty;
 
 		[Desc("Actor types that are able to produce MCVs.")]
-		public readonly HashSet<string> McvFactoryTypes = [];
+		public readonly FrozenSet<string> McvFactoryTypes = FrozenSet<string>.Empty;
 
 		[Desc("Try to maintain at least this many ConstructionYardTypes, build an MCV if number is below this.")]
 		public readonly int MinimumConstructionYardCount = 1;
@@ -290,7 +291,7 @@ namespace OpenRA.Mods.Common.Traits
 			 *
 			 * 2). the weight of friendly construction yard within range: -indiceSideLengthSquare. If it belongs to an ally, -indiceSideLengthSquare/2.
 			 *
-			 * 3). the weight of enemy within range: -indiceSideLengthSquare*16 for base building, otherwise -indiceSideLengthSquare/64
+			 * 3). the weight of enemy within range: -indiceSideLengthSquare*8 for base building, otherwise -indiceSideLengthSquare/64
 			 *
 			 * 4). the weight of friendly refinery within range (not for CheckBase mode): -indiceSideLengthSquare. If it belongs to an ally, -indiceSideLengthSquare/2.
 			 *
@@ -503,17 +504,17 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			var baseIndice = resourceMapModule.GetIndice(index);
 
-			var (indiceCount, nearbyEnemyBaseThreat, nearbyEnemyThreat) = resourceMapModule.GetNearbyIndicesThreat(index);
+			var (indiceCount, nearbyEnemyThreat, nearbyEnemyBaseThreat) = resourceMapModule.GetNearbyIndicesThreat(index);
 
 			var indiceEnemyBaseThreat = Math.Max(baseIndice.EnemyBaseCount - baseIndice.FriendlyBaseCount, 0);
 
 			var indiceEnemyUnitThreat = Math.Max(baseIndice.EnemyUnitCount - baseIndice.FriendlyUnitCount, 0);
 
 			if (indiceCount == 0)
-				return (indiceEnemyUnitThreat * indiceSideLengthSquare >> 6) + (indiceEnemyBaseThreat * indiceSideLengthSquare << 4);
+				return (indiceEnemyUnitThreat * indiceSideLengthSquare >> 6) + (indiceEnemyBaseThreat * indiceSideLengthSquare << 3);
 
-			return ((indiceEnemyUnitThreat + nearbyEnemyThreat / indiceCount) * indiceSideLengthSquare >> 6) +
-							((indiceEnemyBaseThreat + nearbyEnemyBaseThreat / indiceCount) * indiceSideLengthSquare << 4);
+			return ((indiceEnemyUnitThreat * indiceSideLengthSquare + nearbyEnemyThreat * indiceSideLengthSquare / indiceCount) >> 6) +
+							((indiceEnemyBaseThreat * indiceSideLengthSquare + nearbyEnemyBaseThreat * indiceSideLengthSquare / indiceCount) << 3);
 		}
 
 		void IBotTick.BotTick(IBot bot)

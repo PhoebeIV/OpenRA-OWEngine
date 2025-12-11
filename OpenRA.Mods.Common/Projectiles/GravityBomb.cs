@@ -11,6 +11,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections.Immutable;
 using OpenRA.GameRules;
 using OpenRA.Graphics;
 using OpenRA.Primitives;
@@ -26,7 +27,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		[SequenceReference(nameof(Image), allowNullImage: true)]
 		[Desc("Loop a randomly chosen sequence of Image from this list while falling.")]
-		public readonly string[] Sequences = ["idle"];
+		public readonly ImmutableArray<string> Sequences = ["idle"];
 
 		[SequenceReference(nameof(Image), allowNullImage: true)]
 		[Desc("Sequence to play when launched. Skipped if null or empty.")]
