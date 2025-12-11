@@ -9,17 +9,14 @@
  */
 #endregion
 
-using OpenRA.Traits;
+using System;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA
 {
-	[Desc("The actor is always considered visible for targeting and rendering purposes.")]
-	public class AlwaysVisibleInfo : TraitInfo<AlwaysVisible>, IDefaultVisibilityInfo { }
-	public class AlwaysVisible : IDefaultVisibility
+	// Mirrors DescriptionAttribute from System.ComponentModel but we don't want to have to use that everywhere.
+	[AttributeUsage(AttributeTargets.All)]
+	public sealed class DescAttribute(params string[] lines) : Attribute
 	{
-		public bool IsVisible(Actor self, Player byPlayer)
-		{
-			return true;
-		}
+		public readonly string[] Lines = lines;
 	}
 }

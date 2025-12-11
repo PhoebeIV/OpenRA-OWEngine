@@ -12,8 +12,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.EditorBrushes
 {
@@ -98,17 +100,20 @@ namespace OpenRA.Mods.Common.EditorBrushes
 			var previews = new Dictionary<string, EditorActorPreview>();
 			var tiles = new Dictionary<CPos, BlitTile>();
 
-			foreach (var cell in region.CellCoords)
+			if (blitFilters.HasFlag(MapBlitFilters.Terrain) || blitFilters.HasFlag(MapBlitFilters.Resources))
 			{
-				if (!mapTiles.Contains(cell) || (mask != null && !mask.Contains(cell)))
-					continue;
+				foreach (var cell in region.CellCoords)
+				{
+					if (!mapTiles.Contains(cell) || (mask != null && !mask.Contains(cell)))
+						continue;
 
-				tiles.Add(
-					cell,
-					new BlitTile(mapTiles[cell],
-					mapResources[cell],
-					resourceLayer?.GetResource(cell),
-					mapHeight[cell]));
+					tiles.Add(
+						cell,
+						new BlitTile(mapTiles[cell],
+						mapResources[cell],
+						resourceLayer?.GetResource(cell),
+						mapHeight[cell]));
+				}
 			}
 
 			if (blitFilters.HasFlag(MapBlitFilters.Actors))
@@ -130,8 +135,7 @@ namespace OpenRA.Mods.Common.EditorBrushes
 			if (blitFilters.HasFlag(MapBlitFilters.Actors))
 			{
 				// Clear any existing actors in the paste cells.
-				var regionActors = editorActorLayer.PreviewsInCellRegion(blitRegion.CellCoords).ToList();
-
+				//
 				// revertBlitSource's mask may be a superset of the commitBlitSource's mask if
 				// - Its a sparse blit; and
 				// - The revert actors removed by the commit are partially outside of the commit mask.
@@ -146,9 +150,8 @@ namespace OpenRA.Mods.Common.EditorBrushes
 				// This means we use the commit mask, not the revert one.
 				var commitBlitVec = blitPosition - commitBlitSource.CellRegion.TopLeft;
 				var mask = GetBlitSourceMask(commitBlitSource, commitBlitVec);
-				foreach (var regionActor in regionActors)
-					if (regionActor.Footprint.Any(kv => mask.Contains(kv.Key)))
-						editorActorLayer.Remove(regionActor);
+				using (new PerfTimer("RemoveActors", 1))
+					editorActorLayer.RemoveRegion(blitRegion.CellCoords, mask);
 			}
 
 			foreach (var tileKeyValuePair in source.Tiles)
@@ -172,8 +175,11 @@ namespace OpenRA.Mods.Common.EditorBrushes
 
 				if (blitFilters.HasFlag(MapBlitFilters.Resources) &&
 					resourceLayerContents.HasValue &&
-					!string.IsNullOrWhiteSpace(resourceLayerContents.Value.Type))
+					!string.IsNullOrWhiteSpace(resourceLayerContents.Value.Type) &&
+					resourceLayer.CanAddResource(resourceLayerContents.Value.Type, position))
+				{
 					resourceLayer.AddResource(resourceLayerContents.Value.Type, position, resourceLayerContents.Value.Density);
+				}
 			}
 
 			if (blitFilters.HasFlag(MapBlitFilters.Actors))
@@ -181,12 +187,13 @@ namespace OpenRA.Mods.Common.EditorBrushes
 				if (isRevert)
 				{
 					// For reverts, just place the original actors back exactly how they were.
-					foreach (var actor in source.Actors.Values)
-						editorActorLayer.Add(actor);
+					using (new PerfTimer("AddActors", 1))
+						editorActorLayer.AddRange(source.Actors.Values.ToArray().AsSpan());
 				}
 				else
 				{
 					// Create copies of the original actors, update their locations, and place.
+					var copies = new List<ActorReference>(source.Actors.Count);
 					foreach (var actorKeyValuePair in source.Actors)
 					{
 						var copy = actorKeyValuePair.Value.Export();
@@ -201,8 +208,11 @@ namespace OpenRA.Mods.Common.EditorBrushes
 							copy.Add(new LocationInit(actorPosition));
 						}
 
-						editorActorLayer.Add(copy);
+						copies.Add(copy);
 					}
+
+					using (new PerfTimer("AddActors", 1))
+						editorActorLayer.AddRange(CollectionsMarshal.AsSpan(copies));
 				}
 			}
 		}
@@ -216,13 +226,11 @@ namespace OpenRA.Mods.Common.EditorBrushes
 			var world = wr.World;
 			var map = world.Map;
 
-			var terrainRenderer = world.WorldActor.Trait<ITiledTerrainRenderer>();
-			var resourceRenderers = world.WorldActor.TraitsImplementing<IResourceRenderer>().ToArray();
-
 			var wOffset = map.CenterOfCell(CPos.Zero + offset) - map.CenterOfCell(CPos.Zero);
 
 			if (filters.HasFlag(MapBlitFilters.Terrain))
 			{
+				var terrainRenderer = world.WorldActor.Trait<ITiledTerrainRenderer>();
 				foreach (var (cpos, tile) in blitSource.Tiles)
 				{
 					var preview =
@@ -237,16 +245,22 @@ namespace OpenRA.Mods.Common.EditorBrushes
 
 			if (filters.HasFlag(MapBlitFilters.Resources))
 			{
-				foreach (var (cpos, tile) in blitSource.Tiles)
+				var resourceRenderers = world.WorldActor.TraitsImplementing<IResourceRenderer>().ToArray();
+				var resourceLayer = world.WorldActor.Trait<IResourceLayer>();
+				foreach (var (pos, tile) in blitSource.Tiles)
 				{
 					if (tile.ResourceLayerContents == null || tile.ResourceLayerContents.Value.Type == null)
+						continue;
+
+					var cPos = pos + offset;
+					if (!filters.HasFlag(MapBlitFilters.Terrain) && !resourceLayer.CanAddResource(tile.ResourceLayerContents.Value.Type, cPos))
 						continue;
 
 					var preview = resourceRenderers
 						.SelectMany(r => r.RenderPreview(
 							wr,
 							tile.ResourceLayerContents.Value.Type,
-							map.CenterOfCell(cpos + offset)));
+							map.CenterOfCell(cPos)));
 					foreach (var renderable in preview)
 						yield return renderable;
 				}
@@ -310,6 +324,11 @@ namespace OpenRA.Mods.Common.EditorBrushes
 		public int TileCount()
 		{
 			return commitBlitSource.Tiles.Count;
+		}
+
+		public int ActorCount()
+		{
+			return commitBlitSource.Actors.Count;
 		}
 	}
 }

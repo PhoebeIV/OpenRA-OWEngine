@@ -165,7 +165,6 @@ label-mission-accomplished = Accomplished
 label-mission-failed = Failed
 
 ## GameInfoStatsLogic
-label-client-state-disconnected = Gone
 label-mute-player = Mute this player
 label-unmute-player = Unmute this player
 button-kick-player = Kick this player
@@ -758,6 +757,9 @@ description-path-debug-overlay = toggles a visualization of path searching.
 ## TerrainGeometryOverlay
 description-terrain-geometry-overlay = toggles the terrain geometry overlay.
 
+## ActorMapOverlay
+description-actor-map-overlay = toggles the actor map overlay.
+
 ## MapOptions, MissionBrowserLogic
 options-game-speed =
     .slowest = Slowest
@@ -782,11 +784,9 @@ notification-time-limit-expired = Time limit has expired.
 notification-added-actor = Added { $name } ({ $id })
 
 ## EditorCopyPasteBrush
-notification-copied-tiles =
-    { $amount ->
-       [one] Copied one tile
-      *[other] Copied { $amount } tiles
-    }
+notification-copied-tiles = Copied { $tiles } tiles
+notification-copied-actors = Copied { $actors } actors
+notification-copied-tiles-actors = Copied { $tiles } tiles and { $actors } actors
 
 ## EditorDefaultBrush
 notification-selected-area = Selected area { $x },{ $y } ({ $width },{ $height })
@@ -799,9 +799,9 @@ notification-moved-actor = Moved { $id } from { $x1 },{ $y1 } to { $x2 },{ $y2 }
 
 ## EditorResourceBrush
 notification-added-resource =
-    { $amount ->
+    { $count ->
        [one] Added one cell of { $type }
-      *[other] Added { $amount } cells of { $type }
+      *[other] Added { $count } cells of { $type }
     }
 
 ## EditorTileBrush
@@ -809,18 +809,31 @@ notification-added-tile = Added tile { $id }
 notification-filled-tile = Filled with tile { $id }
 
 ## EditorMarkerLayerBrush
+notification-added-marker-tiles-markers =
+    .red = red
+    .orange = orange
+    .yellow = yellow
+    .green = green
+    .cyan = cyan
+    .blue = blue
+    .purple = purple
+    .magenta = magenta
 notification-added-marker-tiles =
-    { $amount ->
-       [one] Added one marker tile of type { $type }
-      *[other] Added { $amount } marker tiles of type { $type }
+    { $count ->
+       [one] Added { $type } marker tile
+      *[other] Added { $count } { $type } marker tiles
     }
 notification-removed-marker-tiles =
-    { $amount ->
-       [one] Removed one marker tile
-      *[other] Removed { $amount } marker tiles
+    { $count ->
+       [one] Removed marker tile
+      *[other] Removed { $count } marker tiles
     }
-notification-cleared-selected-marker-tiles = Cleared { $amount } marker tiles of type { $type }
-notification-cleared-all-marker-tiles = Cleared { $amount } marker tiles
+notification-cleared-selected-marker-tiles =
+    { $count ->
+       [one] Cleared { $type } marker tile
+      *[other] Cleared { $count } { $type } marker tiles
+    }
+notification-cleared-all-marker-tiles = Cleared { $count } marker tiles
 
 ## EditorActionManager
 notification-opened = Opened
@@ -846,6 +859,7 @@ notification-desync-compare-logs = Out of sync in frame { $frame }.
 ## WidgetUtils
 label-win-state-won = Won
 label-win-state-lost = Lost
+label-client-state-disconnected = Gone
 
 ## Player
 enumerated-bot-name =

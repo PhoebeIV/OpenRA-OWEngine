@@ -62,19 +62,22 @@ engineer:
 
 repair_pad:
 	Buildable:
-		Prerequisites: heavy_factory, upgrade.heavy
+		Prerequisites: heavy_factory
 
 mcv:
 	Buildable:
-		Prerequisites: repair_pad, upgrade.heavy
+		Prerequisites: repair_pad
 
 upgrade.conyard:
 	Buildable:
 		Prerequisites: ~disabled
 
+upgrade.heavy:
+	Buildable:
+		Prerequisites: ~disabled
+
 # HACK: AI units can't attack the sietch if it was on a real rock
 tile475:
-	AlwaysVisible:
 	Immobile:
 		OccupiesSpace: false
 	RenderSprites:
@@ -92,7 +95,6 @@ tile475:
 
 # Placed after the sietch is destroyed so that the cliff is still unpassable
 invisibleBlocker:
-	AlwaysVisible:
 	Building:
 		Footprint: xx xx
 		Dimensions: 2,2

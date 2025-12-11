@@ -10,8 +10,10 @@
 #endregion
 
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections.Immutable;
 using OpenRA.GameRules;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Effects;
@@ -26,7 +28,7 @@ namespace OpenRA.Mods.Common.Projectiles
 	public class BulletInfo : IProjectileInfo
 	{
 		[Desc("Projectile speed in WDist / tick, two values indicate variable velocity.")]
-		public readonly WDist[] Speed = [new(17)];
+		public readonly ImmutableArray<WDist> Speed = [new(17)];
 
 		[Desc("The maximum/constant/incremental inaccuracy used in conjunction with the InaccuracyType property.")]
 		public readonly WDist Inaccuracy = WDist.Zero;
@@ -42,7 +44,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		[SequenceReference(nameof(Image), allowNullImage: true)]
 		[Desc("Loop a randomly chosen sequence of Image from this list while this projectile is moving.")]
-		public readonly string[] Sequences = ["idle"];
+		public readonly ImmutableArray<string> Sequences = ["idle"];
 
 		[PaletteReference(nameof(IsPlayerPalette))]
 		[Desc("The palette used to draw this projectile.")]
@@ -62,7 +64,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		[SequenceReference(nameof(TrailImage), allowNullImage: true)]
 		[Desc("Loop a randomly chosen sequence of TrailImage from this list while this projectile is moving.")]
-		public readonly string[] TrailSequences = ["idle"];
+		public readonly ImmutableArray<string> TrailSequences = ["idle"];
 
 		[Desc("Interval in ticks between each spawned Trail animation.")]
 		public readonly int TrailInterval = 2;
@@ -84,7 +86,7 @@ namespace OpenRA.Mods.Common.Projectiles
 		public readonly WDist Width = new(1);
 
 		[Desc("Arc in WAngles, two values indicate variable arc.")]
-		public readonly WAngle[] LaunchAngle = [WAngle.Zero];
+		public readonly ImmutableArray<WAngle> LaunchAngle = [WAngle.Zero];
 
 		[Desc("Up to how many times does this bullet bounce when touching ground without hitting a target.",
 			"0 implies exploding on contact with the originally targeted position.")]
@@ -97,7 +99,7 @@ namespace OpenRA.Mods.Common.Projectiles
 		public readonly string BounceSound = null;
 
 		[Desc("Terrain where the projectile explodes instead of bouncing.")]
-		public readonly HashSet<string> InvalidBounceTerrain = [];
+		public readonly FrozenSet<string> InvalidBounceTerrain = FrozenSet<string>.Empty;
 
 		[Desc("Trigger the explosion if the projectile touches an actor thats owner has these player relationships.")]
 		public readonly PlayerRelationship ValidBounceBlockerRelationships = PlayerRelationship.Enemy | PlayerRelationship.Neutral;

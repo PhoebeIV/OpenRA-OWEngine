@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using OpenRA.Primitives;
 
@@ -49,14 +50,13 @@ namespace OpenRA.Graphics
 		readonly Size tileSize;
 
 		// Viewport geometry (world-px)
-		public int2 CenterLocation { get; private set; }
+		public float2 CenterLocation { get; private set; }
 
-		public WPos CenterPosition => worldRenderer.ProjectedPosition(CenterLocation);
+		public WPos CenterPosition => worldRenderer.ProjectedPosition(CenterLocation.ToInt2());
 
-		public Rectangle Rectangle => new(TopLeft, new Size(viewportSize.X, viewportSize.Y));
-		public int2 TopLeft => CenterLocation - viewportSize / 2;
-		public int2 BottomRight => CenterLocation + viewportSize / 2;
-		int2 viewportSize;
+		public int2 TopLeft => CenterLocation.ToInt2() - ViewportSize.ToInt2() / 2;
+		public int2 BottomRight => CenterLocation.ToInt2() + ViewportSize.ToInt2() / 2;
+		public Size ViewportSize { get; private set; }
 		ProjectedCellRegion cells;
 		bool cellsDirty = true;
 
@@ -72,6 +72,8 @@ namespace OpenRA.Graphics
 		float defaultScale;
 		bool overrideUserScale;
 
+		public Func<float2> ViewportCenterProvider;
+
 		public float Zoom
 		{
 			get => zoom;
@@ -79,7 +81,7 @@ namespace OpenRA.Graphics
 			private set
 			{
 				zoom = value;
-				viewportSize = (1f / zoom * new float2(Game.Renderer.NativeResolution)).ToInt2();
+				ViewportSize = Size.FromInt2((1f / zoom * new float2(Game.Renderer.NativeResolution)).ToInt2());
 				cellsDirty = true;
 				allCellsDirty = true;
 			}
@@ -178,6 +180,9 @@ namespace OpenRA.Graphics
 		{
 			if (lastViewportDistance != graphicSettings.ViewportDistance)
 				UpdateViewportZooms();
+
+			if (ViewportCenterProvider != null)
+				Center(ViewportCenterProvider());
 		}
 
 		static float CalculateMinimumZoom(float minHeight, float maxHeight)
@@ -251,7 +256,7 @@ namespace OpenRA.Graphics
 
 		public CPos ViewToWorld(int2 view)
 		{
-			var world = worldRenderer.Viewport.ViewToWorldPx(view);
+			var world = ViewToWorldPx(view);
 			var map = worldRenderer.World.Map;
 			var candidates = CandidateMouseoverCells(world).ToList();
 
@@ -264,7 +269,7 @@ namespace OpenRA.Graphics
 				{
 					var ramp = map.Grid.Ramps[map.Ramp.Contains(uv) ? map.Ramp[uv] : 0];
 					var pos = map.CenterOfCell(uv.ToCPos(map)) - new WVec(0, 0, ramp.CenterHeightOffset);
-					var screen = ramp.Corners.Select(c => worldRenderer.ScreenPxPosition(pos + c)).ToArray();
+					var screen = ramp.Corners.Select(c => worldRenderer.ScreenPxPosition(pos + c)).ToImmutableArray();
 					if (screen.PolygonContains(world))
 						return uv.ToCPos(map);
 				}
@@ -338,10 +343,17 @@ namespace OpenRA.Graphics
 			allCellsDirty = true;
 		}
 
+		public void Center(float2 pos)
+		{
+			CenterLocation = worldRenderer.ScreenPosition(pos).Clamp(mapBounds);
+			cellsDirty = true;
+			allCellsDirty = true;
+		}
+
 		public void Scroll(float2 delta, bool ignoreBorders)
 		{
 			// Convert scroll delta from world-px to viewport-px
-			CenterLocation += (1f / Zoom * delta).ToInt2();
+			CenterLocation += 1f / Zoom * delta;
 			cellsDirty = true;
 			allCellsDirty = true;
 

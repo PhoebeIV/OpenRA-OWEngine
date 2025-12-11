@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -415,7 +416,7 @@ namespace OpenRA
 
 			var modSearchArg = args.GetValue("Engine.ModSearchPaths", null);
 			var modSearchPaths = modSearchArg != null ?
-				FieldLoader.GetValue<string[]>("Engine.ModsPath", modSearchArg) :
+				FieldLoader.GetValue<ImmutableArray<string>>("Engine.ModsPath", modSearchArg) :
 				[Path.Combine(Platform.EngineDir, "mods")];
 
 			Mods = new InstalledMods(modSearchPaths, explicitModPaths);
@@ -724,7 +725,7 @@ namespace OpenRA
 				// Use worldRenderer.World instead of OrderManager.World to avoid a rendering mismatch while processing orders
 				if (worldRenderer != null && !worldRenderer.World.IsLoadingGameSave)
 				{
-					Renderer.BeginWorld(worldRenderer.Viewport.Rectangle);
+					Renderer.BeginWorld(worldRenderer.Viewport.CenterLocation, worldRenderer.Viewport.ViewportSize);
 					Sound.SetListenerPosition(worldRenderer.Viewport.CenterPosition);
 					using (new PerfSample("render_world"))
 						worldRenderer.Draw();
@@ -863,33 +864,45 @@ namespace OpenRA
 
 					var haveSomeTimeUntilNextLogic = now < nextLogic;
 					var isTimeToRender = now >= nextRender;
-					if (!Renderer.WindowIsSuspended && ((isTimeToRender && haveSomeTimeUntilNextLogic) || forceRender))
+					if (!Renderer.WindowIsSuspended)
 					{
-						nextRender = now + renderInterval;
+						if (isTimeToRender || forceRender)
+						{
+							if (haveSomeTimeUntilNextLogic || forceRender)
+								RenderTick();
 
-						// Pick the minimum allowed FPS (the lower between 'minReplayFPS'
-						// and the user's max frame rate) and convert it to maximum time
-						// allowed between screen updates.
-						// We do this before rendering to include the time rendering takes
-						// in this interval.
-						var maxRenderInterval = Math.Max(1000 / MinReplayFps, renderInterval);
-						forcedNextRender = now + maxRenderInterval;
+							nextRender = now + renderInterval;
 
-						RenderTick();
-						renderBeforeNextTick = false;
+							// Pick the minimum allowed FPS (the lower between 'minReplayFPS'
+							// and the user's max frame rate) and convert it to maximum time
+							// allowed between screen updates.
+							// We do this before rendering to include the time rendering takes
+							// in this interval.
+							var maxRenderInterval = Math.Max(1000 / MinReplayFps, renderInterval);
+							forcedNextRender = now + maxRenderInterval;
+
+							renderBeforeNextTick = false;
+						}
 					}
-
-					// Simulate a render tick if it was time to render but we skip actually rendering
-					if (Renderer.WindowIsSuspended && isTimeToRender)
+					else
 					{
-						// Make sure that nextUpdate is set to a proper minimum interval
-						nextRender = now + renderInterval;
+						// Simulate a render tick if it was time to render but we skip actually rendering
+						if (isTimeToRender || forceRender)
+						{
+							// Make sure that nextUpdate is set to a proper minimum interval
+							nextRender = now + renderInterval;
 
-						// Still process SDL events to allow a restore to come through
-						Renderer.Window.PumpInput(new NullInputHandler());
+							// Still process SDL events to allow a restore to come through
+							Renderer.Window.PumpInput(new NullInputHandler());
 
-						// Ensure that we still logic tick despite not rendering
-						renderBeforeNextTick = false;
+							// Ensure that we still logic tick despite not rendering
+							renderBeforeNextTick = false;
+						}
+						else
+						{
+							// Avoid busy wait.
+							Thread.Sleep((int)(nextRender - now));
+						}
 					}
 				}
 				else

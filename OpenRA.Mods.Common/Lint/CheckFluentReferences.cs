@@ -12,6 +12,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -39,7 +40,7 @@ namespace OpenRA.Mods.Common.Lint
 			foreach (var context in usedKeys.EmptyKeyContexts)
 				emitWarning($"Empty key in map ftl files required by {context}");
 
-			var mapMessages = FieldLoader.GetValue<string[]>("value", map.FluentMessageDefinitions.Value);
+			var mapMessages = FieldLoader.GetValue<ImmutableArray<string>>("value", map.FluentMessageDefinitions.Value);
 			var modMessages = modData.Manifest.FluentMessages;
 
 			// For maps we don't warn on unused keys. They might be unused on *this* map,
@@ -274,15 +275,22 @@ namespace OpenRA.Mods.Common.Lint
 				foreach (var o in (IEnumerable<object>)fieldValue)
 					ExtractFluentKeys(modData, o, prefix, keys);
 
-			if (type.IsGenericType &&
-				(type.GetGenericTypeDefinition() == typeof(Dictionary<,>) ||
-				type.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>)))
+			Type dictionaryInterface = null;
+			if (type.IsGenericType)
+			{
+				if (type.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>))
+					dictionaryInterface = type;
+				else
+					dictionaryInterface = type.GetInterface(typeof(IReadOnlyDictionary<,>).FullName);
+			}
+
+			if (dictionaryInterface != null)
 			{
 				// Use an intermediate list to cover the unlikely case where both keys and values are lintable.
 				if (dictionaryReference.HasFlag(LintDictionaryReference.Keys))
 				{
 					IEnumerable fieldKeys = ((IDictionary)fieldValue).Keys;
-					if (typeof(IEnumerable<object>).IsAssignableFrom(type.GenericTypeArguments[0]))
+					if (typeof(IEnumerable<object>).IsAssignableFrom(dictionaryInterface.GenericTypeArguments[0]))
 						fieldKeys = ((ICollection<IEnumerable<object>>)fieldKeys).SelectMany(v => v);
 
 					foreach (var k in fieldKeys)
@@ -292,7 +300,7 @@ namespace OpenRA.Mods.Common.Lint
 				if (dictionaryReference.HasFlag(LintDictionaryReference.Values))
 				{
 					IEnumerable fieldValues = ((IDictionary)fieldValue).Values;
-					if (typeof(IEnumerable<object>).IsAssignableFrom(type.GenericTypeArguments[1]))
+					if (typeof(IEnumerable<object>).IsAssignableFrom(dictionaryInterface.GenericTypeArguments[1]))
 						fieldValues = ((ICollection<IEnumerable<object>>)fieldValues).SelectMany(v => v);
 
 					foreach (var v in fieldValues)
@@ -356,7 +364,7 @@ namespace OpenRA.Mods.Common.Lint
 			{
 				if (childNode.Key == "Logic")
 				{
-					foreach (var logicName in FieldLoader.GetValue<string[]>(childNode.Key, childNode.Value.Value))
+					foreach (var logicName in FieldLoader.GetValue<ImmutableArray<string>>(childNode.Key, childNode.Value.Value))
 					{
 						var logicType = modData.ObjectCreator.FindType(logicName);
 						if (logicType == null)
