@@ -168,6 +168,7 @@ namespace OpenRA
 		{
 			return ModData.WidgetLoader.LoadWidget(new WidgetArgs(args)
 			{
+				{ "modData", ModData },
 				{ "world", world },
 				{ "orderManager", OrderManager },
 				{ "worldRenderer", worldRenderer },
@@ -386,32 +387,6 @@ namespace OpenRA
 			Log.AddChannel("nat", "nat.log");
 			Log.AddChannel("client", "client.log");
 
-			var platforms = new[] { Settings.Game.Platform, "Default", null };
-			foreach (var p in platforms)
-			{
-				if (p == null)
-					throw new InvalidOperationException("Failed to initialize platform-integration library. Check graphics.log for details.");
-
-				Settings.Game.Platform = p;
-				try
-				{
-					var platform = CreatePlatform(p);
-					Renderer = new Renderer(platform, Settings.Graphics);
-					Sound = new Sound(platform, Settings.Sound);
-
-					break;
-				}
-				catch (Exception e)
-				{
-					Log.Write("graphics", $"{e}");
-					Console.WriteLine("Renderer initialization failed. Check graphics.log for details.");
-
-					Renderer?.Dispose();
-
-					Sound?.Dispose();
-				}
-			}
-
 			Nat.Initialize();
 
 			var modSearchArg = args.GetValue("Engine.ModSearchPaths", null);
@@ -428,7 +403,10 @@ namespace OpenRA
 
 			ExternalMods = new ExternalMods();
 
-			if (modID != null && Mods.TryGetValue(modID, out _))
+			if (modID == null)
+				throw new InvalidOperationException("Game.Mod argument missing.");
+
+			if (Mods.TryGetValue(modID, out var manifest))
 			{
 				var launchPath = args.GetValue("Engine.LaunchPath", null);
 				var launchArgs = new List<string>();
@@ -444,12 +422,40 @@ namespace OpenRA
 
 				ExternalMods.ClearInvalidRegistrations(ModRegistration.User);
 			}
+			else
+				throw new InvalidOperationException($"Unknown or invalid mod '{modID}'.");
 
 			Console.WriteLine("External mods:");
 			foreach (var mod in ExternalMods)
 				Console.WriteLine($"\t{mod.Key} ({mod.Value.Version})");
 
-			InitializeMod(modID, args);
+			var platforms = new[] { Settings.Game.Platform, "Default", null };
+			foreach (var p in platforms)
+			{
+				if (p == null)
+					throw new InvalidOperationException("Failed to initialize platform-integration library. Check graphics.log for details.");
+
+				Settings.Game.Platform = p;
+				try
+				{
+					var platform = CreatePlatform(p);
+					Renderer = new Renderer(platform, Settings.Graphics, manifest.RendererConstants.VertexBatchSize);
+					Sound = new Sound(platform, Settings.Sound);
+
+					break;
+				}
+				catch (Exception e)
+				{
+					Log.Write("graphics", $"{e}");
+					Console.WriteLine("Renderer initialization failed. Check graphics.log for details.");
+
+					Renderer?.Dispose();
+
+					Sound?.Dispose();
+				}
+			}
+
+			InitializeMod(manifest, args);
 		}
 
 		public static IPlatform CreatePlatform(string platformName)
@@ -465,7 +471,7 @@ namespace OpenRA
 			return (IPlatform)platformType.GetConstructor(Type.EmptyTypes).Invoke(null);
 		}
 
-		public static void InitializeMod(string mod, Arguments args)
+		public static void InitializeMod(Manifest manifest, Arguments args)
 		{
 			// Clear static state if we have switched mods
 			LobbyInfoChanged = () => { };
@@ -489,31 +495,25 @@ namespace OpenRA
 
 			ModData = null;
 
-			if (mod == null)
-				throw new InvalidOperationException("Game.Mod argument missing.");
-
-			if (!Mods.ContainsKey(mod))
-				throw new InvalidOperationException($"Unknown or invalid mod '{mod}'.");
-
-			Console.WriteLine($"Loading mod: {mod}");
+			Console.WriteLine($"Loading mod: {manifest.Id}");
 
 			Sound.StopVideo();
 
-			ModData = new ModData(Mods[mod], Mods, true);
+			ModData = new ModData(manifest, Mods, true);
 
-			LocalPlayerProfile = new LocalPlayerProfile(Path.Combine(Platform.SupportDir, Settings.Game.AuthProfile), ModData.Manifest.Get<PlayerDatabase>());
+			LocalPlayerProfile = new LocalPlayerProfile(Path.Combine(Platform.SupportDir, Settings.Game.AuthProfile), ModData.GetOrCreate<PlayerDatabase>());
 
-			if (!ModData.LoadScreen.BeforeLoad())
+			if (!ModData.LoadScreen.BeforeLoad(ModData))
 				return;
 
 			ModData.InitializeLoaders(ModData.DefaultFileSystem);
 			Renderer.InitializeFonts(ModData);
 
 			using (new PerfTimer("LoadMaps"))
-				ModData.MapCache.LoadMaps();
+				ModData.MapCache.LoadMaps(ModData);
 
 			Cursor?.Dispose();
-			Cursor = new CursorManager(ModData.CursorProvider, ModData.Manifest.CursorSheetSize);
+			Cursor = new CursorManager(ModData);
 
 			var metadata = ModData.Manifest.Metadata;
 			if (!string.IsNullOrEmpty(metadata.WindowTitleTranslated))
@@ -740,15 +740,12 @@ namespace OpenRA
 
 					Ui.Draw();
 
-					if (ModData != null && ModData.CursorProvider != null)
+					if (HideCursor)
+						Cursor?.SetCursor(null);
+					else
 					{
-						if (HideCursor)
-							Cursor.SetCursor(null);
-						else
-						{
-							Cursor.SetCursor(Ui.Root.GetCursorOuter(Viewport.LastMousePos) ?? "default");
-							Cursor.Render(Renderer);
-						}
+						Cursor?.SetCursor(Ui.Root.GetCursorOuter(Viewport.LastMousePos) ?? "default");
+						Cursor?.Render(Renderer);
 					}
 				}
 
