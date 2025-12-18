@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using OpenRA.GameRules;
 using OpenRA.Graphics;
@@ -56,7 +57,7 @@ namespace OpenRA.Mods.CA.Projectiles
 		public readonly int PlayerColorZaps = 0;
 
 		[Desc("Alpha to apply to player colored zaps. If two values are specified randomly select a value between the two values.")]
-		public readonly int[] PlayerColorZapAlpha = { 255 };
+		public readonly ImmutableArray<int> PlayerColorZapAlpha = [255];
 
 		[Desc("Initial distortion offset.")]
 		public readonly int Distortion = 0;
@@ -102,7 +103,7 @@ namespace OpenRA.Mods.CA.Projectiles
 		int ticks = 0;
 		WVec leftVector;
 		WVec upVector;
-		WVec inaccuracyOffset;
+		readonly WVec inaccuracyOffset;
 
 		[Sync]
 		WPos target, source, lastTarget, lastSource;
@@ -115,7 +116,7 @@ namespace OpenRA.Mods.CA.Projectiles
 			var playerColor = args.SourceActor.Owner.Color;
 			var colors = info.Colors.ToList();
 
-			for (int i = 0; i < info.PlayerColorZaps; i++)
+			for (var i = 0; i < info.PlayerColorZaps; i++)
 				colors.Add(Color.FromArgb(info.PlayerColorZapAlpha.Length != 2 ? info.PlayerColorZapAlpha[0] : OpenRA.Mods.Common.Util.RandomInRange(args.SourceActor.World.SharedRandom, info.PlayerColorZapAlpha), playerColor.R, playerColor.G, playerColor.B));
 
 			source = lastSource = args.Source;
