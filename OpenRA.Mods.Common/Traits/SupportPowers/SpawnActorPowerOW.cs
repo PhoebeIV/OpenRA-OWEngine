@@ -24,6 +24,9 @@ namespace OpenRA.Mods.Common.Traits
 			"lead to unexpected behaviour.")]
 		public readonly CVec Offset = CVec.Zero;
 
+		[Desc("Airborne offset of the spawned actor relative to the target position.")]
+		public readonly WDist AirOffset = new(0);
+
 		public override object Create(ActorInitializer init) { return new SpawnActorPowerOW(init.Self, this); }
 	}
 

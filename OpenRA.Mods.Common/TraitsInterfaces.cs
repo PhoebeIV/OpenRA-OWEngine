@@ -491,6 +491,12 @@ namespace OpenRA.Mods.Common.Traits
 	public interface IShieldRegenModifier { int GetShieldRegenModifier(); }
 
 	[RequireExplicitImplementation]
+	public interface IPeriodicConditionCooldownModifier { int GetPeriodicConditionCooldownModifier(); }
+
+	[RequireExplicitImplementation]
+	public interface IPeriodicConditionActiveModifier { int GetPeriodicConditionActiveModifier(); }
+
+	[RequireExplicitImplementation]
 	public interface ICustomMovementLayer
 	{
 		byte Index { get; }
@@ -1028,5 +1034,4 @@ namespace OpenRA.Mods.Common.Traits
 		ImmutableArray<string> Tilesets { get; }
 		IMapGeneratorSettings GetSettings();
 	}
-
 }

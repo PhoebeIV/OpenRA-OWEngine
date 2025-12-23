@@ -89,7 +89,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		WithSpriteBody[] wsbs;
 
-		[Sync]
+		[VerifySync]
 		int ticks;
 
 		TimedDeployState deployState;

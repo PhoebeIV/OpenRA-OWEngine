@@ -66,13 +66,10 @@ namespace OpenRA.Mods.CA.Traits
 		int conditionToken2 = Actor.InvalidConditionToken;
 		Actor self;
 
-		[Sync]
+		[VerifySync]
 		int strength;
-		[Sync]
 		int intervalTicks;
-		[Sync]
 		int delayTicks;
-		[Sync]
 		int maxshield;
 
 		public Shielded(ActorInitializer init, ShieldedInfo info)

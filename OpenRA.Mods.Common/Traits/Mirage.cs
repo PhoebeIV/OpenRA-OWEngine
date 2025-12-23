@@ -96,7 +96,7 @@ namespace OpenRA.Mods.Common.Traits
 	public class Mirage : PausableConditionalTrait<MirageInfo>, INotifyDamage, IEffectiveOwner, INotifyUnloadCargo, INotifyDemolition, INotifyInfiltration,
 		INotifyAttack, ITick, INotifyCreated, INotifyHarvestAction, INotifyDockClient
 	{
-		[Sync]
+		[VerifySync]
 		private int remainingTime;
 
 		Actor self;

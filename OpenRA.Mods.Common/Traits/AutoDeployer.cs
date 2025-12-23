@@ -49,7 +49,7 @@ namespace OpenRA.Mods.AS.Traits
 	{
 		public const string PrimaryBuildingOrderID = "PrimaryProducer";
 
-		[Sync]
+		[VerifySync]
 		int undeployTicks = -1, deployTicks;
 
 		bool deployed;

@@ -51,7 +51,7 @@ namespace OpenRA.Mods.AS.Traits
 	{
 		readonly PeriodicProducerInfo info;
 
-		[Sync]
+		[VerifySync]
 		int ticks;
 
 		public PeriodicProducer(PeriodicProducerInfo info)

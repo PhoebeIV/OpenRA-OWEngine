@@ -29,16 +29,16 @@ namespace OpenRA.Mods.Common.Effects
 		readonly string trailPalette;
 		readonly World world;
 
-		[Sync]
+		[VerifySync]
 		readonly WPos targetpos, source;
-		[Sync]
+		[VerifySync]
 		readonly WAngle facing;
 
 		readonly int lifespan, estimatedlifespan;
 		readonly bool forceToGround;
 		readonly ContrailRenderable contrail;
 
-		[Sync]
+		[VerifySync]
 		WPos projectilepos, lastPos;
 
 		int ticks, smokeTicks;

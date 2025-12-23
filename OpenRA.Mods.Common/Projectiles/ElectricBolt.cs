@@ -105,7 +105,7 @@ namespace OpenRA.Mods.CA.Projectiles
 		WVec upVector;
 		readonly WVec inaccuracyOffset;
 
-		[Sync]
+		[VerifySync]
 		WPos target, source, lastTarget, lastSource;
 
 		public ElectricBolt(ElectricBoltInfo info, ProjectileArgs args)

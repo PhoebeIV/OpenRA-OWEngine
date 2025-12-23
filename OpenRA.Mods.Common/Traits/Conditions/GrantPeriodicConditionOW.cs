@@ -8,25 +8,26 @@
  */
 #endregion
 
-using OpenRA.Mods.Common.Traits;
+using System;
+using System.Linq;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.AS.Traits
+namespace OpenRA.Mods.Common.Traits
 {
-	[Desc("Grants a random condition periodically.")]
-	public class GrantRandomPeriodicConditionInfo : PausableConditionalTraitInfo
+	[Desc("Grants a condition periodically. Can be modified with PeriodicConditionCooldownMultiplier and PeriodicConditionActiveMultiplier")]
+	public class GrantPeriodicConditionOWInfo : PausableConditionalTraitInfo
 	{
 		[GrantedConditionReference]
 		[FieldLoader.Require]
-		[Desc("List of conditions to grant from.")]
-		public readonly string[] Conditions = null;
+		[Desc("The condition to grant.")]
+		public readonly string Condition = null;
 
-		[Desc("The range of time (in ticks) with the condition being disabled.")]
-		public readonly int[] CooldownDuration = { 1000 };
+		[Desc("The time (in ticks) with the condition being disabled.")]
+		public readonly int CooldownDuration = 1000;
 
-		[Desc("The range of time (in ticks) with the condition being enabled.")]
-		public readonly int[] ActiveDuration = { 100 };
+		[Desc("The time (in ticks) with the condition being enabled.")]
+		public readonly int ActiveDuration = 100;
 
 		public readonly bool StartsGranted = false;
 
@@ -34,13 +35,15 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly Color CooldownColor = Color.DarkRed;
 		public readonly Color ActiveColor = Color.DarkMagenta;
 
-		public override object Create(ActorInitializer init) { return new GrantRandomPeriodicCondition(init, this); }
+		public override object Create(ActorInitializer init) { return new GrantPeriodicConditionOW(init, this); }
 	}
 
-	public class GrantRandomPeriodicCondition : PausableConditionalTrait<GrantRandomPeriodicConditionInfo>, ISelectionBar, ITick, ISync
+	public class GrantPeriodicConditionOW : PausableConditionalTrait<GrantPeriodicConditionOWInfo>, ISelectionBar, ITick, ISync
 	{
 		readonly Actor self;
-		readonly GrantRandomPeriodicConditionInfo info;
+		readonly GrantPeriodicConditionOWInfo info;
+		readonly Lazy<IPeriodicConditionCooldownModifier[]> cooldownModifiers;
+		readonly Lazy<IPeriodicConditionActiveModifier[]> activeModifiers;
 
 		[VerifySync]
 		int ticks;
@@ -51,30 +54,28 @@ namespace OpenRA.Mods.AS.Traits
 
 		bool IsEnabled { get { return token != Actor.InvalidConditionToken; } }
 
-		public GrantRandomPeriodicCondition(ActorInitializer init, GrantRandomPeriodicConditionInfo info)
+		public GrantPeriodicConditionOW(ActorInitializer init, GrantPeriodicConditionOWInfo info)
 			: base(info)
 		{
 			self = init.Self;
 			this.info = info;
+			cooldownModifiers = Exts.Lazy(() => self.TraitsImplementing<IPeriodicConditionCooldownModifier>().ToArray());
+			activeModifiers = Exts.Lazy(() => self.TraitsImplementing<IPeriodicConditionActiveModifier>().ToArray());
 		}
 
 		void SetDefaultState()
 		{
 			if (info.StartsGranted)
 			{
-				ticks = info.ActiveDuration.Length == 2
-					? self.World.SharedRandom.Next(info.ActiveDuration[0], info.ActiveDuration[1])
-					: info.ActiveDuration[0];
-				active = ticks;
+				ticks = GetActiveModifier();
+				active = GetActiveModifier();
 				if (info.StartsGranted != IsEnabled)
 					EnableCondition();
 			}
 			else
 			{
-				ticks = info.CooldownDuration.Length == 2
-					? self.World.SharedRandom.Next(info.CooldownDuration[0], info.CooldownDuration[1])
-					: info.CooldownDuration[0];
-				cooldown = ticks;
+				ticks = GetCooldownModifier();
+				cooldown = GetCooldownModifier();
 				if (info.StartsGranted != IsEnabled)
 					DisableCondition();
 			}
@@ -96,18 +97,14 @@ namespace OpenRA.Mods.AS.Traits
 			{
 				if (IsEnabled)
 				{
-					ticks = info.CooldownDuration.Length == 2
-						? self.World.SharedRandom.Next(info.CooldownDuration[0], info.CooldownDuration[1])
-						: info.CooldownDuration[0];
-					cooldown = ticks;
+					ticks = GetCooldownModifier();
+					cooldown = GetCooldownModifier();
 					DisableCondition();
 				}
 				else
 				{
-					ticks = info.ActiveDuration.Length == 2
-						? self.World.SharedRandom.Next(info.ActiveDuration[0], info.ActiveDuration[1])
-						: info.ActiveDuration[0];
-					active = ticks;
+					ticks = GetActiveModifier();
+					active = GetActiveModifier();
 					EnableCondition();
 				}
 			}
@@ -144,19 +141,24 @@ namespace OpenRA.Mods.AS.Traits
 
 		void EnableCondition()
 		{
-			if (info.Conditions.Length == 0)
-				return;
-
-			var condition = info.Conditions.Random(self.World.SharedRandom);
-
 			if (token == Actor.InvalidConditionToken)
-				token = self.GrantCondition(condition);
+				token = self.GrantCondition(info.Condition);
 		}
 
 		void DisableCondition()
 		{
 			if (token != Actor.InvalidConditionToken)
 				token = self.RevokeCondition(token);
+		}
+
+		public int GetActiveModifier()
+		{
+			return Util.ApplyPercentageModifiers(Info.ActiveDuration, activeModifiers.Value.Select(m => m.GetPeriodicConditionActiveModifier()));
+		}
+
+		public int GetCooldownModifier()
+		{
+			return Util.ApplyPercentageModifiers(Info.CooldownDuration, cooldownModifiers.Value.Select(m => m.GetPeriodicConditionCooldownModifier()));
 		}
 
 		float ISelectionBar.GetValue()
@@ -166,7 +168,7 @@ namespace OpenRA.Mods.AS.Traits
 
 			return IsEnabled
 				? (float)(active - ticks) / active
-					: (float)ticks / cooldown;
+					: (float)(cooldown - ticks) / cooldown;
 		}
 
 		bool ISelectionBar.DisplayWhenEmpty { get { return info.ShowSelectionBar; } }
