@@ -232,7 +232,7 @@ namespace OpenRA.Mods.Common.Projectiles
 		WVec tarVel;
 		WVec predVel;
 
-		[Sync]
+		[VerifySync]
 		WPos pos;
 
 		WVec velocity;
@@ -243,10 +243,10 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		WAngle renderFacing;
 
-		[Sync]
+		[VerifySync]
 		int hFacing;
 
-		[Sync]
+		[VerifySync]
 		int vFacing;
 
 		public Missile(MissileInfo info, ProjectileArgs args)

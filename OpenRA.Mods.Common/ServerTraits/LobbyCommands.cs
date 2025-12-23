@@ -112,17 +112,11 @@ namespace OpenRA.Mods.Common.Server
 		[FluentReference]
 		const string InvalidConfigurationCommand = "notification-invalid-configuration-command";
 
-		[FluentReference("option")]
-		const string OptionLocked = "notification-option-locked";
-
 		[FluentReference("player", "map")]
 		const string ChangedMap = "notification-changed-map";
 
 		[FluentReference]
 		const string MapBotsDisabled = "notification-map-bots-disabled";
-
-		[FluentReference("player", "name", "value")]
-		const string ValueChanged = "notification-option-changed";
 
 		[FluentReference]
 		const string NoMoveSpectators = "notification-admin-move-spectators";
@@ -334,7 +328,7 @@ namespace OpenRA.Mods.Common.Server
 
 				if (server.LobbyInfo.Slots.All(sl => server.LobbyInfo.ClientInSlot(sl.Key) == null))
 				{
-					server.SendOrderTo(conn, "Message", NoStartWithoutPlayers);
+					server.SendFluentMessageTo(conn, NoStartWithoutPlayers);
 					return true;
 				}
 
@@ -647,9 +641,9 @@ namespace OpenRA.Mods.Common.Server
 
 						server.LobbyInfo.DisabledSpawnPoints.Clear();
 
-						server.SyncLobbyInfo();
-
 						server.SendFluentMessage(ChangedMap, "player", client.Name, "map", server.Map.Title);
+
+						server.SyncLobbyInfo();
 
 						if ((server.LobbyInfo.GlobalSettings.MapStatus & Session.MapStatus.UnsafeCustomRules) != 0)
 							server.SendFluentMessage(CustomRules);
@@ -658,10 +652,6 @@ namespace OpenRA.Mods.Common.Server
 							server.SendFluentMessage(TwoHumansRequired);
 						else if (server.Map.Players.Players.Where(p => p.Value.Playable).All(p => !p.Value.AllowBots))
 							server.SendFluentMessage(MapBotsDisabled);
-
-						var briefing = MissionBriefingOrDefault(server);
-						if (briefing != null)
-							server.SendMessage(briefing);
 					}
 				}
 
@@ -726,15 +716,9 @@ namespace OpenRA.Mods.Common.Server
 
 				var split = s.Split(' ');
 				if (split.Length < 2 || !options.TryGetValue(split[0], out var option) ||
-					!option.Values.ContainsKey(split[1]))
+					option.IsLocked || !option.Values.ContainsKey(split[1]))
 				{
 					server.SendFluentMessageTo(conn, InvalidConfigurationCommand);
-					return true;
-				}
-
-				if (option.IsLocked)
-				{
-					server.SendFluentMessageTo(conn, OptionLocked, ["option", option.Name]);
 					return true;
 				}
 
@@ -751,8 +735,6 @@ namespace OpenRA.Mods.Common.Server
 				oo.Value = oo.PreferredValue = split[1];
 
 				server.SyncLobbyGlobalSettings();
-				server.SendFluentMessage(ValueChanged, "player", client.Name, "name", option.Name, "value", option.Label(split[1]));
-
 				foreach (var c in server.LobbyInfo.Clients)
 					c.State = Session.ClientState.NotReady;
 
@@ -772,28 +754,16 @@ namespace OpenRA.Mods.Common.Server
 					return true;
 				}
 
-				var allOptions = server.Map.PlayerActorInfo.TraitInfos<ILobbyOptions>()
+				server.LobbyInfo.GlobalSettings.LobbyOptions = server.Map.PlayerActorInfo.TraitInfos<ILobbyOptions>()
 					.Concat(server.Map.WorldActorInfo.TraitInfos<ILobbyOptions>())
-					.SelectMany(t => t.LobbyOptions(server.Map));
-
-				var options = new Dictionary<string, Session.LobbyOptionState>();
-				foreach (var o in allOptions)
-				{
-					if (o.DefaultValue != server.LobbyInfo.GlobalSettings.LobbyOptions[o.Id].Value)
-						server.SendFluentMessage(ValueChanged,
-							"player", client.Name,
-							"name", o.Name,
-							"value", o.Label(o.DefaultValue));
-
-					options[o.Id] = new Session.LobbyOptionState
+					.SelectMany(t => t.LobbyOptions(server.Map))
+					.ToDictionary(o => o.Id, o => new Session.LobbyOptionState
 					{
 						IsLocked = o.IsLocked,
 						Value = o.DefaultValue,
 						PreferredValue = o.DefaultValue
-					};
-				}
+					});
 
-				server.LobbyInfo.GlobalSettings.LobbyOptions = options;
 				server.SyncLobbyGlobalSettings();
 
 				foreach (var c in server.LobbyInfo.Clients)
@@ -1453,15 +1423,6 @@ namespace OpenRA.Mods.Common.Server
 			return !validFactions.Contains(askedFaction) ? "Random" : askedFaction;
 		}
 
-		static string MissionBriefingOrDefault(S server)
-		{
-			var missionData = server.Map.WorldActorInfo.TraitInfoOrDefault<MissionDataInfo>();
-			if (missionData != null && !string.IsNullOrEmpty(missionData.Briefing))
-				return missionData.Briefing.Replace("\\n", "\n");
-
-			return null;
-		}
-
 		public void ClientJoined(S server, Connection conn)
 		{
 			lock (server.LobbyInfo)
@@ -1474,13 +1435,6 @@ namespace OpenRA.Mods.Common.Server
 				// Validate whether color is allowed and get an alternative if it isn't
 				if (client.Slot != null && !server.LobbyInfo.Slots[client.Slot].LockColor)
 					client.Color = SanitizePlayerColor(server, client.Color, client.Index);
-
-				// Report any custom map details
-				// HACK: this isn't the best place for this to live, but if we move it somewhere else
-				// then we need a larger hack to hook the map change event.
-				var briefing = MissionBriefingOrDefault(server);
-				if (briefing != null)
-					server.SendOrderTo(conn, "Message", briefing);
 			}
 		}
 
