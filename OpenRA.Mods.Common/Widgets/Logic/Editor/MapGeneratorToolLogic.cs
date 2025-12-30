@@ -184,7 +184,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					{
 						var validChoices = mo.ValidChoices(world.Map.Rules.TerrainInfo, playerCount);
 						if (!validChoices.Contains(mo.Value))
-							mo.Value = mo.Default != null ? mo.Default.FirstOrDefault(validChoices.Contains) : validChoices.FirstOrDefault();
+						{
+							if (mo.Default != null)
+								mo.Value = mo.Default.FirstOrDefault(validChoices.Contains);
+							mo.Value ??= validChoices.FirstOrDefault();
+						}
 
 						if (mo.Value != null && mo.Label != null && validChoices.Count > 0)
 						{
@@ -291,7 +295,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				.ToDictionary(player => player.Name);
 			foreach (var kv in generatedMap.ActorDefinitions)
 			{
-				var actorReference = new ActorReference(kv.Value.Value, kv.Value.ToDictionary());
+				var actorReference = new ActorReference(kv.Value.Value, kv.Value);
 				var ownerInit = actorReference.Get<OwnerInit>();
 				if (!players.TryGetValue(ownerInit.InternalName, out var owner))
 					throw new MapGenerationException("Generator produced mismatching player and actor definitions.");
