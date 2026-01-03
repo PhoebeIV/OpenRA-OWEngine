@@ -576,6 +576,7 @@ Container@EDITOR_WORLD_ROOT:
 							Height: 25
 							Text: button-cancel
 							Font: Bold
+							Key: escape
 				Background@ACTOR_EDIT_PANEL:
 					Width: PARENT_WIDTH
 					Height: PARENT_HEIGHT
@@ -600,7 +601,7 @@ Container@EDITOR_WORLD_ROOT:
 							Height: 25
 						Label@ACTOR_ID_ERROR_LABEL:
 							X: 69
-							Y: 35
+							Y: 61
 							Width: 213
 							Height: 25
 							Font: TinyBold
@@ -686,12 +687,14 @@ Container@EDITOR_WORLD_ROOT:
 									Height: 25
 									Text: button-cancel
 									Font: Bold
+									Key: escape
 								Button@OK_BUTTON:
 									X: 208
 									Width: 75
 									Height: 25
 									Text: button-container-ok
 									Font: Bold
+									Key: return
 		Container@MAP_EDITOR_TAB_CONTAINER:
 			Logic: MapEditorTabsLogic
 			X: WINDOW_WIDTH - 295
