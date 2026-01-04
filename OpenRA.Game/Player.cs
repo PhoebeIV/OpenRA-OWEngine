@@ -234,14 +234,14 @@ namespace OpenRA
 
 		string ResolvePlayerName()
 		{
-			// if (IsBot)
-			// {
-			// var botInfo = botInfos.First(b => b.Type == BotType);
-			// var botsOfSameType = World.Players.Where(c => c.BotType == BotType).ToArray();
-			// return FluentProvider.GetMessage(EnumeratedBotName,
-			// "name", FluentProvider.GetMessage(botInfo.Name),
-			// "number", botsOfSameType.IndexOf(this) + 1);
-			// }
+			if (IsBot)
+			{
+				var botInfo = botInfos.First(b => b.Type == BotType);
+				var botsOfSameType = World.Players.Where(c => c.BotType == BotType).ToArray();
+				return FluentProvider.GetMessage(EnumeratedBotName,
+				"name", FluentProvider.GetMessage(PlayerName),
+				"number", botsOfSameType.IndexOf(this) + 1);
+			}
 			return PlayerName;
 		}
 
