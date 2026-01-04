@@ -434,7 +434,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <summary>Load a named MultiBrush collection from a map's tileset.</summary>
 		public static ImmutableArray<MultiBrush> LoadCollection(Map map, string name)
 		{
-			var templatedTerrainInfo = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
+			var templatedTerrainInfo = (ITemplatedTerrainInfo)map.Rules.TerrainInfo;
 			return templatedTerrainInfo.MultiBrushCollections[name]
 				.Select(info => new MultiBrush(map, info))
 				.ToImmutableArray();
@@ -843,7 +843,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var bottomRight = new CPos(
 				Shape.Max(cvec => cvec.X),
 				Shape.Max(cvec => cvec.Y));
-			var cellRegion = new CellRegion(map.Grid.Type, topLeft, bottomRight);
+			var cellRegion = new CellCoordsRegion(topLeft, bottomRight);
 
 			var actorPreviews = new Dictionary<string, EditorActorPreview>();
 			for (var i = 0; i < actorPlans.Count; i++)

@@ -54,6 +54,16 @@ namespace OpenRA.Mods.Common.Orders
 
 		public virtual IEnumerable<Order> Order(World world, CPos cell, int2 worldPixel, MouseInput mi)
 		{
+			if (mi.Button == ActionButton)
+				return OrderInner(world, cell, worldPixel, mi);
+			if (mi.Button == CancelButton)
+				world.CancelInputMode();
+
+			return [];
+		}
+
+		protected virtual IEnumerable<Order> OrderInner(World world, CPos cell, int2 worldPixel, MouseInput mi)
+		{
 			var target = TargetForInput(world, cell, worldPixel, mi);
 			var orders = world.Selection.Actors
 				.Select(a => OrderForUnit(a, target, cell, mi))
@@ -82,7 +92,7 @@ namespace OpenRA.Mods.Common.Orders
 			var target = TargetForInput(world, cell, worldPixel, mi);
 
 			bool useSelect;
-			if (gameSettings.UseClassicMouseStyle && !InputOverridesSelection(world, worldPixel, mi))
+			if (gameSettings.MouseControlStyle == MouseControlStyle.Classic && !InputOverridesSelection(world, worldPixel, mi))
 				useSelect = target.Type == TargetType.Actor && target.Actor.Info.HasTraitInfo<ISelectableInfo>();
 			else
 			{
@@ -91,11 +101,12 @@ namespace OpenRA.Mods.Common.Orders
 					.Where(o => o != null && o.Cursor != null);
 
 				var cursorOrder = ordersWithCursor.MaxByOrDefault(o => o.Order.OrderPriority);
-				if (cursorOrder != null)
-					return cursorOrder.Cursor;
 
 				useSelect = target.Type == TargetType.Actor && target.Actor.Info.HasTraitInfo<ISelectableInfo>() &&
-					(mi.Modifiers.HasModifier(Modifiers.Shift) || world.Selection.Actors.Count == 0);
+					(cursorOrder == null || world.Selection.Actors.Count == 0 || !InputOverridesSelection(world, worldPixel, mi));
+
+				if (!useSelect && cursorOrder != null)
+					return cursorOrder.Cursor;
 			}
 
 			return useSelect ? worldSelectCursor : worldDefaultCursor;
@@ -149,9 +160,6 @@ namespace OpenRA.Mods.Common.Orders
 		/// </summary>
 		protected UnitOrderResult OrderForUnit(Actor self, Target target, CPos xy, MouseInput mi)
 		{
-			if (mi.Button != ActionButton)
-				return null;
-
 			if (self.Owner != self.World.LocalPlayer)
 				return null;
 
