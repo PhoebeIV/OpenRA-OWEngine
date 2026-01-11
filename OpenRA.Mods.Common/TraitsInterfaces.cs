@@ -1034,4 +1034,7 @@ namespace OpenRA.Mods.Common.Traits
 		ImmutableArray<string> Tilesets { get; }
 		IMapGeneratorSettings GetSettings();
 	}
+
+	[RequireExplicitImplementation]
+	public interface INotifyTeslaCharging { void Charging(Actor self, in Target target); }
 }

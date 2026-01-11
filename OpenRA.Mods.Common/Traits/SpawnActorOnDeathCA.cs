@@ -8,6 +8,7 @@
  */
 #endregion
 
+using System.Collections.Concurrent;
 using System.Linq;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -68,6 +69,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Should the spawned actor inhert experience from the killed actor.")]
 		public readonly bool InheritsExperience = false;
 
+		[Desc("Should the actor spawn even if something is in the way?")]
+		public readonly bool IgnoreBlockingActors = true;
+
 		public override object Create(ActorInitializer init) { return new SpawnActorOnDeathCA(init, this); }
 	}
 
@@ -116,6 +120,9 @@ namespace OpenRA.Mods.Common.Traits
 
 			var defeated = self.Owner.WinState == WinState.Lost;
 			if (defeated && !Info.SpawnAfterDefeat)
+				return;
+
+			if (!Info.IgnoreBlockingActors && !self.World.ActorMap.GetActorsAt(self.Location).All(a => a == self))
 				return;
 
 			var td = new TypeDictionary
