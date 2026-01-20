@@ -60,7 +60,10 @@ namespace OpenRA
 		{
 			var preview = modData.MapCache[MapUid];
 			if (preview.Status != MapStatus.Available && MapGenerationArgs != null)
-				modData.MapCache.GenerateMap(modData, MapGenerationArgs);
+			{
+				preview.UpdateFromGenerationArgs(MapGenerationArgs);
+				preview.Generate();
+			}
 
 			return preview;
 		}
@@ -112,7 +115,7 @@ namespace OpenRA
 				nodes.Add(new MiniYamlNode($"Player@{i}", FieldSaver.Save(Players[i])));
 
 			if (MapGenerationArgs != null)
-				nodes.Add(new MiniYamlNode("MapGenerationArgs", new MiniYaml("", MiniYaml.FromString(MapGenerationArgs.Serialize(), "MapGenerationArgs"))));
+				nodes.Add(new MiniYamlNode("MapGenerationArgs", new MiniYaml("", MapGenerationArgs.Serialize())));
 
 			return nodes.WriteToString();
 		}
