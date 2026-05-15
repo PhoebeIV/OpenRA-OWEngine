@@ -87,7 +87,7 @@ namespace OpenRA.Graphics
 			}
 		}
 
-		public float MinZoom { get; private set; } = 1f;
+		public float MinZoom { get; private set; } = 0.5f;
 		public float MaxZoom { get; private set; } = 2f;
 
 		public void OverrideDefaultHeight(float height)
