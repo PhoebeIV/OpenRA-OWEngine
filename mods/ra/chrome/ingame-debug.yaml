@@ -131,8 +131,20 @@ Container@DEBUG_PANEL:
 							Text: button-debug-panel-reset-shroud
 							TooltipTemplate: BUTTON_TOOLTIP
 							TooltipContainer: TOOLTIP_CONTAINER
-						Button@PLAYER_EXPERIENCE:
+						Button@POWER_OUTAGE:
 							X: 339
+							Width: 151
+							Height: 30
+							Font: Bold
+							Text: button-debug-panel-power-outage
+							TooltipTemplate: BUTTON_TOOLTIP
+							TooltipContainer: TOOLTIP_CONTAINER
+				Container@ROW:
+					Width: PARENT_WIDTH - 17
+					Height: 30
+					Children:
+						Button@PLAYER_EXPERIENCE:
+							X: 15
 							Width: 151
 							Height: 30
 							Font: Bold

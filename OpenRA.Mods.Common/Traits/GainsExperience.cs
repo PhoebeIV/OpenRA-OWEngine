@@ -18,6 +18,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[IncludeStaticFluentReferences(typeof(GainsExperience))]
 	[Desc("This actor's experience increases when it has killed a GivesExperience actor.")]
 	public class GainsExperienceInfo : TraitInfo
 	{
@@ -61,6 +62,12 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class GainsExperience : INotifyCreated, ISync, IResolveOrder, ITransformActorInitModifier
 	{
+		[FluentReference("cheat", "player", "suffix")]
+		const string CheatUsed = "notification-cheat-used";
+
+		public const string CommandName = "levelup";
+		public const string OrderName = "DevLevelUp";
+
 		readonly Actor self;
 		readonly GainsExperienceInfo info;
 		readonly int initialExperience;
@@ -136,7 +143,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void ResolveOrder(Actor self, Order order)
 		{
-			if (order.OrderString == "DevLevelUp")
+			if (order.OrderString == OrderName)
 			{
 				var developerMode = self.Owner.PlayerActor.Trait<DeveloperMode>();
 				if (!developerMode.Enabled)
@@ -146,6 +153,11 @@ namespace OpenRA.Mods.Common.Traits
 					GiveLevels((int)order.ExtraData);
 				else
 					GiveLevels(1);
+
+				TextNotificationsManager.Debug(FluentProvider.GetMessage(CheatUsed,
+					"cheat", OrderName,
+					"player", self.Owner.ResolvedPlayerName,
+					"suffix", ""));
 			}
 		}
 

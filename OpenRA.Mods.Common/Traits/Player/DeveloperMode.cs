@@ -76,8 +76,34 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class DeveloperMode : IResolveOrder, ISync, INotifyCreated, IUnlocksRenderPlayer
 	{
+		public static class Orders
+		{
+			public const string All = "DevAll";
+			public const string EnableTech = "DevEnableTech";
+			public const string FastCharge = "DevFastCharge";
+			public const string FastBuild = "DevFastBuild";
+			public const string GiveCash = "DevGiveCash";
+			public const string GiveCashAll = "DevGiveCashAll";
+			public const string GrowResources = "DevGrowResources";
+			public const string Visibility = "DevVisibility";
+			public const string GiveExploration = "DevGiveExploration";
+			public const string ResetExploration = "DevResetExploration";
+			public const string UnlimitedPower = "DevUnlimitedPower";
+			public const string BuildAnywhere = "DevBuildAnywhere";
+			public const string PlayerExperience = "DevPlayerExperience";
+			public const string Heal = "DevHeal";
+			public const string Kill = "DevKill";
+			public const string Dispose = "DevDispose";
+		}
+
 		[FluentReference("cheat", "player", "suffix")]
 		const string CheatUsed = "notification-cheat-used";
+
+		[FluentReference("cheat", "player")]
+		const string CheatEnabled = "notification-cheat-enabled";
+
+		[FluentReference("cheat", "player")]
+		const string CheatDisabled = "notification-cheat-disabled";
 
 		readonly DeveloperModeInfo info;
 		public bool Enabled { get; private set; }
@@ -138,7 +164,7 @@ namespace OpenRA.Mods.Common.Traits
 			var debugSuffix = "";
 			switch (order.OrderString)
 			{
-				case "DevAll":
+				case Orders.All:
 				{
 					enableAll ^= true;
 					allTech = fastCharge = fastBuild = disableShroud = unlimitedPower = buildAnywhere = enableAll;
@@ -156,25 +182,25 @@ namespace OpenRA.Mods.Common.Traits
 					break;
 				}
 
-				case "DevEnableTech":
+				case Orders.EnableTech:
 				{
 					allTech ^= true;
 					break;
 				}
 
-				case "DevFastCharge":
+				case Orders.FastCharge:
 				{
 					fastCharge ^= true;
 					break;
 				}
 
-				case "DevFastBuild":
+				case Orders.FastBuild:
 				{
 					fastBuild ^= true;
 					break;
 				}
 
-				case "DevGiveCash":
+				case Orders.GiveCash:
 				{
 					var amount = order.ExtraData != 0 ? (int)order.ExtraData : info.Cash;
 					self.Trait<PlayerResources>().ChangeCash(amount);
@@ -183,7 +209,7 @@ namespace OpenRA.Mods.Common.Traits
 					break;
 				}
 
-				case "DevGiveCashAll":
+				case Orders.GiveCashAll:
 				{
 					var amount = order.ExtraData != 0 ? (int)order.ExtraData : info.Cash;
 					var receivingPlayers = self.World.Players.Where(p => p.Playable);
@@ -195,7 +221,7 @@ namespace OpenRA.Mods.Common.Traits
 					break;
 				}
 
-				case "DevGrowResources":
+				case Orders.GrowResources:
 				{
 					foreach (var a in self.World.ActorsWithTrait<ISeedableResource>())
 						for (var i = 0; i < info.ResourceGrowth; i++)
@@ -204,7 +230,7 @@ namespace OpenRA.Mods.Common.Traits
 					break;
 				}
 
-				case "DevVisibility":
+				case Orders.Visibility:
 				{
 					disableShroud ^= true;
 					self.Owner.Shroud.Disabled = DisableShroud;
@@ -214,43 +240,54 @@ namespace OpenRA.Mods.Common.Traits
 					break;
 				}
 
-				case "DevPathDebug":
+				case PathFinderOverlay.OrderName:
 				{
 					pathDebug ^= true;
 					break;
 				}
 
-				case "DevGiveExploration":
+				case Orders.GiveExploration:
 				{
 					self.Owner.Shroud.ExploreAll();
 					break;
 				}
 
-				case "DevResetExploration":
+				case Orders.ResetExploration:
 				{
 					self.Owner.Shroud.ResetExploration();
 					break;
 				}
 
-				case "DevUnlimitedPower":
+				case Orders.UnlimitedPower:
 				{
 					unlimitedPower ^= true;
 					break;
 				}
 
-				case "DevBuildAnywhere":
+				case Orders.BuildAnywhere:
 				{
 					buildAnywhere ^= true;
 					break;
 				}
 
-				case "DevPlayerExperience":
+				case Orders.PlayerExperience:
 				{
 					self.Owner.PlayerActor.TraitOrDefault<PlayerExperience>()?.GiveExperience((int)order.ExtraData);
 					break;
 				}
 
-				case "DevKill":
+				case Orders.Heal:
+				{
+					if (order.Target.Type != TargetType.Actor)
+						break;
+
+					var actor = order.Target.Actor;
+					var health = actor.TraitOrDefault<IHealth>();
+					health?.InflictDamage(actor, actor, new Damage(-health.MaxHP), true);
+					break;
+				}
+
+				case Orders.Kill:
 				{
 					if (order.Target.Type != TargetType.Actor)
 						break;
@@ -263,7 +300,7 @@ namespace OpenRA.Mods.Common.Traits
 					break;
 				}
 
-				case "DevDispose":
+				case Orders.Dispose:
 				{
 					if (order.Target.Type != TargetType.Actor)
 						break;
@@ -276,10 +313,28 @@ namespace OpenRA.Mods.Common.Traits
 					return;
 			}
 
-			TextNotificationsManager.Debug(FluentProvider.GetMessage(CheatUsed,
-				"cheat", order.OrderString,
-				"player", self.Owner.ResolvedPlayerName,
-				"suffix", debugSuffix));
+			var notification = order.OrderString switch
+			{
+				Orders.All => enableAll ? CheatEnabled : CheatDisabled,
+				Orders.EnableTech => allTech ? CheatEnabled : CheatDisabled,
+				Orders.FastCharge => fastCharge ? CheatEnabled : CheatDisabled,
+				Orders.FastBuild => fastBuild ? CheatEnabled : CheatDisabled,
+				Orders.Visibility => disableShroud ? CheatEnabled : CheatDisabled,
+				PathFinderOverlay.OrderName => pathDebug ? CheatEnabled : CheatDisabled,
+				Orders.UnlimitedPower => unlimitedPower ? CheatEnabled : CheatDisabled,
+				Orders.BuildAnywhere => buildAnywhere ? CheatEnabled : CheatDisabled,
+				_ => CheatUsed,
+			};
+
+			if (notification == CheatUsed)
+				TextNotificationsManager.Debug(FluentProvider.GetMessage(CheatUsed,
+					"cheat", order.OrderString,
+					"player", self.Owner.ResolvedPlayerName,
+					"suffix", debugSuffix));
+			else
+				TextNotificationsManager.Debug(FluentProvider.GetMessage(notification,
+					"cheat", order.OrderString,
+					"player", self.Owner.ResolvedPlayerName));
 		}
 
 		bool IUnlocksRenderPlayer.RenderPlayerUnlocked => Enabled;
