@@ -85,6 +85,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Display order for the stance dropdown in the map editor")]
 		public readonly int EditorStanceDisplayOrder = 1;
 
+		[Desc("If true, the attacker will acquire a random target within ScanRadius")]
+		public readonly bool RandomizeTarget = false;
+
 		public override object Create(ActorInitializer init) { return new AutoTarget(init, this); }
 
 		public override void RulesetLoaded(Ruleset rules, ActorInfo info)
@@ -460,6 +463,7 @@ namespace OpenRA.Mods.Common.Traits
 						chosenTarget = target;
 						chosenTargetPriority = ati.Priority;
 						chosenTargetRange = targetRange;
+						// Log.Write("debug", $"Actor {self.Info.Name} ({self.ActorID}) potential target in range {chosenTarget.Actor.Info.Name} ({chosenTarget.Actor.ActorID}) .");
 					}
 				}
 			}

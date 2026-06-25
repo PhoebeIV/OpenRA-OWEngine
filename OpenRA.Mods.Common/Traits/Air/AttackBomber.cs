@@ -89,7 +89,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override Activity GetAttackActivity(Actor self, AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor)
 		{
-			throw new NotImplementedException("AttackBomber requires a scripted target");
+			Log.Write("debug", $"Actor  {self.Info.Name} ({self.ActorID}) with AttackBomber trait tried to attack. Disposed.");
+			self.Dispose();
+			return null;
+			// throw new NotImplementedException("AttackBomber requires a scripted target");
 		}
 	}
 }
