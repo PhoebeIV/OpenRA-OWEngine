@@ -17,7 +17,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	[Desc("Spawns units when collected.")]
+	[Desc("Spawns units randomly on the map when collected.")]
 	class SpawnRandomUnitCrateActionInfo : CrateActionInfo
 	{
 		[ActorReference]
@@ -61,6 +61,28 @@ namespace OpenRA.Mods.Common.Traits
 			if (info.ValidFactions.Count > 0 && !info.ValidFactions.Contains(collector.Owner.Faction.InternalName))
 				return false;
 
+			var pathFinder = collector.World.WorldActor.TraitOrDefault<IPathFinder>();
+			var locomotorsByName = collector.World.WorldActor.TraitsImplementing<Locomotor>().ToDictionary(l => l.Info.Name);
+			var unit = info.Units[0];
+
+			// avoid dumping tanks in the sea, and ships on dry land.
+			foreach (var cell in self.World.Map.AllCells)
+			{
+				if (GetSuitableCells(cell, unit, pathFinder, locomotorsByName).Any())
+					return true;
+			}
+
+			return false;
+		}
+
+		public bool CanPosition(Actor newunit, string unit, CPos newlocation)
+		{
+			var pathFinder = newunit.World.WorldActor.TraitOrDefault<IPathFinder>();
+			var locomotorsByName = newunit.World.WorldActor.TraitsImplementing<Locomotor>().ToDictionary(l => l.Info.Name);
+
+			if (!GetSuitableCells(newlocation, unit, pathFinder, locomotorsByName).Any())
+				return false;
+
 			return true;
 		}
 
@@ -84,18 +106,30 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					foreach (var unit in info.Units)
 					{
-						var location = ChooseEmptyCellNear(collector, unit, pathFinder, locomotorsByName);
-						if (location != null)
-						{
-							var actor = w.CreateActor(unit,
-							[
-								new LocationInit(location.Value),
-								new OwnerInit(info.Owner ?? collector.Owner.InternalName)
-							]);
 
-							// Set the subcell and make sure to crush actors beneath.
-							var positionable = actor.OccupiesSpace as IPositionable;
-							positionable.SetPosition(actor, location.Value, positionable.GetAvailableSubCell(location.Value, ignoreActor: actor));
+						var actor = w.CreateActor(unit,
+						[
+							new LocationInit(randomLocation),
+							new OwnerInit(info.Owner ?? collector.Owner.InternalName)
+						]);
+
+						randomLocation = collector.World.Map.ChooseRandomCell(collector.World.SharedRandom);
+						var i = 0;
+						while (!CanPosition(actor, unit, randomLocation) && i < 1000)
+						{
+							i++;
+							randomLocation = collector.World.Map.ChooseRandomCell(collector.World.SharedRandom);
+						}
+
+
+						// Set the subcell and make sure to crush actors beneath.
+						var positionable = actor.OccupiesSpace as IPositionable;
+						positionable.SetPosition(actor, randomLocation, positionable.GetAvailableSubCell(randomLocation, ignoreActor: actor));
+
+						if (i == 1000)
+						{
+							actor.Kill(collector);
+							i = 0;
 						}
 					}
 				}
@@ -109,6 +143,7 @@ namespace OpenRA.Mods.Common.Traits
 							new OwnerInit(info.Owner ?? collector.Owner.InternalName)
 						]);
 
+						randomLocation = actor.World.Map.ChooseRandomCell(actor.World.SharedRandom);
 						// Set the subcell and make sure to crush actors beneath.
 						var positionable = actor.OccupiesSpace as IPositionable;
 						positionable.SetPosition(actor, randomLocation, positionable.GetAvailableSubCell(randomLocation, ignoreActor: actor));

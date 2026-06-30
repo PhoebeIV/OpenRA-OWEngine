@@ -35,6 +35,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Display order for the free actor checkbox in the map editor")]
 		public readonly int EditorFreeActorDisplayOrder = 4;
 
+		[Desc("Override the owner of the newly spawned unit: e.g. Creeps or Neutral")]
+		public readonly string Owner = null;
+
 		IEnumerable<EditorActorOption> IEditorActorOptions.ActorOptions(ActorInfo ai, World world)
 		{
 			yield return new EditorActorCheckbox("Spawn Child Actor", EditorFreeActorDisplayOrder,
@@ -75,7 +78,7 @@ namespace OpenRA.Mods.Common.Traits
 				[
 					new ParentActorInit(self),
 					new LocationInit(self.Location + Info.SpawnOffset),
-					new OwnerInit(self.Owner),
+					new OwnerInit(Info.Owner ?? self.Owner.InternalName),
 					new FacingInit(Info.Facing),
 				]);
 			});
