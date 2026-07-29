@@ -52,21 +52,21 @@ jobs:
           echo ${{ needs.prepare.outputs.version_type }}
 
       - name: Clone Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.git_tag }}
 
-      - name: Install .NET 8
-        uses: actions/setup-dotnet@v5
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Prepare Environment
         run: |
           make all
 
       - name: Clone Wiki
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: openra/openra.wiki
           token: ${{ secrets.DOCS_TOKEN }}
@@ -107,14 +107,14 @@ jobs:
           echo ${{ needs.prepare.outputs.version_type }}
 
       - name: Clone Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.git_tag }}
 
-      - name: Install .NET 8
-        uses: actions/setup-dotnet@v5
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Prepare Environment
         run: |
@@ -122,7 +122,7 @@ jobs:
 
       # version_type is release/playtest/bleed - the name of the target branch.
       - name: Clone docs.openra.net
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: openra/docs
           token: ${{ secrets.DOCS_TOKEN }}
