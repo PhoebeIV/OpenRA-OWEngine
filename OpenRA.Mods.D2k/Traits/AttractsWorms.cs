@@ -11,11 +11,12 @@
 
 using System.Collections.Immutable;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Traits;
 
 namespace OpenRA.Mods.D2k.Traits
 {
 	[Desc("This actor makes noise, which causes them to be targeted by actors with the Sandworm trait.")]
-	public class AttractsWormsInfo : ConditionalTraitInfo
+	public class AttractsWormsInfo : ConditionalTraitInfo, IRulesetLoaded<ActorInfo>
 	{
 		[Desc("How much noise this actor produces.")]
 		public readonly int Intensity = 0;
@@ -29,6 +30,21 @@ namespace OpenRA.Mods.D2k.Traits
 		[Desc("Ranges at which each Falloff step is defined. Overrides Spread.")]
 		public readonly ImmutableArray<WDist> Range = default;
 
+		void IRulesetLoaded<ActorInfo>.RulesetLoaded(Ruleset rules, ActorInfo info)
+		{
+			if (Falloff.Length < 2)
+				throw new YamlException("AttractsWorms requires at least two Falloff values.");
+
+			if (Range != null)
+			{
+				if (Range.Length != Falloff.Length)
+					throw new YamlException("Number of Range values must be equal to the number of Falloff values.");
+
+				for (var i = 0; i < Range.Length - 1; i++)
+					if (Range[i] >= Range[i + 1])
+						throw new YamlException("Range values must be specified in a strictly increasing order.");
+			}
+		}
 		public override object Create(ActorInitializer init) { return new AttractsWorms(init, this); }
 	}
 
@@ -70,6 +86,9 @@ namespace OpenRA.Mods.D2k.Traits
 
 			// Actor is too far to hear anything.
 			if (length > effectiveRange[^1].Length)
+				return WVec.Zero;
+
+			if (length == 0)
 				return WVec.Zero;
 
 			var direction = 1024 * distance / length;

@@ -47,8 +47,9 @@ namespace OpenRA.Mods.OpenSA.Traits.Conditions
 			: base(info)
 		{
 			var hasCondition = token != Actor.InvalidConditionToken;
-
+			this.self = self;
 			this.info = info;
+			
 			productionQueues = self.Info.TraitInfos<ProductionInfo>().ToArray();
 
 			if (!hasCondition && IsProducing)
