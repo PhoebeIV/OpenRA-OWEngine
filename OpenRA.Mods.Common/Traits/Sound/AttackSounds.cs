@@ -48,6 +48,9 @@ namespace OpenRA.Mods.Common.Traits.Sound
 
 		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel)
 		{
+			if (IsTraitDisabled)
+				return;
+
 			if (info.DelayRelativeTo == AttackDelayType.Attack)
 			{
 				if (info.Delay > 0)
@@ -59,6 +62,9 @@ namespace OpenRA.Mods.Common.Traits.Sound
 
 		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel)
 		{
+			if (IsTraitDisabled)
+				return;
+
 			if (info.DelayRelativeTo == AttackDelayType.Preparation)
 			{
 				if (info.Delay > 0)

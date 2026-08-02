@@ -1369,11 +1369,19 @@ namespace OpenRA
 		public IEnumerable<CPos> FindTilesInAnnulus(CPos center, int minRange, int maxRange, bool allowOutsideBounds = false)
 		{
 			if (maxRange < minRange)
-				throw new ArgumentOutOfRangeException(nameof(maxRange), "Maximum range is less than the minimum range.");
+			{
+				Log.Write("debug", $"Maximum range is less than the minimum range. Adjusted.");
+				maxRange = minRange;
+				//throw new ArgumentOutOfRangeException(nameof(maxRange), "Maximum range is less than the minimum range.");
+			}
 
 			if (maxRange >= Grid.TilesByDistance.Length)
-				throw new ArgumentOutOfRangeException(nameof(maxRange),
-					$"The requested range ({maxRange}) cannot exceed the value of MaximumTileSearchRange ({Grid.MaximumTileSearchRange})");
+			{
+				Log.Write("debug", $"The requested range ({maxRange}) cannot exceed the value of MaximumTileSearchRange ({Grid.MaximumTileSearchRange}). Adjusted.");
+				maxRange = Grid.TilesByDistance.Length - 1;
+				//throw new ArgumentOutOfRangeException(nameof(maxRange),
+				//	$"The requested range ({maxRange}) cannot exceed the value of MaximumTileSearchRange ({Grid.MaximumTileSearchRange})");
+			}
 
 			return FindTilesInAnnulus();
 
