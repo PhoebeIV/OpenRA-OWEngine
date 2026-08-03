@@ -28,7 +28,7 @@ namespace OpenRA.Mods.RA.Traits
 	{
 		[FieldLoader.Require]
 		[Desc("Drop pod unit")]
-		[ActorReference([typeof(AircraftInfo), typeof(FallsToEarthInfo)])]
+		[ActorReference([typeof(AircraftInfo)])]
 		public readonly ImmutableArray<string> UnitTypes = default;
 
 		[Desc("Number of drop pods spawned.")]
@@ -101,10 +101,14 @@ namespace OpenRA.Mods.RA.Traits
 
 				var aircraftInfo = actorInfo.TraitInfo<AircraftInfo>();
 				var altitude = aircraftInfo.CruiseAltitude.Length;
+				var delta = WVec.Zero;
 
-				var delta =
-					new WVec(0, -altitude * aircraftInfo.Speed / actorInfo.TraitInfo<FallsToEarthInfo>().Velocity.Length, 0)
-					.Rotate(WRot.FromYaw(info.PodFacing));
+				if (actorInfo.HasTraitInfo<FallsToEarthInfo>())
+					delta =	new WVec(0, -altitude * aircraftInfo.Speed / actorInfo.TraitInfo<FallsToEarthInfo>().Velocity.Length, 0)
+						.Rotate(WRot.FromYaw(info.PodFacing));
+				else if (actorInfo.HasTraitInfo<FallsToEarthOWInfo>())
+					delta =	new WVec(0, -altitude * aircraftInfo.Speed / actorInfo.TraitInfo<FallsToEarthOWInfo>().Velocity.Length, 0)
+						.Rotate(WRot.FromYaw(info.PodFacing));
 
 				// PERF: Cache constant values.
 				getLaunchLocation[unitType] = pos => self.World.Map.CenterOfCell(pos) - delta + new WVec(0, 0, altitude);
