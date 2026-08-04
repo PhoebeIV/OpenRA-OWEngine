@@ -45,6 +45,7 @@ namespace OpenRA.Mods.D2k.Traits
 						throw new YamlException("Range values must be specified in a strictly increasing order.");
 			}
 		}
+
 		public override object Create(ActorInitializer init) { return new AttractsWorms(init, this); }
 	}
 

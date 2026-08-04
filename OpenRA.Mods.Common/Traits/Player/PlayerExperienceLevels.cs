@@ -23,12 +23,12 @@ namespace OpenRA.Mods.CA.Traits
 	public class PlayerExperienceLevelsInfo : ConditionalTraitInfo, Requires<PlayerExperienceInfo>, Requires<TechTreeInfo>, ITechTreePrerequisiteInfo
 	{
 		[Desc("Experience required to reach each level above level 0.")]
-		public readonly int[] LevelXpRequirements = { 50, 250, 500 };
+		public readonly int[] LevelXpRequirements = [50, 250, 500];
 
-		public readonly string[] LevelPrerequisites = { };
+		public readonly string[] LevelPrerequisites = [];
 
 		[Desc("List of factions that can have levels.")]
-		public readonly string[] Factions = { };
+		public readonly string[] Factions = [];
 
 		[NotificationReference("Speech")]
 		[Desc("Speech notification to play when player levels up.")]
@@ -61,7 +61,6 @@ namespace OpenRA.Mods.CA.Traits
 		PlayerExperience playerExperience;
 		TechTree techTree;
 		readonly int maxLevel;
-		readonly bool validFaction;
 		int currentLevel;
 		int nextLevelXpRequired;
 		bool notificationQueued;
@@ -75,7 +74,7 @@ namespace OpenRA.Mods.CA.Traits
 			: base(info)
 		{
 			var player = self.Owner;
-			validFaction = info.Factions.Length == 0 || info.Factions.Contains(player.Faction.InternalName);
+			Enabled = info.Factions.Length == 0 || info.Factions.Contains(player.Faction.InternalName);
 
 			currentLevel = 0;
 			maxLevel = info.LevelXpRequirements.Length;
@@ -83,7 +82,7 @@ namespace OpenRA.Mods.CA.Traits
 			ticksUntilNotification = info.NotificationDelay;
 		}
 
-		public bool Enabled => validFaction;
+		public bool Enabled { get; }
 
 		public int? CurrentLevel => currentLevel;
 
@@ -96,7 +95,7 @@ namespace OpenRA.Mods.CA.Traits
 				if (currentLevel > 0)
 					return Info.LevelPrerequisites.Take(currentLevel);
 				else
-					return Enumerable.Empty<string>();
+					return [];
 			}
 		}
 
@@ -135,13 +134,13 @@ namespace OpenRA.Mods.CA.Traits
 			{
 				self.World.AddFrameEndTask(w =>
 				{
-					w.CreateActor(Info.DummyActor, new TypeDictionary
-					{
+					w.CreateActor(Info.DummyActor,
+					[
 						new ParentActorInit(self),
 						new LocationInit(CPos.Zero),
 						new OwnerInit(self.Owner),
 						new FacingInit(WAngle.Zero),
-					});
+					]);
 				});
 			}
 		}
@@ -162,9 +161,8 @@ namespace OpenRA.Mods.CA.Traits
 			notificationQueued = true;
 
 			// if there's an actor that represents the prerequisite, add it to the build order
-			//if (self.World.Map.Rules.Actors.ContainsKey(Info.LevelPrerequisites[currentLevel - 1]))
-				//upgradesManager.UpgradeProviderCreated(Info.LevelPrerequisites[currentLevel - 1]);
-
+			// if (self.World.Map.Rules.Actors.ContainsKey(Info.LevelPrerequisites[currentLevel - 1]))
+			// upgradesManager.UpgradeProviderCreated(Info.LevelPrerequisites[currentLevel - 1]);
 			if (Info.DummyActor != null)
 			{
 				dummyActorQueued = true;

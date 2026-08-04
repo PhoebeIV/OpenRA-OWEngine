@@ -25,10 +25,10 @@ namespace OpenRA.Mods.CA.Traits
 		public readonly int Delay = 250;
 
 		[Desc("Only grant this prerequisite when you have these prerequisites.")]
-		public readonly string[] RequiresPrerequisites = { };
+		public readonly string[] RequiresPrerequisites = [];
 
 		[Desc("Only grant this prerequisite for certain factions.")]
-		public readonly HashSet<string> Factions = new HashSet<string>();
+		public readonly HashSet<string> Factions = [];
 
 		[Desc("Should it recheck everything when it is captured?")]
 		public readonly bool ResetOnOwnerChange = false;
@@ -51,7 +51,13 @@ namespace OpenRA.Mods.CA.Traits
 		public override object Create(ActorInitializer init) { return new ProvidesDelayedPrerequisite(init, this); }
 	}
 
-	public class ProvidesDelayedPrerequisite : ConditionalTrait<ProvidesDelayedPrerequisiteInfo>, ITick, ITechTreePrerequisite, INotifyOwnerChanged, INotifyCreated, ISelectionBar
+	public class ProvidesDelayedPrerequisite :
+		ConditionalTrait<ProvidesDelayedPrerequisiteInfo>,
+		ITick,
+		ITechTreePrerequisite,
+		INotifyOwnerChanged,
+		INotifyCreated,
+		ISelectionBar
 	{
 		readonly string prerequisite;
 
@@ -96,10 +102,7 @@ namespace OpenRA.Mods.CA.Traits
 
 			base.Created(self);
 
-			self.World.AddFrameEndTask(w =>
-			{
-				Reset(self);
-			});
+			self.World.AddFrameEndTask(w => Reset(self));
 		}
 
 		void ITick.Tick(Actor self)

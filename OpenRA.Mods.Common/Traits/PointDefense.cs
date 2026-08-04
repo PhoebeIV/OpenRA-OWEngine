@@ -95,14 +95,13 @@ namespace OpenRA.Mods.CA.Traits
 				var damage = 0;
 				foreach (var wh in args.Weapon.Warheads)
 				{
-					if (wh is DamageWarhead)
+					if (wh is DamageWarhead warhead)
 					{
-						var warhead = (DamageWarhead)wh;
 						var armorModifiers = armor.Where(a => warhead.Versus.ContainsKey(a.Info.Type))
 							.Select(a => warhead.Versus[a.Info.Type]);
 
 						// todo: exclude point defense shield modifier in a better way
-						var otherModifiers = damageModifiers.Where(dm => !(dm is TimedDamageMultiplier))
+						var otherModifiers = damageModifiers.Where(dm => dm is not TimedDamageMultiplier)
 							.Select(d => d.GetDamageModifier(args.SourceActor, new Damage(warhead.Damage, warhead.DamageTypes)))
 							.Where(d => d != 100);
 

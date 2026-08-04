@@ -10,7 +10,6 @@
 
 using System;
 using System.Linq;
-using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -20,12 +19,12 @@ namespace OpenRA.Mods.Common.Traits
 	public class MirageTarget { }
 
 	[Desc("Overrides the default Tooltip to aid in deceiving enemy players.")]
-	class MirageTooltipInfo : TooltipInfo, Requires<MirageInfo>
+	sealed class MirageTooltipInfo : TooltipInfo, Requires<MirageInfo>
 	{
 		public override object Create(ActorInitializer init) { return new MirageTooltip(init.Self, this); }
 	}
 
-	class MirageTooltip : ConditionalTrait<MirageTooltipInfo>, ITooltip
+	sealed class MirageTooltip : ConditionalTrait<MirageTooltipInfo>, ITooltip
 	{
 		readonly Actor self;
 		readonly Mirage mirage;
@@ -96,23 +95,23 @@ namespace OpenRA.Mods.Common.Traits
 	public class Mirage : PausableConditionalTrait<MirageInfo>, INotifyDamage, IEffectiveOwner, INotifyUnloadCargo, INotifyDemolition, INotifyInfiltration,
 		INotifyAttack, ITick, INotifyCreated, INotifyHarvestAction, INotifyDockClient
 	{
-		[VerifySync]
-		private int remainingTime;
+[VerifySync]
+int remainingTime;
 
-		Actor self;
+readonly Actor self;
 
-		bool isDocking;
+bool isDocking;
 
-		ActorInfo[] targetTypes;
+readonly ActorInfo[] targetTypes;
 
-		CPos? lastPos;
-		bool wasMirage = false;
-		int mirageToken = Actor.InvalidConditionToken;
+CPos? lastPos;
+bool wasMirage = false;
+int mirageToken = Actor.InvalidConditionToken;
 
-		public bool Disguised { get { return IsMirage; } }
+public bool Disguised { get { return IsMirage; } }
 
-		public ActorInfo ActorType { get; private set; }
-		public Player Owner
+public ActorInfo ActorType { get; }
+public Player Owner
 		{
 			get
 			{
@@ -123,7 +122,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public Mirage(ActorInitializer init, MirageInfo info)
+public Mirage(ActorInitializer init, MirageInfo info)
 			: base(info)
 		{
 			self = init.Self;
@@ -138,7 +137,7 @@ namespace OpenRA.Mods.Common.Traits
 			ActorType = targetTypes.RandomOrDefault(self.World.SharedRandom);
 		}
 
-		protected override void Created(Actor self)
+protected override void Created(Actor self)
 		{
 			if (IsMirage)
 			{
@@ -150,20 +149,20 @@ namespace OpenRA.Mods.Common.Traits
 			base.Created(self);
 		}
 
-		public bool IsMirage { get { return !IsTraitDisabled && !IsTraitPaused && remainingTime <= 0; } }
+public bool IsMirage { get { return !IsTraitDisabled && !IsTraitPaused && remainingTime <= 0; } }
 
-		public void Reveal() { Reveal(Info.RevealDelay); }
+public void Reveal() { Reveal(Info.RevealDelay); }
 
-		public void Reveal(int time)
+public void Reveal(int time)
 		{
 			remainingTime = Math.Max(remainingTime, time);
 		}
 
-		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel) { if (Info.RevealOn.HasFlag(MirageRevealType.Attack)) Reveal(); }
+void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel) { if (Info.RevealOn.HasFlag(MirageRevealType.Attack)) Reveal(); }
 
-		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel) { }
+void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel) { }
 
-		void INotifyDamage.Damaged(Actor self, AttackInfo e)
+void INotifyDamage.Damaged(Actor self, AttackInfo e)
 		{
 			if (e.Damage.Value == 0)
 				return;
@@ -175,7 +174,7 @@ namespace OpenRA.Mods.Common.Traits
 				Reveal();
 		}
 
-		void ITick.Tick(Actor self)
+void ITick.Tick(Actor self)
 		{
 			if (!IsTraitDisabled && !IsTraitPaused)
 			{
@@ -204,20 +203,20 @@ namespace OpenRA.Mods.Common.Traits
 			wasMirage = isMirage;
 		}
 
-		protected override void TraitEnabled(Actor self)
+protected override void TraitEnabled(Actor self)
 		{
 			remainingTime = Info.InitialDelay;
 		}
 
-		protected override void TraitDisabled(Actor self) { Reveal(); }
+protected override void TraitDisabled(Actor self) { Reveal(); }
 
-		void INotifyHarvestAction.MovingToResources(Actor self, CPos targetCell) { }
+void INotifyHarvestAction.MovingToResources(Actor self, CPos targetCell) { }
 
-		void INotifyHarvestAction.MovementCancelled(Actor self) { }
+void INotifyHarvestAction.MovementCancelled(Actor self) { }
 
-		void INotifyHarvestAction.Harvested(Actor self, string resourceType) { }
+void INotifyHarvestAction.Harvested(Actor self, string resourceType) { }
 
-		void INotifyDockClient.Docked(Actor self, Actor host)
+void INotifyDockClient.Docked(Actor self, Actor host)
 		{
 			if (Info.RevealOn.HasFlag(MirageRevealType.Dock))
 			{
@@ -226,24 +225,24 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		void INotifyDockClient.Undocked(Actor self, Actor host)
+void INotifyDockClient.Undocked(Actor self, Actor host)
 		{
 			isDocking = false;
 		}
 
-		void INotifyUnloadCargo.Unloading(Actor self)
+void INotifyUnloadCargo.Unloading(Actor self)
 		{
 			if (Info.RevealOn.HasFlag(MirageRevealType.Unload))
 				Reveal();
 		}
 
-		void INotifyDemolition.Demolishing(Actor self)
+void INotifyDemolition.Demolishing(Actor self)
 		{
 			if (Info.RevealOn.HasFlag(MirageRevealType.Demolish))
 				Reveal();
 		}
 
-		void INotifyInfiltration.Infiltrating(Actor self)
+void INotifyInfiltration.Infiltrating(Actor self)
 		{
 			if (Info.RevealOn.HasFlag(MirageRevealType.Infiltrate))
 				Reveal();

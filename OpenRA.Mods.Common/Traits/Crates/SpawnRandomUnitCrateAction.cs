@@ -18,7 +18,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("Spawns units randomly on the map when collected.")]
-	class SpawnRandomUnitCrateActionInfo : CrateActionInfo
+	sealed class SpawnRandomUnitCrateActionInfo : CrateActionInfo
 	{
 		[ActorReference]
 		[FieldLoader.Require]
@@ -26,7 +26,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly ImmutableArray<string> Units = [];
 
 		[Desc("Factions that are allowed to trigger this action.")]
-		public readonly FrozenSet<string> ValidFactions = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> ValidFactions = [];
 
 		[Desc("Override the owner of the newly spawned unit: e.g. Creeps or Neutral")]
 		public readonly string Owner = null;
@@ -37,7 +37,7 @@ namespace OpenRA.Mods.Common.Traits
 		public override object Create(ActorInitializer init) { return new SpawnRandomUnitCrateAction(init.Self, this); }
 	}
 
-	class SpawnRandomUnitCrateAction : CrateAction
+	sealed class SpawnRandomUnitCrateAction : CrateAction
 	{
 		readonly Actor self;
 		readonly SpawnRandomUnitCrateActionInfo info;
@@ -106,7 +106,6 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					foreach (var unit in info.Units)
 					{
-
 						var actor = w.CreateActor(unit,
 						[
 							new LocationInit(randomLocation),
@@ -120,7 +119,6 @@ namespace OpenRA.Mods.Common.Traits
 							i++;
 							randomLocation = collector.World.Map.ChooseRandomCell(collector.World.SharedRandom);
 						}
-
 
 						// Set the subcell and make sure to crush actors beneath.
 						var positionable = actor.OccupiesSpace as IPositionable;
@@ -144,6 +142,7 @@ namespace OpenRA.Mods.Common.Traits
 						]);
 
 						randomLocation = actor.World.Map.ChooseRandomCell(actor.World.SharedRandom);
+
 						// Set the subcell and make sure to crush actors beneath.
 						var positionable = actor.OccupiesSpace as IPositionable;
 						positionable.SetPosition(actor, randomLocation, positionable.GetAvailableSubCell(randomLocation, ignoreActor: actor));
@@ -176,13 +175,6 @@ namespace OpenRA.Mods.Common.Traits
 						yield return near + new CVec(i, j);
 				}
 			}
-		}
-
-		CPos? ChooseEmptyCellNear(Actor a, string unit, IPathFinder pathFinder, Dictionary<string, Locomotor> locomotorsByName)
-		{
-			return GetSuitableCells(a.World.Map.ChooseRandomCell(a.World.SharedRandom), unit, pathFinder, locomotorsByName)
-				.Cast<CPos?>()
-				.RandomOrDefault(self.World.SharedRandom);
 		}
 	}
 }

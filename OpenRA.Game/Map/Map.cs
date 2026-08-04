@@ -1370,17 +1370,19 @@ namespace OpenRA
 		{
 			if (maxRange < minRange)
 			{
-				Log.Write("debug", $"Maximum range is less than the minimum range. Adjusted.");
+				Log.Write("debug", "Maximum range is less than the minimum range. Adjusted.");
 				maxRange = minRange;
-				//throw new ArgumentOutOfRangeException(nameof(maxRange), "Maximum range is less than the minimum range.");
+
+				// throw new ArgumentOutOfRangeException(nameof(maxRange), "Maximum range is less than the minimum range.");
 			}
 
 			if (maxRange >= Grid.TilesByDistance.Length)
 			{
 				Log.Write("debug", $"The requested range ({maxRange}) cannot exceed the value of MaximumTileSearchRange ({Grid.MaximumTileSearchRange}). Adjusted.");
 				maxRange = Grid.TilesByDistance.Length - 1;
-				//throw new ArgumentOutOfRangeException(nameof(maxRange),
-				//	$"The requested range ({maxRange}) cannot exceed the value of MaximumTileSearchRange ({Grid.MaximumTileSearchRange})");
+
+				// throw new ArgumentOutOfRangeException(nameof(maxRange),
+				// $"The requested range ({maxRange}) cannot exceed the value of MaximumTileSearchRange ({Grid.MaximumTileSearchRange})");
 			}
 
 			return FindTilesInAnnulus();

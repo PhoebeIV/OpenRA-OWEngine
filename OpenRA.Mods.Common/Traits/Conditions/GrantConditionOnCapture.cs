@@ -16,7 +16,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.CA.Traits
 {
 	[Desc("Grants a condition when this actor is captured.")]
-	class GrantConditionOnCaptureInfo : ConditionalTraitInfo
+	sealed class GrantConditionOnCaptureInfo : ConditionalTraitInfo
 	{
 		public readonly BitSet<TargetableType> Types = default;
 
@@ -33,7 +33,7 @@ namespace OpenRA.Mods.CA.Traits
 		public override object Create(ActorInitializer init) { return new GrantConditionOnCapture(this); }
 	}
 
-	class GrantConditionOnCapture : ConditionalTrait<GrantConditionOnCaptureInfo>, INotifyCapture, INotifyCreated, ITick
+	sealed class GrantConditionOnCapture : ConditionalTrait<GrantConditionOnCaptureInfo>, INotifyCapture, INotifyCreated, ITick
 	{
 		int conditionToken = Actor.InvalidConditionToken;
 		int duration;

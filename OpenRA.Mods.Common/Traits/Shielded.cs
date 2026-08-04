@@ -64,7 +64,7 @@ namespace OpenRA.Mods.CA.Traits
 		readonly Lazy<IShieldRegenModifier[]> shieldModifiers;
 		int conditionToken = Actor.InvalidConditionToken;
 		int conditionToken2 = Actor.InvalidConditionToken;
-		Actor self;
+		readonly Actor self;
 
 		[VerifySync]
 		int strength;
@@ -185,8 +185,7 @@ namespace OpenRA.Mods.CA.Traits
 			{
 				var hullDamage = new Damage(excessDamage, damageTypes);
 
-				if (health != null)
-					health.InflictDamage(self, e.Attacker, hullDamage, false);
+				health?.InflictDamage(self, e.Attacker, hullDamage, false);
 			}
 		}
 

@@ -463,6 +463,7 @@ namespace OpenRA.Mods.Common.Traits
 						chosenTarget = target;
 						chosenTargetPriority = ati.Priority;
 						chosenTargetRange = targetRange;
+
 						// Log.Write("debug", $"Actor {self.Info.Name} ({self.ActorID}) potential target in range {chosenTarget.Actor.Info.Name} ({chosenTarget.Actor.ActorID}) .");
 					}
 				}

@@ -184,7 +184,7 @@ namespace OpenRA.Mods.Common.Projectiles
 			"Note: If this value is lower than the missile speed, this check might",
 			"not trigger fast enough, causing the missile to fly past the target.")]
 		public readonly WDist CloseEnough = new(298);
-	
+
 		[Desc("Type defined for point-defense logic.")]
 		public readonly string PointDefenseType = null;
 

@@ -131,7 +131,6 @@ namespace OpenRA.Mods.Common.Projectiles
 				};
 
 				args.Weapon.Impact(Target.FromPos(pos), warheadArgs);
-				
 			}
 
 			anim?.Tick();

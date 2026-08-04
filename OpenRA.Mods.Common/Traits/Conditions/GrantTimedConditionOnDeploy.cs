@@ -54,7 +54,7 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly string UndeployAnimation = null;
 
 		[Desc("Apply (un)deploy animations to sprite bodies with these names.")]
-		public readonly string[] BodyNames = { "body" };
+		public readonly string[] BodyNames = ["body"];
 
 		[Desc("Facing that the actor must face before deploying. Set to -1 to deploy regardless of facing.")]
 		public readonly int Facing = -1;

@@ -23,7 +23,7 @@ namespace OpenRA.Mods.OpenSA.Traits.Conditions
 		public readonly string Condition = null;
 
 		[Desc("Queues that should be producing for this overlay to render.")]
-		public readonly HashSet<string> Queues = new();
+		public readonly HashSet<string> Queues = [];
 
 		public override object Create(ActorInitializer init)
 		{
@@ -37,7 +37,7 @@ namespace OpenRA.Mods.OpenSA.Traits.Conditions
 		readonly GrantConditionWhileProducingInfo info;
 		readonly ProductionInfo[] productionQueues;
 		ProductionQueue[] queues;
-		int token = Actor.InvalidConditionToken;
+		readonly int token = Actor.InvalidConditionToken;
 		bool IsProducing
 		{
 			get { return queues != null && queues.Any(q => q.Enabled && q.AllQueued().Any(i => !i.Paused && i.Started) && q.MostLikelyProducer().Actor == self); }
@@ -49,7 +49,7 @@ namespace OpenRA.Mods.OpenSA.Traits.Conditions
 			var hasCondition = token != Actor.InvalidConditionToken;
 			this.self = self;
 			this.info = info;
-			
+
 			productionQueues = self.Info.TraitInfos<ProductionInfo>().ToArray();
 
 			if (!hasCondition && IsProducing)
@@ -82,6 +82,7 @@ namespace OpenRA.Mods.OpenSA.Traits.Conditions
 		{
 			CacheQueues(self);
 		}
+
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
 			self.World.AddFrameEndTask(w => CacheQueues(self));

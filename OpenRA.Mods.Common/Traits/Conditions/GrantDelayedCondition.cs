@@ -8,7 +8,6 @@
  */
 #endregion
 
-using System.Collections.Frozen;
 using System.Collections.Immutable;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Traits;
@@ -42,7 +41,7 @@ namespace OpenRA.Mods.CA.Traits
 		readonly GrantDelayedConditionInfo info;
 		int token = Actor.InvalidConditionToken;
 		public int DelayRemaining { get; private set; }
-		int delay;
+		readonly int delay;
 
 		public GrantDelayedCondition(Actor self, GrantDelayedConditionInfo info)
 			: base(info)

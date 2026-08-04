@@ -8,7 +8,6 @@
  */
 #endregion
 
-using System.Collections.Concurrent;
 using System.Linq;
 using OpenRA.Primitives;
 using OpenRA.Traits;

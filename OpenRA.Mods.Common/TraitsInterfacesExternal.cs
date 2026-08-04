@@ -11,7 +11,6 @@
 
 using System.Collections.Generic;
 using OpenRA.GameRules;
-using OpenRA.Graphics;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -22,7 +21,6 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		void RemoveInfector(Actor self, bool kill, AttackInfo e = null);
 	}
-
 
 	[RequireExplicitImplementation]
 	public interface IPointDefense
@@ -44,6 +42,12 @@ namespace OpenRA.Mods.Common.Traits
 	[RequireExplicitImplementation]
 	public interface INotifyPassengersDamage
 	{
-		void DamagePassengers(int damage, Actor attacker, int amount, Dictionary<string, int> versus, BitSet<DamageType> damageTypes, IEnumerable<int> damageModifiers);
+		void DamagePassengers(
+			int damage,
+			Actor attacker,
+			int amount,
+			Dictionary<string, int> versus,
+			BitSet<DamageType> damageTypes,
+			IEnumerable<int> damageModifiers);
 	}
 }

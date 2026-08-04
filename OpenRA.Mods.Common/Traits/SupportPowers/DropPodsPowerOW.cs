@@ -104,10 +104,10 @@ namespace OpenRA.Mods.RA.Traits
 				var delta = WVec.Zero;
 
 				if (actorInfo.HasTraitInfo<FallsToEarthInfo>())
-					delta =	new WVec(0, -altitude * aircraftInfo.Speed / actorInfo.TraitInfo<FallsToEarthInfo>().Velocity.Length, 0)
+					delta = new WVec(0, -altitude * aircraftInfo.Speed / actorInfo.TraitInfo<FallsToEarthInfo>().Velocity.Length, 0)
 						.Rotate(WRot.FromYaw(info.PodFacing));
 				else if (actorInfo.HasTraitInfo<FallsToEarthOWInfo>())
-					delta =	new WVec(0, -altitude * aircraftInfo.Speed / actorInfo.TraitInfo<FallsToEarthOWInfo>().Velocity.Length, 0)
+					delta = new WVec(0, -altitude * aircraftInfo.Speed / actorInfo.TraitInfo<FallsToEarthOWInfo>().Velocity.Length, 0)
 						.Rotate(WRot.FromYaw(info.PodFacing));
 
 				// PERF: Cache constant values.

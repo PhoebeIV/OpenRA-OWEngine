@@ -25,7 +25,7 @@ namespace OpenRA.Mods.CA.Warheads
 		public readonly string Weapon = null;
 
 		[Desc("Amount of shrapnels thrown.")]
-		public readonly int[] Amount = { 1 };
+		public readonly int[] Amount = [1];
 
 		[Desc("The percentage of aiming this shrapnel to a suitable target actor.")]
 		public readonly int AimChance = 0;
@@ -141,13 +141,13 @@ namespace OpenRA.Mods.CA.Warheads
 					CurrentMuzzleFacing = () => shrapnelFacing,
 
 					DamageModifiers = !firedBy.IsDead ? firedBy.TraitsImplementing<IFirepowerModifier>()
-						.Select(a => a.GetFirepowerModifier()).ToArray() : new int[0],
+						.Select(a => a.GetFirepowerModifier()).ToArray() : [],
 
 					InaccuracyModifiers = !firedBy.IsDead ? firedBy.TraitsImplementing<IInaccuracyModifier>()
-						.Select(a => a.GetInaccuracyModifier()).ToArray() : new int[0],
+						.Select(a => a.GetInaccuracyModifier()).ToArray() : [],
 
 					RangeModifiers = !firedBy.IsDead ? firedBy.TraitsImplementing<IRangeModifier>()
-						.Select(a => a.GetRangeModifier()).ToArray() : new int[0],
+						.Select(a => a.GetRangeModifier()).ToArray() : [],
 
 					Source = target.CenterPosition,
 					CurrentSource = () => centerPosition,

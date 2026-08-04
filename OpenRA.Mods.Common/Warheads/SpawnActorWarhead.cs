@@ -27,7 +27,7 @@ namespace OpenRA.Mods.AS.Warheads
 		public readonly int Range = 10;
 
 		[Desc("Actors to spawn.")]
-		public readonly string[] Actors = System.Array.Empty<string>();
+		public readonly string[] Actors = [];
 
 		[Desc("Try to parachute the actors. When unset, actors will just fall down visually using FallRate."
 			+ " Requires the Parachutable trait on all actors if set.")]
@@ -57,7 +57,7 @@ namespace OpenRA.Mods.AS.Warheads
 		public readonly string Palette = "effect";
 
 		[Desc("List of sounds that can be played at the spawning location.")]
-		public readonly string[] Sounds = System.Array.Empty<string>();
+		public readonly string[] Sounds = [];
 
 		public readonly bool UsePlayerPalette = false;
 

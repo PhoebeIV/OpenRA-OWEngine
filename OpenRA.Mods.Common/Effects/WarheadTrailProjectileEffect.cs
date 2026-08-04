@@ -39,11 +39,12 @@ namespace OpenRA.Mods.Common.Effects
 		readonly ContrailRenderable contrail;
 
 		[VerifySync]
-		WPos projectilepos, lastPos;
+		WPos lastPos;
 
 		int ticks, smokeTicks;
 		public bool DetonateSelf { get; private set; }
-		public WPos Position { get { return projectilepos; } }
+		[field: VerifySync]
+		public WPos Position { get; private set; }
 
 		public WarheadTrailProjectileEffect(WarheadTrailProjectileInfo info, ProjectileArgs args, int lifespan, int estimatedlifespan, bool forceToGround)
 		{
@@ -52,7 +53,7 @@ namespace OpenRA.Mods.Common.Effects
 			this.lifespan = lifespan;
 			this.estimatedlifespan = estimatedlifespan;
 			this.forceToGround = forceToGround;
-			projectilepos = args.Source;
+			Position = args.Source;
 			source = args.Source;
 
 			world = args.SourceActor.World;
@@ -107,18 +108,18 @@ namespace OpenRA.Mods.Common.Effects
 			if (anim == null || ticks >= lifespan)
 				yield break;
 
-			if (!world.FogObscures(projectilepos))
+			if (!world.FogObscures(Position))
 			{
 				if (info.Shadow)
 				{
-					var dat = world.Map.DistanceAboveTerrain(projectilepos);
-					var shadowPos = projectilepos - new WVec(0, 0, dat.Length);
+					var dat = world.Map.DistanceAboveTerrain(Position);
+					var shadowPos = Position - new WVec(0, 0, dat.Length);
 					foreach (var r in anim.Render(shadowPos, wr.Palette(info.ShadowPalette)))
 						yield return r;
 				}
 
 				var palette = wr.Palette(info.Palette);
-				foreach (var r in anim.Render(projectilepos, palette))
+				foreach (var r in anim.Render(Position, palette))
 					yield return r;
 			}
 		}
@@ -126,16 +127,15 @@ namespace OpenRA.Mods.Common.Effects
 		public void Tick(World world)
 		{
 			ticks++;
-			if (anim != null)
-				anim.Tick();
+			anim?.Tick();
 
-			lastPos = projectilepos;
-			projectilepos = WPos.Lerp(source, targetpos, ticks, estimatedlifespan);
+			lastPos = Position;
+			Position = WPos.Lerp(source, targetpos, ticks, estimatedlifespan);
 
 			// Check for walls or other blocking obstacles.
-			if (info.Blockable && BlocksProjectiles.AnyBlockingActorsBetween(world, args.SourceActor.Owner, lastPos, projectilepos, info.Width, out var blockedPos))
+			if (info.Blockable && BlocksProjectiles.AnyBlockingActorsBetween(world, args.SourceActor.Owner, lastPos, Position, info.Width, out var blockedPos))
 			{
-				projectilepos = blockedPos;
+				Position = blockedPos;
 				DetonateSelf = true;
 			}
 
@@ -149,7 +149,7 @@ namespace OpenRA.Mods.Common.Effects
 			}
 
 			if (info.ContrailLength > 0)
-				contrail.Update(projectilepos);
+				contrail.Update(Position);
 
 			var flightLengthReached = ticks >= lifespan;
 
@@ -157,7 +157,7 @@ namespace OpenRA.Mods.Common.Effects
 				DetonateSelf = true;
 
 			// Driving into cell with higher height level
-			DetonateSelf |= world.Map.DistanceAboveTerrain(projectilepos) < info.ExplodeUnderThisAltitude;
+			DetonateSelf |= world.Map.DistanceAboveTerrain(Position) < info.ExplodeUnderThisAltitude;
 
 			if (DetonateSelf)
 				Explode(world);
@@ -168,17 +168,17 @@ namespace OpenRA.Mods.Common.Effects
 			Impact();
 
 			if (info.ContrailLength > 0)
-				world.AddFrameEndTask(w => w.Add(new ContrailFader(projectilepos, contrail)));
+				world.AddFrameEndTask(w => w.Add(new ContrailFader(Position, contrail)));
 
 			world.AddFrameEndTask(w => w.Remove(this));
 		}
 
 		public void Impact()
 		{
-			var pos = forceToGround ? projectilepos - new WVec(0, 0, world.Map.DistanceAboveTerrain(projectilepos).Length) : projectilepos;
+			var pos = forceToGround ? Position - new WVec(0, 0, world.Map.DistanceAboveTerrain(Position).Length) : Position;
 			var warheadArgs = new WarheadArgs(args)
 			{
-				ImpactOrientation = new WRot(WAngle.Zero, Common.Util.GetVerticalAngle(lastPos, projectilepos), args.Facing),
+				ImpactOrientation = new WRot(WAngle.Zero, Util.GetVerticalAngle(lastPos, Position), args.Facing),
 				ImpactPosition = pos,
 			};
 

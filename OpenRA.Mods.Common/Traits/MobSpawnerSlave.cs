@@ -37,7 +37,8 @@ namespace OpenRA.Mods.AS.Traits
 
 		public bool IsMoving()
 		{
-			return Moves.Any(m => m.IsTraitEnabled() && (m.CurrentMovementTypes.HasFlag(MovementType.Horizontal) || m.CurrentMovementTypes.HasFlag(MovementType.Vertical)));
+			return Moves.Any(
+				m => m.IsTraitEnabled() && (m.CurrentMovementTypes.HasFlag(MovementType.Horizontal) || m.CurrentMovementTypes.HasFlag(MovementType.Vertical)));
 		}
 
 		public MobSpawnerSlave(ActorInitializer init, MobSpawnerSlaveInfo info)

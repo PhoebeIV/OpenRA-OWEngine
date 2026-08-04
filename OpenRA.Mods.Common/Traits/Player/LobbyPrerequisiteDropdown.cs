@@ -66,7 +66,7 @@ namespace OpenRA.Mods.CA.Traits
 	public class LobbyPrerequisiteDropdown : ITechTreePrerequisite, INotifyCreated
 	{
 		readonly LobbyPrerequisiteDropdownInfo info;
-		HashSet<string> prerequisites = new HashSet<string>();
+		readonly HashSet<string> prerequisites = [];
 
 		public LobbyPrerequisiteDropdown(Actor self, LobbyPrerequisiteDropdownInfo info)
 		{

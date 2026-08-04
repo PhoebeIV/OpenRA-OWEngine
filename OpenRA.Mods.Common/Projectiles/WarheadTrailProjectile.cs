@@ -29,10 +29,10 @@ namespace OpenRA.Mods.Common.Projectiles
 	public class WarheadTrailProjectileInfo : IProjectileInfo, IRulesetLoaded<WeaponInfo>
 	{
 		[Desc("Warhead explosion offsets")]
-		public readonly WVec[] Offsets = { new WVec(0, 1, 0) };
+		public readonly WVec[] Offsets = [new WVec(0, 1, 0)];
 
 		[Desc("Projectile speed in WDist / tick, two values indicate variable velocity.")]
-		public readonly WDist[] Speed = { new WDist(17) };
+		public readonly WDist[] Speed = [new WDist(17)];
 
 		[Desc("Maximum inaccuracy offset.")]
 		public readonly WDist Inaccuracy = WDist.Zero;
@@ -64,7 +64,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		[Desc("Loop a randomly chosen sequence of Image from this list while this projectile is moving.")]
 		[SequenceReference(nameof(Image), allowNullImage: true)]
-		public readonly string[] Sequences = { "idle" };
+		public readonly string[] Sequences = ["idle"];
 
 		[Desc("The palette used to draw this projectile.")]
 		[PaletteReference]
@@ -82,7 +82,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		[Desc("Loop a randomly chosen sequence of TrailImage from this list while this projectile is moving.")]
 		[SequenceReference(nameof(TrailImage), allowNullImage: true)]
-		public readonly string[] TrailSequences = { "idle" };
+		public readonly string[] TrailSequences = ["idle"];
 
 		[Desc("Delay in ticks until trail animation is spawned.")]
 		public readonly int TrailDelay = 1;
@@ -129,13 +129,13 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		[Desc("Altitude where this bullet should explode when reached.",
 			"Negative values allow this bullet to pass cliffs and terrain bumps.")]
-		public readonly WDist ExplodeUnderThisAltitude = new WDist(-1536);
+		public readonly WDist ExplodeUnderThisAltitude = new(-1536);
 
 		[Desc("Is this blocked by actors with BlocksProjectiles trait.")]
 		public readonly bool Blockable = true;
 
 		[Desc("Width of projectile (used for finding blocking actors).")]
-		public readonly WDist Width = new WDist(1);
+		public readonly WDist Width = new(1);
 
 		[Desc("If projectile touches an actor with one of these stances during or after the first bounce, trigger explosion.")]
 		public readonly PlayerRelationship ValidBounceBlockerPlayerRelationships = PlayerRelationship.Enemy | PlayerRelationship.Neutral | PlayerRelationship.Ally;
@@ -144,9 +144,8 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		void IRulesetLoaded<WeaponInfo>.RulesetLoaded(Ruleset rules, WeaponInfo info)
 		{
-			WeaponInfo weapon;
-			if (!rules.Weapons.TryGetValue(Weapon.ToLowerInvariant(), out weapon))
-				throw new YamlException("Weapons Ruleset does not contain an entry "+Weapon.ToLowerInvariant());
+			if (!rules.Weapons.TryGetValue(Weapon.ToLowerInvariant(), out var weapon))
+				throw new YamlException("Weapons Ruleset does not contain an entry " + Weapon.ToLowerInvariant());
 			WeaponInfo = weapon;
 		}
 	}
@@ -197,7 +196,7 @@ namespace OpenRA.Mods.Common.Projectiles
 			mindelay = args.Weapon.MinRange.Length / speed.Length;
 
 			projectiles = new WarheadTrailProjectileEffect[info.Offsets.Length];
-			var range = Common.Util.ApplyPercentageModifiers(args.Weapon.Range.Length, args.RangeModifiers);
+			var range = Util.ApplyPercentageModifiers(args.Weapon.Range.Length, args.RangeModifiers);
 			var mainFacing = (targetpos - sourcepos).Yaw.Facing + 64;
 
 			// used for lerping projectiles at the same pace
@@ -229,7 +228,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 				if (info.Inaccuracy.Length > 0)
 				{
-					var inaccuracy = Common.Util.ApplyPercentageModifiers(info.Inaccuracy.Length, args.InaccuracyModifiers);
+					var inaccuracy = Util.ApplyPercentageModifiers(info.Inaccuracy.Length, args.InaccuracyModifiers);
 					var maxOffset = inaccuracy * (args.PassiveTarget - projectilepos).Length / range;
 					var inaccuracyOffset = WVec.FromPDF(world.SharedRandom, 2) * maxOffset / 1024;
 					offsetTargetPos += inaccuracyOffset;

@@ -40,7 +40,7 @@ namespace OpenRA.Mods.CA.Traits
 			if (health == null)
 				return;
 
-			var healthAmt = (e.Damage.Value / 100) * Info.DamagePercentConverted;
+			var healthAmt = e.Damage.Value / 100 * Info.DamagePercentConverted;
 			var damageTypes = e.Damage.DamageTypes;
 			var damage = new Damage(-healthAmt, damageTypes);
 			health.InflictDamage(self, self, damage, true);

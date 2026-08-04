@@ -247,6 +247,7 @@ namespace OpenRA
 					"name", FluentProvider.GetMessage(botInfo.Name),
 					"number", botsOfSameType.IndexOf(this) + 1);
 			}
+
 			return PlayerName;
 		}
 

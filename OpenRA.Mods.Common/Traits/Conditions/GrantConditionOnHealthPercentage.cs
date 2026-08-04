@@ -23,10 +23,10 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string Condition = null;
 
 		[Desc("Play a random sound from this list when enabled.")]
-		public readonly string[] EnabledSounds = Array.Empty<string>();
+		public readonly string[] EnabledSounds = [];
 
 		[Desc("Play a random sound from this list when disabled.")]
-		public readonly string[] DisabledSounds = Array.Empty<string>();
+		public readonly string[] DisabledSounds = [];
 
 		[Desc("Minimum level of health at which to grant the condition.")]
 		public readonly int MinHP = 0;
@@ -48,7 +48,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		int conditionToken = Actor.InvalidConditionToken;
 
-		public GrantConditionOnHealthPercentage(Actor self, GrantConditionOnHealthPercentageInfo info) 
+		public GrantConditionOnHealthPercentage(Actor self, GrantConditionOnHealthPercentageInfo info)
 			: base(info)
 		{
 			this.info = info;
@@ -61,10 +61,12 @@ namespace OpenRA.Mods.Common.Traits
 			if (!IsTraitDisabled)
 				GrantConditionOnValidHealth(self, health.HP);
 		}
+
 		protected override void TraitEnabled(Actor self)
 		{
 			GrantConditionOnValidHealth(self, health.HP);
 		}
+
 		protected override void TraitDisabled(Actor self)
 		{
 			if (Info.GrantPermanently || conditionToken == Actor.InvalidConditionToken)

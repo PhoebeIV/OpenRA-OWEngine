@@ -18,7 +18,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("This actor gives experience to any masters with GainsExperience when dealing damage.")]
-	class GivesExperienceToMasterInfo : TraitInfo
+	sealed class GivesExperienceToMasterInfo : TraitInfo
 	{
 		[Desc("If -1, use the value of the unit cost.")]
 		public readonly int Experience = -1;
@@ -32,7 +32,7 @@ namespace OpenRA.Mods.AS.Traits
 		public override object Create(ActorInitializer init) { return new GivesExperienceToMaster(init.Self, this); }
 	}
 
-	class GivesExperienceToMaster : INotifyAppliedDamage, INotifyCreated
+	sealed class GivesExperienceToMaster : INotifyAppliedDamage, INotifyCreated
 	{
 		readonly GivesExperienceToMasterInfo info;
 
@@ -71,11 +71,12 @@ namespace OpenRA.Mods.AS.Traits
 			var exp = info.Experience >= 0 ? info.Experience
 				: valued != null ? valued.Cost : 0;
 
-			var experienceModifiers = damaged.TraitsImplementing<IGivesExperienceModifier>().ToArray().Select(m => m.GetGivesExperienceModifier()).Append(info.ActorExperienceModifier);
-			experienceModifiers = experienceModifiers.Append((int)((float)e.Damage.Value / (float)health.MaxHP * 100));
+			var experienceModifiers = damaged.TraitsImplementing<IGivesExperienceModifier>().ToArray().Select(m => m.GetGivesExperienceModifier())
+				.Append(info.ActorExperienceModifier);
+			experienceModifiers = experienceModifiers.Append((int)(e.Damage.Value / (float)health.MaxHP * 100));
 
 			/*
-			
+
 			foreach (var mindControllable in mindControllables)
 				if (mindControllable.Master != null)
 					GiveExperience(mindControllable.Master, exp, experienceModifiers);
@@ -86,7 +87,7 @@ namespace OpenRA.Mods.AS.Traits
 					GiveExperience(baseSpawnerSlave.Master, exp, experienceModifiers);
 		}
 
-		void GiveExperience(Actor master, int exp, IEnumerable<int> experienceModifiers)
+		static void GiveExperience(Actor master, int exp, IEnumerable<int> experienceModifiers)
 		{
 			if (master.IsDead)
 				return;

@@ -64,7 +64,7 @@ namespace OpenRA.Mods.CA.Traits
 		public readonly int ScaleChargeTimeWithDamageAmount = 10;
 
 		[Desc("Damage type(s) that trigger and are affected by the damage multiplier.")]
-		public readonly BitSet<DamageType> DamageTypes = default(BitSet<DamageType>);
+		public readonly BitSet<DamageType> DamageTypes = default;
 
 		public readonly bool GrantConditionWhenReady = false;
 		public readonly bool ShowSelectionBar = true;

@@ -92,6 +92,7 @@ namespace OpenRA.Mods.Common.Traits
 			Log.Write("debug", $"Actor  {self.Info.Name} ({self.ActorID}) with AttackBomber trait tried to attack. Disposed.");
 			self.Dispose();
 			return null;
+
 			// throw new NotImplementedException("AttackBomber requires a scripted target");
 		}
 	}
