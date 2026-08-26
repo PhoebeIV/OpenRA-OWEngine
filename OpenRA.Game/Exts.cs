@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -211,24 +212,10 @@ namespace OpenRA
 			return result;
 		}
 
-		public static float Product(this IEnumerable<float> xs)
-		{
-			return xs.Aggregate(1f, (a, x) => a * x);
-		}
-
 		public static IEnumerable<T> SymmetricDifference<T>(this IEnumerable<T> xs, IEnumerable<T> ys)
 		{
 			// this is probably a shockingly-slow way to do this, but it's concise.
 			return xs.Except(ys).Concat(ys.Except(xs));
-		}
-
-		public static IEnumerable<T> Iterate<T>(this T t, Func<T, T> f)
-		{
-			while (true)
-			{
-				yield return t;
-				t = f(t);
-			}
 		}
 
 		public static T MinBy<T, U>(this IEnumerable<T> ts, Func<T, U> selector)
@@ -282,18 +269,12 @@ namespace OpenRA
 
 		public static int NextPowerOf2(int v)
 		{
-			--v;
-			v |= v >> 1;
-			v |= v >> 2;
-			v |= v >> 4;
-			v |= v >> 8;
-			++v;
-			return v;
+			return (int)BitOperations.RoundUpToPowerOf2((uint)v);
 		}
 
 		public static bool IsPowerOf2(int v)
 		{
-			return (v & (v - 1)) == 0;
+			return BitOperations.IsPow2(v);
 		}
 
 		public static Size NextPowerOf2(this Size s) { return new Size(NextPowerOf2(s.Width), NextPowerOf2(s.Height)); }

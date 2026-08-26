@@ -13,6 +13,7 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Numerics;
 using OpenRA.Activities;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Activities;
@@ -325,7 +326,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		Sprite Sprite { get; }
 		string Palette { get; }
-		float2 Offset(float2 iconSize);
+		Vector2 Offset(Vector2 iconSize);
 		bool IsOverlayActive(ActorInfo ai);
 	}
 
@@ -1021,6 +1022,11 @@ namespace OpenRA.Mods.Common.Traits
 		ImmutableArray<string> Tilesets { get; }
 		ImmutableArray<MapGeneratorOption> Options { get; }
 		int GetPlayerCount(MapGenerationArgs args);
+		bool ValidateArgs(
+			ModData modData,
+			MapGenerationArgs args,
+			Size sizeLimit,
+			MapGeneratorOption.VisibilityFlags visibilityRequirements);
 	}
 
 	[RequireExplicitImplementation]

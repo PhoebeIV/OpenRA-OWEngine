@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Effects;
 using OpenRA.Primitives;
@@ -114,7 +115,7 @@ namespace OpenRA.Mods.Common.Traits
 		IRenderModifier, INotifyDamage, INotifyUnloadCargo, INotifyLoadCargo, INotifyDemolition, INotifyInfiltration,
 		INotifyAttack, ITick, IVisibilityModifier, IRadarColorModifier, INotifyDockClient, INotifyDockHost, INotifySupportPower, ISync
 	{
-		readonly float3 cloakedColor;
+		readonly Vector3 cloakedColor;
 		readonly float cloakedColorAlpha;
 
 		[VerifySync]
@@ -132,8 +133,10 @@ namespace OpenRA.Mods.Common.Traits
 			: base(info)
 		{
 			remainingTime = info.InitialDelay;
-			cloakedColor = new float3(info.CloakedColor.R, info.CloakedColor.G, info.CloakedColor.B) / 255f;
-			cloakedColorAlpha = info.CloakedColor.A / 255f;
+
+			var cColor = info.CloakedColor.ToVector4();
+			cloakedColor = cColor.AsVector3();
+			cloakedColorAlpha = cColor.W;
 		}
 
 		protected override void Created(Actor self)
