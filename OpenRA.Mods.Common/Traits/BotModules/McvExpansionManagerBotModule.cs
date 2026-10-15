@@ -24,13 +24,13 @@ namespace OpenRA.Mods.Common.Traits
 	public class McvExpansionManagerBotModuleInfo : ConditionalTraitInfo, Requires<ResourceMapBotModuleInfo>, NotBefore<ResourceMapBotModuleInfo>
 	{
 		[Desc("Actor types that are considered MCVs (deploy into base builders).")]
-		public readonly FrozenSet<string> McvTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> McvTypes = [];
 
 		[Desc("Actor types that are considered construction yards (base builders).")]
-		public readonly FrozenSet<string> ConstructionYardTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> ConstructionYardTypes = [];
 
 		[Desc("Actor types that are able to produce MCVs.")]
-		public readonly FrozenSet<string> McvFactoryTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> McvFactoryTypes = [];
 
 		[Desc("Try to maintain at least this many ConstructionYardTypes, build an MCV if number is below this.")]
 		public readonly int MinimumConstructionYardCount = 1;
@@ -48,7 +48,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int BuildMcvInterval = 101;
 
 		[Desc("Delay (in ticks) for moving a conyard to better expansion. Only work with more than 1 conyard.")]
-		public readonly int MoveConyardTick = 4000;
+		public readonly int MoveConyardTick = 5700;
 
 		[Desc("Should moving the oldest or newest conyard be preferred? Random ordering if unset.")]
 		public readonly bool? MoveOldConyardFirst = null;

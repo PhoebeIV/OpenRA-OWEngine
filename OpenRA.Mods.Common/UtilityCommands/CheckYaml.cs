@@ -72,7 +72,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 
 				// bind some nonfatal error handling into FieldLoader, so we don't just *explode*.
 				ObjectCreator.MissingTypeAction = s => EmitError($"Missing Type: {s}.");
-				FieldLoader.UnknownFieldAction = (s, f) => EmitError($"FieldLoader: Missing field `{s}` on `{f.Name}`.");
+				FieldLoader.UnknownFieldAction = (fieldName) => EmitError($"FieldLoader: Missing field `{fieldName}`");
 
 				var maps = new List<(IReadWritePackage Package, string Map)>();
 				if (args.Length < 2)
@@ -159,7 +159,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			{
 				CheckRules(modData, map.Rules);
 				if (map.SequenceDefinitions != null)
-					CheckSequences(modData, modData.DefaultRules, map.Sequences);
+					CheckSequences(modData, map.Rules, map.Sequences);
 			}
 
 			// Run all map-level checks here.

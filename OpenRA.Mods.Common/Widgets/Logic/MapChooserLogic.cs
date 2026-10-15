@@ -163,6 +163,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					var p = modData.MapCache[generatedMapArgs.Uid];
 					if (p.Status != MapStatus.Available && package is ZipFileLoader.ReadWriteZipFile zipPackage)
 					{
+						p.UpdateFromGenerationArgs(generatedMapArgs);
 						p.UpdateFromMap(zipPackage, MapClassification.Generated);
 
 						// UpdateFromMap took ownership of the package.
@@ -407,14 +408,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			RefreshMaps(tab);
 		}
 
-		void SetupGenerateMapPanel(MapClassification tab, string tabContainerName, MapGenerationArgs initialSettings)
+		void SetupGenerateMapPanel(MapClassification tab, string tabContainerName, MapGenerationArgs initialGeneratedMap)
 		{
 			var tabContainer = widget.Get<ContainerWidget>(tabContainerName);
 			tabContainer.IsVisible = () => currentTab == tab;
 			Ui.LoadWidget("MAPCHOOSER_GENERATE_PANEL", tabContainer, new WidgetArgs
 			{
 				{ "modData", modData },
-				{ "initialSettings", initialSettings },
+				{ "initialGeneratedMap", initialGeneratedMap },
 				{
 					"onGenerate", (Action<MapGenerationArgs, IReadWritePackage>)((args, package) =>
 					{

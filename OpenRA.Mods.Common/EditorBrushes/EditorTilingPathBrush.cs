@@ -112,12 +112,14 @@ namespace OpenRA.Mods.Common.Widgets
 							.Where(p => p.CPos == cpos)
 							.Select(p => p.RallyIndex)
 							.FirstOrDefault(0);
+				var autoStart = plan.AutoStart(tool.AutoStartDirectionMask);
+				var autoEnd = plan.AutoEnd(tool.AutoEndDirectionMask);
 				var isStartDirector =
-					plan.AutoStart != Direction.None
-						&& cpos == plan.FirstPoint - plan.AutoStart.ToCVec();
+					autoStart != Direction.None
+						&& cpos == plan.FirstPoint - autoStart.ToCVec();
 				var isEndDirector =
-					plan.AutoEnd != Direction.None
-						&& cpos == plan.LastPoint + plan.AutoEnd.ToCVec();
+					autoEnd != Direction.None
+						&& cpos == plan.LastPoint + autoEnd.ToCVec();
 				return (isInside, isRally, rallyIndex, isStartDirector, isEndDirector);
 			}
 
@@ -203,11 +205,13 @@ namespace OpenRA.Mods.Common.Widgets
 			if (tool.EditorBlitSource == null)
 				yield break;
 
+			var stickToGround = tool.EditorBlitSource.Value.Tiles.Count == 0;
 			var preview = EditorBlit.PreviewBlitSource(
 				tool.EditorBlitSource.Value,
 				MapBlitFilters.Terrain | MapBlitFilters.Actors,
 				CVec.Zero,
-				wr);
+				wr,
+				stickToGround);
 			foreach (var renderable in preview)
 				yield return renderable;
 		}
@@ -249,17 +253,19 @@ namespace OpenRA.Mods.Common.Widgets
 					mainColor);
 			}
 
-			if (plan.AutoEnd != Direction.None)
+			var autoStart = plan.AutoStart(tool.AutoStartDirectionMask);
+			var autoEnd = plan.AutoEnd(tool.AutoEndDirectionMask);
+			if (autoEnd != Direction.None)
 				yield return new CircleAnnotationRenderable(
-					CornerOfCell(plan.LastPoint) + map.Offset(plan.AutoEnd.ToCVec(), 0) * 768 / 1024,
+					CornerOfCell(plan.LastPoint) + map.Offset(autoEnd.ToCVec(), 0) * 768 / 1024,
 					new WDist(256),
 					2,
 					plan.End != Direction.None ? Color.Magenta : Color.Gray,
 					false);
 
-			if (plan.AutoStart != Direction.None)
+			if (autoStart != Direction.None)
 				yield return new CircleAnnotationRenderable(
-					CornerOfCell(plan.FirstPoint) - map.Offset(plan.AutoStart.ToCVec(), 0) * 768 / 1024,
+					CornerOfCell(plan.FirstPoint) - map.Offset(autoStart.ToCVec(), 0) * 768 / 1024,
 					new WDist(256),
 					2,
 					plan.Start != Direction.None ? Color.Magenta : Color.Gray,
@@ -347,7 +353,7 @@ namespace OpenRA.Mods.Common.Widgets
 			editorBlit = new EditorBlit(
 				MapBlitFilters.Terrain | MapBlitFilters.Actors,
 				null,
-				blitSource.CellRegion.TopLeft,
+				blitSource.CellCoords.TopLeft,
 				world.Map,
 				blitSource,
 				editorActorLayer,

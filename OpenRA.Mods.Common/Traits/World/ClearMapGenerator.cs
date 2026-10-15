@@ -9,8 +9,6 @@
  */
 #endregion
 
-using System.Collections.Immutable;
-using System.Linq;
 using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Support;
 using OpenRA.Traits;
@@ -19,65 +17,18 @@ namespace OpenRA.Mods.Common.Traits
 {
 	[TraitLocation(SystemActors.EditorWorld)]
 	[Desc("A map generator that clears a map.")]
-	public sealed class ClearMapGeneratorInfo : TraitInfo, IEditorMapGeneratorInfo
+	public sealed class ClearMapGeneratorInfo : MapGeneratorBaseInfo
 	{
-		[FieldLoader.Require]
-		[Desc("Human-readable name this generator uses.")]
-		[FluentReference]
-		public readonly string Name = null;
+		protected override int GetPlayerCount(MapGenerationArgs args) => 0;
 
-		[FieldLoader.Require]
-		[Desc("Internal id for this map generator.")]
-		public readonly string Type = null;
-
-		[FieldLoader.Require]
-		[Desc("Tilesets that are compatible with this map generator.")]
-		public readonly ImmutableArray<string> Tilesets = default;
-
-		[FluentReference]
-		[Desc("The title to use for generated maps.")]
-		public readonly string MapTitle = "label-random-map";
-
-		[Desc("The widget tree to open when the tool is selected.")]
-		public readonly string PanelWidget = "MAP_GENERATOR_TOOL_PANEL";
-
-		// This is purely of interest to the linter.
-		[FieldLoader.LoadUsing(nameof(FluentReferencesLoader))]
-		[FluentReference]
-		public readonly ImmutableArray<string> FluentReferences = default;
-
-		[FieldLoader.LoadUsing(nameof(SettingsLoader))]
-		public readonly MiniYaml Settings;
-
-		string IMapGeneratorInfo.Type => Type;
-		string IMapGeneratorInfo.Name => Name;
-		string IMapGeneratorInfo.MapTitle => MapTitle;
-
-		static MiniYaml SettingsLoader(MiniYaml my)
-		{
-			return my.NodeWithKey("Settings").Value;
-		}
-
-		static object FluentReferencesLoader(MiniYaml my)
-		{
-			return new MapGeneratorSettings(null, my.NodeWithKey("Settings").Value)
-				.Options.SelectMany(o => o.GetFluentReferences()).ToImmutableArray();
-		}
-
-		public IMapGeneratorSettings GetSettings()
-		{
-			return new MapGeneratorSettings(this, Settings);
-		}
-
-		public Map Generate(ModData modData, MapGenerationArgs args)
+		public override Map Generate(ModData modData, MapGenerationArgs args)
 		{
 			var random = new MersenneTwister();
-			var terrainInfo = modData.DefaultTerrainInfo[args.Tileset];
-
-			if (!Exts.TryParseUshortInvariant(args.Settings.NodeWithKey("Tile").Value.Value, out var tileType))
+			if (!Exts.TryParseUInt16Invariant(GenerateParameterYaml(modData, args).NodeWithKey("Tile").Value.Value, out var tileType))
 				throw new YamlException("Illegal tile type");
 
-			if (!terrainInfo.TryGetTerrainInfo(new TerrainTile(tileType, 0), out var _))
+			var terrainInfo = modData.DefaultTerrainInfo[args.Tileset];
+			if (!terrainInfo.TryGetTerrainInfo(new TerrainTile(tileType, 0), out _))
 				throw new MapGenerationException("Illegal tile type");
 
 			var map = new Map(modData, terrainInfo, args.Size);
@@ -95,24 +46,13 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override object Create(ActorInitializer init)
 		{
-			return new ClearMapGenerator(this);
+			return new ClearMapGenerator(init, this);
 		}
-
-		ImmutableArray<string> IEditorMapGeneratorInfo.Tilesets => Tilesets;
 	}
 
-	public class ClearMapGenerator : IEditorTool
+	public class ClearMapGenerator : MapGeneratorBase
 	{
-		public string Label { get; }
-		public string PanelWidget { get; }
-		public TraitInfo TraitInfo { get; }
-		public bool IsEnabled => true;
-
-		public ClearMapGenerator(ClearMapGeneratorInfo info)
-		{
-			Label = info.Name;
-			PanelWidget = info.PanelWidget;
-			TraitInfo = info;
-		}
+		public ClearMapGenerator(ActorInitializer init, ClearMapGeneratorInfo info)
+			: base(init, info) { }
 	}
 }

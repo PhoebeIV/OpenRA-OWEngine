@@ -12,6 +12,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Primitives;
 using OpenRA.Widgets;
 
@@ -57,6 +58,8 @@ namespace OpenRA.Mods.Common.Widgets
 		public Func<KeyInput, bool> OnEnterKey = _ => false;
 		public Func<KeyInput, bool> OnTabKey = _ => false;
 		public Func<KeyInput, bool> OnEscKey = _ => false;
+		public Func<KeyInput, bool> OnArrowUp = _ => false;
+		public Func<KeyInput, bool> OnArrowDown = _ => false;
 		public Func<bool> OnAltKey = () => false;
 		public Action OnLoseFocus = () => { };
 		public Action OnTextEdited = () => { };
@@ -280,6 +283,16 @@ namespace OpenRA.Mods.Common.Widgets
 							ClearSelection();
 					}
 
+					break;
+
+				case Keycode.UP:
+					if (OnArrowUp(e))
+						return true;
+					break;
+
+				case Keycode.DOWN:
+					if (OnArrowDown(e))
+						return true;
 					break;
 
 				case Keycode.HOME:
@@ -591,10 +604,10 @@ namespace OpenRA.Mods.Common.Widgets
 				disabled ? TextColorDisabled
 				: IsValid() ? TextColor
 				: TextColorInvalid;
-			font.DrawText(apparentText, textPos, color);
+			font.DrawText(apparentText, textPos.ToVector2(), color);
 
 			if (showCursor && HasKeyboardFocus)
-				font.DrawText("|", new float2(textPos.X + cursorPosition.X - 2, textPos.Y), TextColor);
+				font.DrawText("|", new Vector2(textPos.X + cursorPosition.X - 2, textPos.Y), TextColor);
 
 			if (isTextOverflowing)
 				Game.Renderer.DisableScissor();

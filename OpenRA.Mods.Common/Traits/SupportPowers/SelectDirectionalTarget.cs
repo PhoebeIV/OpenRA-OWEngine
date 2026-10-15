@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Widgets;
 using OpenRA.Orders;
@@ -26,12 +27,13 @@ namespace OpenRA.Mods.Common.Traits
 
 		readonly string order;
 		readonly SupportPowerManager manager;
+		readonly GameSettings gameSettings;
 
 		readonly Arrow[] directionArrows;
 
 		CPos targetCell;
 		int2 targetLocation;
-		float2 dragDirection;
+		Vector2 dragDirection;
 		bool activated;
 		bool dragStarted;
 		Arrow currentArrow;
@@ -43,20 +45,24 @@ namespace OpenRA.Mods.Common.Traits
 			this.order = order;
 			this.manager = manager;
 			this.info = info;
+			gameSettings = Game.Settings.Game;
 
 			directionArrows = LoadArrows(info.DirectionArrowAnimation, world, info.Arrows.Length);
 			mouseAttachment = Ui.Root.Get<MouseAttachmentWidget>("MOUSE_ATTATCHMENT");
 		}
 
+		public MouseButton ActionButton => gameSettings.ResolveActionButton(MouseActionType.SupportPower);
+		public MouseButton CancelButton => gameSettings.ResolveCancelButton(MouseActionType.SupportPower);
+
 		IEnumerable<Order> IOrderGenerator.Order(World world, CPos cell, int2 worldPixel, MouseInput mi)
 		{
-			if (mi.Button == MouseButton.Right)
+			if (mi.Button == CancelButton)
 			{
 				world.CancelInputMode();
 				yield break;
 			}
 
-			if (mi.Button == MouseButton.Left && mi.Event == MouseInputEvent.Down)
+			if (mi.Button == ActionButton && mi.Event == MouseInputEvent.Down)
 			{
 				if (!activated && world.Map.Contains(cell))
 				{
@@ -74,11 +80,11 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (mi.Event == MouseInputEvent.Move)
 			{
-				dragDirection += mi.Delta;
+				dragDirection += mi.Delta.ToVector2();
 
 				var angle = AngleOf(dragDirection);
-				if (dragDirection.Length > MaxDragThreshold)
-					dragDirection = -MaxDragThreshold * float2.FromAngle((float)(angle * (Math.PI / 180)));
+				if (dragDirection.Length() > MaxDragThreshold)
+					dragDirection = -MaxDragThreshold * OpenRA.Graphics.Util.FromAngle((float)(angle * (Math.PI / 180)));
 
 				currentArrow = GetArrow(angle);
 
@@ -86,7 +92,7 @@ namespace OpenRA.Mods.Common.Traits
 				dragStarted = true;
 			}
 
-			if (mi.Button == MouseButton.Left && mi.Event == MouseInputEvent.Up)
+			if (mi.Button == ActionButton && mi.Event == MouseInputEvent.Up)
 			{
 				yield return new Order(order, manager.Self, Target.FromCell(manager.Self.World, targetCell), false)
 				{
@@ -107,7 +113,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		void IOrderGenerator.SelectionChanged(World world, IEnumerable<Actor> selected) { }
 
-		bool IsOutsideDragZone => dragStarted && dragDirection.Length > MinDragThreshold;
+		bool IsOutsideDragZone => dragStarted && dragDirection.Length() > MinDragThreshold;
 
 		IEnumerable<IRenderable> IOrderGenerator.Render(WorldRenderer wr, World world) { yield break; }
 
@@ -131,7 +137,7 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		// Starting at (0, -1) and rotating in CCW
-		static double AngleOf(float2 delta)
+		static double AngleOf(Vector2 delta)
 		{
 			var radian = Math.Atan2(delta.Y, delta.X);
 			var d = radian * (180 / Math.PI);

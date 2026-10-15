@@ -26,7 +26,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		[ActorReference]
 		[Desc("The actors to grant condition for. If empty condition will be granted for all actors.")]
-		public readonly FrozenSet<string> Actors = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> Actors = [];
 
 		[Desc("How long condition is applies for. Use -1 for infinite.")]
 		public readonly int Duration = -1;
@@ -44,7 +44,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		int token = Actor.InvalidConditionToken;
 
-		[Sync]
+		[VerifySync]
 		int ticks;
 
 		public GrantConditionOnProduction(GrantConditionOnProductionInfo info)

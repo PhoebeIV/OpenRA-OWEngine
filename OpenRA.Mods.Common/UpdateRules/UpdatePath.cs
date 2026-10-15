@@ -75,9 +75,12 @@ namespace OpenRA.Mods.Common.UpdateRules
 				new EditorMarkerTileLabels(),
 				new RemoveBarracksTypesAndVehiclesTypesInBaseBuilderBotModule(),
 				new RemoveAlwaysVisible(),
+				new RemoveAndRenameDefenseRadiusInBaseBuilderBotModule(),
+
+				new WithDamageOverlayPropertyRename(),
 
 				// Execute these rules last to avoid premature yaml merge crashes.
-				new WithDamageOverlayPropertyRename(),
+				new RenameMapGeneratorParameters(),
 			]),
 		];
 

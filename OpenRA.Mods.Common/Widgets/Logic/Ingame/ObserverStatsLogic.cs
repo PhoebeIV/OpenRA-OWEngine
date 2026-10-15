@@ -520,8 +520,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var experienceText = new CachedTransform<int, string>(i => i.ToString(NumberFormatInfo.CurrentInfo));
 			template.Get<LabelWidget>("EXPERIENCE").GetText = () => experienceText.Update(stats.Experience);
 
-			var actionsText = new CachedTransform<double, string>(AverageOrdersPerMinute);
-			template.Get<LabelWidget>("ACTIONS_MIN").GetText = () => actionsText.Update(stats.OrderCount);
+			var actionsText = new CachedTransform<(int Orders, int Tick), string>(o => AverageOrdersPerMinute(o.Orders, o.Tick));
+			template.Get<LabelWidget>("ACTIONS_MIN").GetText = () => actionsText.Update((stats.OrderCount, stats.DefeatTick ?? world.WorldTick));
 
 			return template;
 		}
@@ -546,10 +546,30 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			return ScrollItemWidget.Setup(template, () => false, () =>
 			{
-				var playerBase = world.ActorsHavingTrait<BaseBuilding>().FirstOrDefault(a => !a.IsDead && a.Owner == player);
-				if (playerBase != null)
-					worldRenderer.Viewport.Center(playerBase.CenterPosition);
+				var targetActor = FindPlayerBaseActor(player);
+				if (targetActor != null)
+					worldRenderer.Viewport.Center(targetActor.CenterPosition);
 			});
+		}
+
+		Actor FindPlayerBaseActor(Player player)
+		{
+			// Priority 1: Primary BaseBuilding (Construction Yard or MCV), closest to viewport
+			var primaryBase = world.ActorsHavingTrait<BaseBuilding>()
+				.Where(a => a.Owner == player)
+				.OrderByDescending(a => a.IsPrimaryBuilding())
+				.ThenBy(a => (worldRenderer.Viewport.CenterPosition - a.CenterPosition).LengthSquared)
+				.FirstOrDefault();
+
+			if (primaryBase != null)
+				return primaryBase;
+
+			// Priority 2: Any selectable Building (fallback), closest to viewport
+			var building = world.ActorsHavingTrait<Building>()
+				.OrderBy(a => (worldRenderer.Viewport.CenterPosition - a.CenterPosition).LengthSquared)
+				.FirstOrDefault(a => a.Owner == player && a.Info.HasTraitInfo<SelectableInfo>());
+
+			return building;
 		}
 
 		void AdjustStatisticsPanel(Widget itemTemplate)
@@ -586,9 +606,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			playerName.GetColor = () => player.Color;
 		}
 
-		string AverageOrdersPerMinute(double orders)
+		static string AverageOrdersPerMinute(double orders, int tick)
 		{
-			return (world.WorldTick == 0 ? 0 : orders / (world.WorldTick / 1500.0)).ToString("F1", NumberFormatInfo.CurrentInfo);
+			return (tick == 0 ? 0 : orders / (tick / 1500.0)).ToString("F1", NumberFormatInfo.CurrentInfo);
 		}
 
 		string Vision(int revealedCells)

@@ -34,8 +34,8 @@ namespace OpenRA
 		readonly List<IEffect> effects = [];
 		readonly List<IEffect> unpartitionedEffects = [];
 		readonly List<ISync> syncedEffects = [];
-		readonly GameSettings gameSettings;
 		readonly ModData modData;
+		readonly GameSettings gameSettings;
 
 		readonly Queue<Action<World>> frameEndActions = [];
 
@@ -169,21 +169,7 @@ namespace OpenRA
 		public readonly ISelection Selection;
 		public readonly IControlGroups ControlGroups;
 
-		public void CancelInputMode() { OrderGenerator = (IOrderGenerator)modData.ObjectCreator.CreateBasic(defaultOrderGeneratorType); }
-
-		public bool ToggleInputMode<T>() where T : IOrderGenerator, new()
-		{
-			if (OrderGenerator is T)
-			{
-				CancelInputMode();
-				return false;
-			}
-			else
-			{
-				OrderGenerator = new T();
-				return true;
-			}
-		}
+		public void CancelInputMode() { OrderGenerator = (IOrderGenerator)defaultOrderGeneratorType.GetConstructor([typeof(World)])?.Invoke([this]); }
 
 		public bool RulesContainTemporaryBlocker { get; }
 
@@ -191,9 +177,9 @@ namespace OpenRA
 
 		internal World(Map map, ModData modData, OrderManager orderManager, WorldType type)
 		{
-			this.modData = modData;
 			Type = type;
 			OrderManager = orderManager;
+			this.modData = modData;
 			Map = map;
 
 			if (string.IsNullOrEmpty(modData.Manifest.DefaultOrderGenerator))
@@ -203,7 +189,7 @@ namespace OpenRA
 			if (defaultOrderGeneratorType == null)
 				throw new InvalidDataException($"{modData.Manifest.DefaultOrderGenerator} is not a valid DefaultOrderGenerator");
 
-			orderGenerator = (IOrderGenerator)modData.ObjectCreator.CreateBasic(defaultOrderGeneratorType);
+			orderGenerator = (IOrderGenerator)defaultOrderGeneratorType.GetConstructor([typeof(World)])?.Invoke([this]);
 
 			var gameSpeeds = modData.GetOrCreate<GameSpeeds>();
 			var gameSpeedName = orderManager.LobbyInfo.GlobalSettings.OptionOrDefault("gamespeed", gameSpeeds.DefaultSpeed);
@@ -242,10 +228,10 @@ namespace OpenRA
 
 			var preview = modData.MapCache[Map.Uid];
 			if (preview.Class == MapClassification.Generated)
-				gameInfo.MapData = preview.ToBase64String();
+				gameInfo.MapGenerationArgs = preview.GenerationArgs;
 
 			RulesContainTemporaryBlocker = Map.Rules.Actors.Any(a => a.Value.HasTraitInfo<ITemporaryBlockerInfo>());
-			gameSettings = Game.Settings.Game;
+			gameSettings = GetSettings<GameSettings>();
 		}
 
 		public void AddToMaps(Actor self, IOccupySpace ios)
@@ -576,7 +562,7 @@ namespace OpenRA
 			}
 		}
 
-		public void RequestGameSave(string filename)
+		public void RequestGameSave(string filename, bool isAutosave)
 		{
 			// Allow traits to save arbitrary data that will be passed back via IGameSaveTraitData.ResolveTraitData
 			// at the end of the save restoration
@@ -594,7 +580,8 @@ namespace OpenRA
 				i++;
 			}
 
-			IssueOrder(Order.FromTargetString("CreateGameSave", filename, true));
+			var extraData = isAutosave ? 1u : 0u;
+			IssueOrder(Order.FromTargetString("CreateGameSave", filename, true, extraData));
 		}
 
 		public bool Disposing;
@@ -637,6 +624,11 @@ namespace OpenRA
 
 			// In the event the replay goes out of sync, it becomes no longer usable. For polish we permanently pause the world.
 			ReplayTimestep = 0;
+		}
+
+		public T GetSettings<T>() where T : SettingsModule
+		{
+			return modData.GetSettings<T>();
 		}
 	}
 

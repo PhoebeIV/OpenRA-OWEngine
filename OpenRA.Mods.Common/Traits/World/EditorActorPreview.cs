@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.Traits.Radar;
@@ -46,7 +47,6 @@ namespace OpenRA.Mods.Common.Traits
 		readonly TooltipInfoBase tooltip;
 		readonly ActorReference reference;
 		readonly Dictionary<INotifyEditorPlacementInfo, object> editorData = [];
-		readonly Action<CPos> onCellEntryChanged;
 
 		SelectionBoxAnnotationRenderable selectionBox;
 		IActorPreview[] previews;
@@ -69,7 +69,7 @@ namespace OpenRA.Mods.Common.Traits
 				throw new InvalidDataException($"Actor {id} of unknown type {reference.Type.ToLowerInvariant()}");
 
 			GenerateFootprint();
-			UpdateFromCellChange(null);
+			UpdateFromCellChange();
 
 			tooltip = Info.TraitInfos<EditorOnlyTooltipInfo>().FirstOrDefault(info => info.EnabledByDefault) as TooltipInfoBase
 				?? Info.TraitInfos<TooltipInfo>().FirstOrDefault(info => info.EnabledByDefault);
@@ -78,8 +78,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			terrainRadarColorInfo = Info.TraitInfoOrDefault<RadarColorFromTerrainInfo>();
 			UpdateRadarColor();
-
-			onCellEntryChanged = cell => UpdateFromCellChange(cell);
 		}
 
 		public EditorActorPreview WithId(string id)
@@ -87,11 +85,8 @@ namespace OpenRA.Mods.Common.Traits
 			return new EditorActorPreview(worldRenderer, id, reference.Clone(), Owner);
 		}
 
-		void UpdateFromCellChange(CPos? cellChanged)
+		public void UpdateFromCellChange()
 		{
-			if (cellChanged != null && !Footprint.ContainsKey(cellChanged.Value))
-				return;
-
 			CenterPosition = PreviewPosition(worldRenderer.World, reference);
 			GeneratePreviews();
 			GenerateBounds();
@@ -155,7 +150,7 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						yield return r;
 						if (!r.IsDecoration && r is IModifyableRenderable mr)
-							yield return mr.WithTint(float3.Ones, mr.TintModifiers | TintModifiers.ReplaceColor)
+							yield return mr.WithTint(Vector3.One, mr.TintModifiers | TintModifiers.ReplaceColor)
 								.WithAlpha(0.5f);
 					}
 				}
@@ -183,18 +178,12 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			foreach (var notify in Info.TraitInfos<INotifyEditorPlacementInfo>())
 				editorData[notify] = notify.AddedToEditor(this, worldRenderer.World);
-
-			worldRenderer.World.Map.Height.CellEntryChanged += onCellEntryChanged;
-			worldRenderer.World.Map.Ramp.CellEntryChanged += onCellEntryChanged;
 		}
 
 		public void RemovedFromEditor()
 		{
 			foreach (var kv in editorData)
 				kv.Key.RemovedFromEditor(this, worldRenderer.World, kv.Value);
-
-			worldRenderer.World.Map.Height.CellEntryChanged -= onCellEntryChanged;
-			worldRenderer.World.Map.Ramp.CellEntryChanged -= onCellEntryChanged;
 		}
 
 		public void AddInit<T>(T init) where T : ActorInit

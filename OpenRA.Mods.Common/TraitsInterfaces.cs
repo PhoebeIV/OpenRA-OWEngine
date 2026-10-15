@@ -13,6 +13,7 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Numerics;
 using OpenRA.Activities;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Activities;
@@ -142,7 +143,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	[RequireExplicitImplementation]
 	public interface INotifyPowerLevelChanged { void PowerLevelChanged(Actor self); }
-	public interface INotifySupportPower { void Charged(Actor self); void Activated(Actor self); }
+	public interface INotifySupportPower { void Charged(Actor self); void Activated(Actor self, string orderName); }
 
 	public interface INotifyBuildingPlaced { void BuildingPlaced(Actor self, Actor building); }
 	public interface INotifyBurstComplete { void FiredBurst(Actor self, in Target target, Armament a); }
@@ -325,7 +326,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		Sprite Sprite { get; }
 		string Palette { get; }
-		float2 Offset(float2 iconSize);
+		Vector2 Offset(Vector2 iconSize);
 		bool IsOverlayActive(ActorInfo ai);
 	}
 
@@ -1010,22 +1011,15 @@ namespace OpenRA.Mods.Common.Traits
 			: base(message, inner) { }
 	}
 
-	public interface IMapGeneratorSettings
-	{
-		ImmutableArray<MapGeneratorOption> Options { get; }
-
-		int PlayerCount { get; }
-
-		void Randomize(MersenneTwister random);
-
-		void Initialize(MapGenerationArgs args);
-
-		MapGenerationArgs Compile(ITerrainInfo terrainInfo, Size size);
-	}
-
 	public interface IEditorMapGeneratorInfo : IMapGeneratorInfo
 	{
 		ImmutableArray<string> Tilesets { get; }
-		IMapGeneratorSettings GetSettings();
+		ImmutableArray<MapGeneratorOption> Options { get; }
+		int GetPlayerCount(MapGenerationArgs args);
+		bool ValidateArgs(
+			ModData modData,
+			MapGenerationArgs args,
+			Size sizeLimit,
+			MapGeneratorOption.VisibilityFlags visibilityRequirements);
 	}
 }

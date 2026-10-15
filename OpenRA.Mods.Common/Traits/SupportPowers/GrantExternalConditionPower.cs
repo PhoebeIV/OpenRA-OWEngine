@@ -11,6 +11,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Traits.Render;
@@ -109,6 +110,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		sealed class SelectConditionTarget : OrderGenerator
 		{
+			protected override MouseActionType ActionType => MouseActionType.SupportPower;
 			readonly GrantExternalConditionPower power;
 			readonly char[] footprint;
 			readonly CVec dimensions;
@@ -118,11 +120,8 @@ namespace OpenRA.Mods.Common.Traits
 			readonly string order;
 
 			public SelectConditionTarget(World world, string order, SupportPowerManager manager, GrantExternalConditionPower power)
+				: base(world)
 			{
-				// Clear selection if using Left-Click Orders
-				if (Game.Settings.Game.UseClassicMouseStyle)
-					manager.Self.World.Selection.Clear();
-
 				this.manager = manager;
 				this.order = order;
 				this.power = power;
@@ -137,7 +136,7 @@ namespace OpenRA.Mods.Common.Traits
 			protected override IEnumerable<Order> OrderInner(World world, CPos cell, int2 worldPixel, MouseInput mi)
 			{
 				world.CancelInputMode();
-				if (mi.Button == MouseButton.Left && power.UnitsInRange(cell).Any())
+				if (power.UnitsInRange(cell).Any())
 					yield return new Order(order, manager.Self, Target.FromCell(world, cell), false) { SuppressVisualFeedback = true };
 			}
 
@@ -168,7 +167,7 @@ namespace OpenRA.Mods.Common.Traits
 				var pal = wr.Palette(TileSet.TerrainPaletteInternalName);
 
 				foreach (var t in power.CellsMatching(xy, footprint, dimensions))
-					yield return new SpriteRenderable(tile, wr.World.Map.CenterOfCell(t), WVec.Zero, -511, pal, 1f, alpha, float3.Ones, TintModifiers.IgnoreWorldTint, true);
+					yield return new SpriteRenderable(tile, wr.World.Map.CenterOfCell(t), WVec.Zero, -511, pal, 1f, alpha, Vector3.One, TintModifiers.IgnoreWorldTint, true);
 			}
 
 			protected override string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)

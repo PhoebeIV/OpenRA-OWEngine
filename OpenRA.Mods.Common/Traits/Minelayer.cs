@@ -13,6 +13,7 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Orders;
@@ -47,7 +48,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string TileUnknownName = "build-unknown";
 
 		[Desc("Only allow laying mines on listed terrain types. Leave empty to allow all terrain types.")]
-		public readonly FrozenSet<string> TerrainTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> TerrainTypes = [];
 
 		[CursorReference]
 		[Desc("Cursor to display when able to lay a mine.")]
@@ -80,7 +81,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		readonly Actor self;
 
-		[Sync]
+		[VerifySync]
 		CPos minefieldStart;
 
 		public Minelayer(Actor self, MinelayerInfo info)
@@ -194,9 +195,9 @@ namespace OpenRA.Mods.Common.Traits
 
 			// TODO: proper endcaps, if anyone cares (which won't happen unless depth is large)
 			var p = end - start;
-			var q = new float2(p.Y, -p.X);
-			q = (start != end) ? 1 / q.Length * q : new float2(1, 0);
-			var c = -float2.Dot(q, new float2(start.X, start.Y));
+			var q = new Vector2(p.Y, -p.X);
+			q = (start != end) ? 1 / q.Length() * q : new Vector2(1, 0);
+			var c = -Vector2.Dot(q, new Vector2(start.X, start.Y));
 
 			// return all points such that |ax + by + c| < depth
 			// HACK: This will return the wrong results for isometric cells
@@ -218,8 +219,11 @@ namespace OpenRA.Mods.Common.Traits
 			return Info.TerrainTypes.Contains(terrainType);
 		}
 
-		sealed class MinefieldOrderGenerator : OrderGenerator
+		sealed class MinefieldOrderGenerator : UnitOrderGenerator
 		{
+			protected override MouseActionType ActionType => MouseActionType.ConfirmOrder;
+			public override bool ClearSelectionOnLeftClick => false;
+
 			readonly List<Actor> minelayers;
 			readonly Minelayer minelayer;
 			readonly Sprite validTile, unknownTile, blockedTile;
@@ -229,6 +233,7 @@ namespace OpenRA.Mods.Common.Traits
 			readonly string cursor;
 
 			public MinefieldOrderGenerator(Actor a, CPos xy, bool queued)
+				: base(a.World)
 			{
 				minelayers = [a];
 				minefieldStart = xy;
@@ -286,21 +291,13 @@ namespace OpenRA.Mods.Common.Traits
 
 			protected override IEnumerable<Order> OrderInner(World world, CPos cell, int2 worldPixel, MouseInput mi)
 			{
-				if (mi.Button == Game.Settings.Game.MouseButtonPreference.Cancel)
-				{
-					world.CancelInputMode();
-					yield break;
-				}
+				world.CancelInputMode();
 
-				if (mi.Button == Game.Settings.Game.MouseButtonPreference.Action)
-				{
-					minelayers[0].World.CancelInputMode();
-					foreach (var minelayer in minelayers)
-						yield return new Order("PlaceMinefield", minelayer, Target.FromCell(world, cell), queued) { ExtraLocation = minefieldStart };
-				}
+				foreach (var minelayer in minelayers)
+					yield return new Order("PlaceMinefield", minelayer, Target.FromCell(world, cell), queued) { ExtraLocation = minefieldStart };
 			}
 
-			protected override void SelectionChanged(World world, IEnumerable<Actor> selected)
+			public override void SelectionChanged(World world, IEnumerable<Actor> selected)
 			{
 				minelayers.Clear();
 				minelayers.AddRange(selected.Where(s => !s.IsDead && s.Info.HasTraitInfo<MinelayerInfo>()));
@@ -308,8 +305,8 @@ namespace OpenRA.Mods.Common.Traits
 					world.CancelInputMode();
 			}
 
-			protected override IEnumerable<IRenderable> Render(WorldRenderer wr, World world) { yield break; }
-			protected override IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr, World world)
+			public override IEnumerable<IRenderable> Render(WorldRenderer wr, World world) { yield break; }
+			public override IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr, World world)
 			{
 				var minelayer = minelayers.FirstOrDefault(m => m.IsInWorld && !m.IsDead);
 				if (minelayer == null)
@@ -349,13 +346,13 @@ namespace OpenRA.Mods.Common.Traits
 						alpha = blockedAlpha;
 					}
 
-					yield return new SpriteRenderable(tile, world.Map.CenterOfCell(c), WVec.Zero, -511, pal, 1f, alpha, float3.Ones, TintModifiers.IgnoreWorldTint, true);
+					yield return new SpriteRenderable(tile, world.Map.CenterOfCell(c), WVec.Zero, -511, pal, 1f, alpha, Vector3.One, TintModifiers.IgnoreWorldTint, true);
 				}
 			}
 
-			protected override IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr, World world) { yield break; }
+			public override IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr, World world) { yield break; }
 
-			protected override string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)
+			public override string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)
 			{
 				return cursor;
 			}

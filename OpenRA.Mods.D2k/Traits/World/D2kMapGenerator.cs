@@ -12,7 +12,6 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Mods.Common.Terrain;
@@ -24,50 +23,8 @@ using static OpenRA.Mods.Common.Traits.ResourceLayerInfo;
 namespace OpenRA.Mods.D2k.Traits
 {
 	[TraitLocation(SystemActors.EditorWorld)]
-	public sealed class D2kMapGeneratorInfo : TraitInfo, IEditorMapGeneratorInfo
+	public sealed class D2kMapGeneratorInfo : MapGeneratorBaseInfo
 	{
-		[FieldLoader.Require]
-		public readonly string Type = null;
-
-		[FieldLoader.Require]
-		[FluentReference]
-		public readonly string Name = null;
-
-		[FieldLoader.Require]
-		[Desc("Tilesets that are compatible with this map generator.")]
-		public readonly ImmutableArray<string> Tilesets = default;
-
-		[FluentReference]
-		[Desc("The title to use for generated maps.")]
-		public readonly string MapTitle = "label-random-map";
-
-		[Desc("The widget tree to open when the tool is selected.")]
-		public readonly string PanelWidget = "MAP_GENERATOR_TOOL_PANEL";
-
-		// This is purely of interest to the linter.
-		[FieldLoader.LoadUsing(nameof(FluentReferencesLoader))]
-		[FluentReference]
-		public readonly ImmutableArray<string> FluentReferences = default;
-
-		[FieldLoader.LoadUsing(nameof(SettingsLoader))]
-		public readonly MiniYaml Settings;
-
-		string IMapGeneratorInfo.Type => Type;
-		string IMapGeneratorInfo.Name => Name;
-		string IMapGeneratorInfo.MapTitle => MapTitle;
-		ImmutableArray<string> IEditorMapGeneratorInfo.Tilesets => Tilesets;
-
-		static MiniYaml SettingsLoader(MiniYaml my)
-		{
-			return my.NodeWithKey("Settings").Value;
-		}
-
-		static object FluentReferencesLoader(MiniYaml my)
-		{
-			return new MapGeneratorSettings(null, my.NodeWithKey("Settings").Value)
-				.Options.SelectMany(o => o.GetFluentReferences()).ToImmutableArray();
-		}
-
 		const int FractionMax = Terraformer.FractionMax;
 		const int EntityBonusMax = 1000000;
 
@@ -242,21 +199,12 @@ namespace OpenRA.Mods.D2k.Traits
 			}
 		}
 
-		public IMapGeneratorSettings GetSettings()
+		public override Map Generate(ModData modData, MapGenerationArgs args)
 		{
-			return new MapGeneratorSettings(this, Settings);
-		}
-
-		public Map Generate(ModData modData, MapGenerationArgs args)
-		{
-			var terrainInfo = modData.DefaultTerrainInfo[args.Tileset];
-			var size = args.Size;
-
-			var map = new Map(modData, terrainInfo, size);
 			var actorPlans = new List<ActorPlan>();
-
-			var param = new Parameters(map, args.Settings);
-
+			var terrainInfo = modData.DefaultTerrainInfo[args.Tileset];
+			var map = new Map(modData, terrainInfo, args.Size);
+			var param = new Parameters(map, GenerateParameterYaml(modData, args));
 			var terraformer = new Terraformer(args, map, modData, actorPlans, param.Mirror, param.Rotations);
 
 			var sandZone = new Terraformer.PathPartitionZone()
@@ -351,21 +299,24 @@ namespace OpenRA.Mods.D2k.Traits
 					tilingPaths,
 					plan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
 					null,
-					[new MultiBrush().WithTemplate(map, param.RockTile, CVec.Zero)])
+					[new MultiBrush().WithTemplate(map, param.RockTile, CVec.Zero)],
+					null,
+					0)
 						?? throw new MapGenerationException("Could not fit tiles for rock platforms");
 			}
 
 			// Sand cliff generation
 			if (param.SandCliffs > 0)
 			{
+				var sandMask = CellLayerUtils.Map(rockSmoothSand, s => s == Terraformer.Side.Out);
+				sandMask = terraformer.ImproveSymmetry(sandMask, true, (a, b) => a && b);
 				var inverseElevation = elevation.Map(v => -v);
 				var cliffMask = MatrixUtils.CalibratedBooleanThreshold(
 					roughnessMatrix,
 					param.SandRoughness, FractionMax);
 				var plan = terraformer.SliceElevation(
 					inverseElevation,
-					CellLayerUtils.ToMatrix(rockSmoothSand, Terraformer.Side.Out)
-						.Map(s => s == Terraformer.Side.Out),
+					CellLayerUtils.ToMatrix(sandMask, true),
 					param.SandCliffs,
 					param.SandContourSpacing);
 				plan = MatrixUtils.BooleanBlotch(
@@ -373,7 +324,7 @@ namespace OpenRA.Mods.D2k.Traits
 					param.TerrainSmoothing,
 					param.SmoothingThreshold, /*smoothingThresholdOutOf=*/FractionMax,
 					param.MinimumSandCliffThickness,
-					true);
+					false);
 				var contours = MatrixUtils.BordersToPoints(plan);
 				var partitionMask = cliffMask.Map(masked => masked ? sandSandCliffZone : sandZone);
 				var tilingPaths = terraformer.PartitionPaths(
@@ -459,7 +410,9 @@ namespace OpenRA.Mods.D2k.Traits
 					tilingPaths,
 					plan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
 					null,
-					param.DuneBrushes)
+					param.DuneBrushes,
+					null,
+					0)
 						?? throw new MapGenerationException("Could not fit tiles for rock platforms");
 			}
 
@@ -610,6 +563,7 @@ namespace OpenRA.Mods.D2k.Traits
 				}
 			}
 
+			terraformer.ReorderPlayerSpawns();
 			terraformer.BakeMap();
 
 			return map;
@@ -617,22 +571,13 @@ namespace OpenRA.Mods.D2k.Traits
 
 		public override object Create(ActorInitializer init)
 		{
-			return new D2kMapGenerator(this);
+			return new D2kMapGenerator(init, this);
 		}
 	}
 
-	public class D2kMapGenerator : IEditorTool
+	public class D2kMapGenerator : MapGeneratorBase
 	{
-		public string Label { get; }
-		public string PanelWidget { get; }
-		public TraitInfo TraitInfo { get; }
-		public bool IsEnabled => true;
-
-		public D2kMapGenerator(D2kMapGeneratorInfo info)
-		{
-			Label = info.Name;
-			PanelWidget = info.PanelWidget;
-			TraitInfo = info;
-		}
+		public D2kMapGenerator(ActorInitializer init, D2kMapGeneratorInfo info)
+			: base(init, info) { }
 	}
 }

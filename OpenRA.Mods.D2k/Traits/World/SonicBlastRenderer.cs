@@ -10,6 +10,7 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Traits;
 
@@ -35,7 +36,7 @@ namespace OpenRA.Mods.D2k.Traits
 		readonly Renderer renderer;
 		readonly IShader shader;
 		readonly IVertexBuffer<RenderPostProcessPassTexturedVertex> buffer;
-		readonly List<float3> positions = [];
+		readonly List<Vector3> positions = [];
 
 		public SonicBlastRenderer(SonicBlastRendererInfo info)
 		{
@@ -58,7 +59,7 @@ namespace OpenRA.Mods.D2k.Traits
 			buffer = renderer.CreateVertexBuffer(vertices, false);
 		}
 
-		public void Draw(float3 pos)
+		public void Draw(Vector3 pos)
 		{
 			positions.Add(pos);
 		}
@@ -76,7 +77,7 @@ namespace OpenRA.Mods.D2k.Traits
 			shader.SetVec("Scroll", scroll.X, scroll.Y);
 			shader.SetVec("p1", width, height);
 			shader.SetVec("p2", -1, -1);
-			shader.SetTexture("WorldTexture", Game.Renderer.WorldBufferSnapshot());
+			shader.SetTexture("SourceTexture", Game.Renderer.GetRenderBufferSnapshot());
 			shader.PrepareRender();
 			foreach (var pos in positions)
 			{

@@ -26,7 +26,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int Duration = 0;
 
 		[Desc("Allowed to land on.")]
-		public readonly FrozenSet<string> TerrainTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> TerrainTypes = [];
 
 		[Desc("Define actors that can collect crates by setting this into the Crushes field from the Mobile trait.")]
 		public readonly string CrushClass = "crate";
@@ -80,10 +80,10 @@ namespace OpenRA.Mods.Common.Traits
 		bool collected;
 		INotifyCenterPositionChanged[] notifyCenterPositionChanged;
 
-		[Sync]
+		[VerifySync]
 		int ticks;
 
-		[Sync]
+		[VerifySync]
 		public CPos Location;
 
 		public Crate(ActorInitializer init, CrateInfo info)

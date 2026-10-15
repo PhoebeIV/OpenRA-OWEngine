@@ -45,7 +45,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					t => t.Name[..^4],
 					t => Utility.GetFields(t).Where(Utility.HasAttribute<FluentReferenceAttribute>).Select(f => f.Name).ToArray())
 				.Where(t => t.Value.Length > 0)
-				.ToDictionary(t => t.Key, t => t.Value);
+				.ToDictionary();
 
 			// Extract from a specific map.
 			if (args.Length == 2)
@@ -214,6 +214,9 @@ namespace OpenRA.Mods.Common.UtilityCommands
 						{
 							var candidate = grouping.First();
 							var key = $"{candidate.Actor}-{candidate.Key}";
+							if (key == "actor-world-missiondata-briefing")
+								key = "briefing";
+
 							build += $"{key} = {candidate.Value}\n";
 							foreach (var node in candidate.Nodes)
 								node.Value.Value = key;

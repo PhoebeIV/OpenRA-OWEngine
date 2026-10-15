@@ -11,6 +11,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Traits;
@@ -150,12 +151,11 @@ namespace OpenRA.Mods.Cnc.Traits
 			readonly SupportPowerManager manager;
 			readonly string order;
 
-			public SelectChronoshiftTarget(World world, string order, SupportPowerManager manager, ChronoshiftPower power)
-			{
-				// Clear selection if using Left-Click Orders
-				if (Game.Settings.Game.UseClassicMouseStyle)
-					manager.Self.World.Selection.Clear();
+			protected override MouseActionType ActionType => MouseActionType.SupportPower;
 
+			public SelectChronoshiftTarget(World world, string order, SupportPowerManager manager, ChronoshiftPower power)
+				: base(world)
+			{
 				this.manager = manager;
 				this.order = order;
 				this.power = power;
@@ -171,9 +171,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			protected override IEnumerable<Order> OrderInner(World world, CPos cell, int2 worldPixel, MouseInput mi)
 			{
 				world.CancelInputMode();
-				if (mi.Button == MouseButton.Left)
-					world.OrderGenerator = new SelectDestination(world, order, manager, power, cell);
-
+				world.OrderGenerator = new SelectDestination(world, order, manager, power, cell);
 				yield break;
 			}
 
@@ -210,7 +208,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				var palette = wr.Palette(((ChronoshiftPowerInfo)power.Info).TargetOverlayPalette);
 				foreach (var t in tiles)
 					yield return new SpriteRenderable(
-						tile, wr.World.Map.CenterOfCell(t), WVec.Zero, -511, palette, 1f, alpha, float3.Ones, TintModifiers.IgnoreWorldTint, true);
+						tile, wr.World.Map.CenterOfCell(t), WVec.Zero, -511, palette, 1f, alpha, Vector3.One, TintModifiers.IgnoreWorldTint, true);
 			}
 
 			protected override string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)
@@ -230,7 +228,10 @@ namespace OpenRA.Mods.Cnc.Traits
 			readonly SupportPowerManager manager;
 			readonly string order;
 
+			protected override MouseActionType ActionType => MouseActionType.SupportPower;
+
 			public SelectDestination(World world, string order, SupportPowerManager manager, ChronoshiftPower power, CPos sourceLocation)
+				: base(world)
 			{
 				this.manager = manager;
 				this.order = order;
@@ -267,12 +268,6 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			protected override IEnumerable<Order> OrderInner(World world, CPos cell, int2 worldPixel, MouseInput mi)
 			{
-				if (mi.Button == MouseButton.Right)
-				{
-					world.CancelInputMode();
-					yield break;
-				}
-
 				var ret = OrderInner(cell).FirstOrDefault();
 				if (ret == null)
 					yield break;
@@ -312,7 +307,7 @@ namespace OpenRA.Mods.Cnc.Traits
 					var tile = isValid ? validTile : invalidTile;
 					var alpha = isValid ? validAlpha : invalidAlpha;
 					yield return new SpriteRenderable(
-						tile, wr.World.Map.CenterOfCell(t + delta), WVec.Zero, -511, palette, 1f, alpha, float3.Ones, TintModifiers.IgnoreWorldTint, true);
+						tile, wr.World.Map.CenterOfCell(t + delta), WVec.Zero, -511, palette, 1f, alpha, Vector3.One, TintModifiers.IgnoreWorldTint, true);
 				}
 
 				// Unit previews
@@ -326,7 +321,7 @@ namespace OpenRA.Mods.Cnc.Traits
 						var tile = canEnter ? validTile : invalidTile;
 						var alpha = canEnter ? validAlpha : invalidAlpha;
 						yield return new SpriteRenderable(
-							tile, wr.World.Map.CenterOfCell(targetCell), WVec.Zero, -511, palette, 1f, alpha, float3.Ones, TintModifiers.IgnoreWorldTint, true);
+							tile, wr.World.Map.CenterOfCell(targetCell), WVec.Zero, -511, palette, 1f, alpha, Vector3.One, TintModifiers.IgnoreWorldTint, true);
 					}
 
 					var offset = world.Map.CenterOfCell(xy) - world.Map.CenterOfCell(sourceLocation);
@@ -357,7 +352,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				// Source tiles
 				foreach (var t in power.CellsMatching(sourceLocation, footprint, dimensions))
 					yield return new SpriteRenderable(
-						sourceTile, wr.World.Map.CenterOfCell(t), WVec.Zero, -511, palette, 1f, sourceAlpha, float3.Ones, TintModifiers.IgnoreWorldTint, true);
+						sourceTile, wr.World.Map.CenterOfCell(t), WVec.Zero, -511, palette, 1f, sourceAlpha, Vector3.One, TintModifiers.IgnoreWorldTint, true);
 			}
 
 			bool IsValidTarget(CPos xy)

@@ -85,7 +85,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Minimum altitude where this aircraft is considered airborne.")]
 		public readonly int MinAirborneAltitude = 1;
 
-		public readonly FrozenSet<string> LandableTerrainTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> LandableTerrainTypes = [];
 
 		[Desc("Can the actor be ordered to move in to shroud?")]
 		public readonly bool MoveIntoShroud = true;
@@ -242,7 +242,7 @@ namespace OpenRA.Mods.Common.Traits
 		INotifyCenterPositionChanged[] notifyCenterPositionChanged;
 		IOverrideAircraftLanding overrideAircraftLanding;
 
-		[Sync]
+		[VerifySync]
 		public WAngle Facing
 		{
 			get => Orientation.Yaw;
@@ -263,7 +263,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public WRot Orientation { get; private set; }
 
-		[Sync]
+		[VerifySync]
 		public WPos CenterPosition { get; private set; }
 
 		public CPos TopLeft => self.World.Map.CellContaining(CenterPosition);
@@ -300,7 +300,7 @@ namespace OpenRA.Mods.Common.Traits
 			return self.CenterPosition - new WVec(WDist.Zero, WDist.Zero, self.World.Map.DistanceAboveTerrain(self.CenterPosition));
 		}
 
-		public bool AtLandAltitude => self.World.Map.DistanceAboveTerrain(GetPosition()) == LandAltitude;
+		public bool AtLandAltitude => self.World.Map.DistanceAboveTerrain(self.CenterPosition) == LandAltitude;
 
 		bool airborne;
 		bool cruising;
@@ -340,15 +340,6 @@ namespace OpenRA.Mods.Common.Traits
 
 				return alt;
 			}
-		}
-
-		public WPos GetPosition()
-		{
-			var pos = self.CenterPosition;
-			foreach (var offset in positionOffsets)
-				pos += offset.PositionOffset;
-
-			return pos;
 		}
 
 		public override IEnumerable<VariableObserver> GetVariableObservers()

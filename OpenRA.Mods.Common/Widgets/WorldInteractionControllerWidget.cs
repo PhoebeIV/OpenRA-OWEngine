@@ -27,6 +27,7 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly Color normalSelectionColor;
 		readonly Color altSelectionColor;
 		readonly Color ctrlSelectionColor;
+		readonly GameSettings gameSettings;
 
 		public readonly string ClickSound = ChromeMetrics.Get<string>("ClickSound");
 		public readonly string ClickDisabledSound = ChromeMetrics.Get<string>("ClickDisabledSound");
@@ -40,6 +41,7 @@ namespace OpenRA.Mods.Common.Widgets
 		public WorldInteractionControllerWidget(World world, WorldRenderer worldRenderer)
 		{
 			World = world;
+			gameSettings = Game.Settings.Game;
 			this.worldRenderer = worldRenderer;
 			if (!ChromeMetrics.TryGet("AltSelectionColor", out altSelectionColor))
 				altSelectionColor = Color.White;
@@ -57,8 +59,8 @@ namespace OpenRA.Mods.Common.Widgets
 			IEnumerable<Actor> rollover;
 			if (IsValidDragbox)
 			{
-				var a = worldRenderer.Viewport.WorldToViewPx(dragStart);
-				var b = worldRenderer.Viewport.WorldToViewPx(mousePos);
+				var a = worldRenderer.Viewport.WorldToViewPx(dragStart).ToVector3();
+				var b = worldRenderer.Viewport.WorldToViewPx(mousePos).ToVector3();
 
 				var color = normalSelectionColor;
 				if (modifiers.HasFlag(Modifiers.Alt) && !modifiers.HasFlag(Modifiers.Ctrl))
@@ -84,7 +86,8 @@ namespace OpenRA.Mods.Common.Widgets
 		{
 			mousePos = worldRenderer.Viewport.ViewToWorldPx(mi.Location);
 
-			var useClassicMouseStyle = Game.Settings.Game.UseClassicMouseStyle;
+			var useClassicMouseStyle = gameSettings.MouseControlStyle == MouseControlStyle.Classic;
+			var actionButton = World.OrderGenerator.ActionButton;
 
 			var multiClick = mi.MultiTapCount >= 2;
 
@@ -101,15 +104,18 @@ namespace OpenRA.Mods.Common.Widgets
 				if (!TakeMouseFocus(mi))
 					return false;
 
-				dragStart = mousePos;
-				isDragging = true;
+				if (useClassicMouseStyle || actionButton != MouseButton.Left)
+				{
+					dragStart = mousePos;
+					isDragging = true;
+				}
 			}
 
 			if (mi.Button == MouseButton.Left && mi.Event == MouseInputEvent.Up)
 			{
-				if (useClassicMouseStyle && HasMouseFocus &&
-					!IsValidDragbox && World.Selection.Actors.Count != 0 &&
-					!multiClick && uog.InputOverridesSelection(World, mousePos, mi))
+				if (((useClassicMouseStyle && !multiClick) || (!useClassicMouseStyle && actionButton == MouseButton.Left))
+					&& HasMouseFocus && !IsValidDragbox && World.Selection.Actors.Count != 0
+					&& uog.InputOverridesSelection(World, mousePos, mi))
 				{
 					// Order units instead of selecting
 					ApplyOrders(World, mi);
@@ -166,7 +172,7 @@ namespace OpenRA.Mods.Common.Widgets
 				// Don't do anything while selecting
 				if (!IsValidDragbox)
 				{
-					if (useClassicMouseStyle)
+					if (useClassicMouseStyle && uog.ClearSelectionOnLeftClick)
 						World.Selection.Clear();
 
 					ApplyOrders(World, mi);
@@ -218,12 +224,27 @@ namespace OpenRA.Mods.Common.Widgets
 				var mi = new MouseInput
 				{
 					Location = screenPos,
-					Button = Game.Settings.Game.MouseButtonPreference.Action,
+					Button = World.OrderGenerator.ActionButton,
 					Modifiers = Game.GetModifierKeys()
 				};
 
 				return World.OrderGenerator.GetCursor(World, cell, worldPixel, mi);
 			});
+		}
+
+		public override bool HandleKeyPress(KeyInput e)
+		{
+			if (World.OrderGenerator is not UnitOrderGenerator uog)
+				return false;
+
+			if (uog.HasIssuedQueuedCommand && e.Event == KeyInputEvent.Up && (e.Key == Keycode.LSHIFT || e.Key == Keycode.RSHIFT))
+			{
+				World.CancelInputMode();
+				uog.HasIssuedQueuedCommand = false;
+				return true;
+			}
+
+			return false;
 		}
 	}
 }

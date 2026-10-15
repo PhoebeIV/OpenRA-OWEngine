@@ -7,7 +7,6 @@ button-quit = Quit
 
 ## Server Orders
 notification-custom-rules = This map contains custom rules. Game experience may change.
-notification-map-bots-disabled = Bots have been disabled on this map.
 notification-two-humans-required = This server requires at least two human players to start a match.
 notification-unknown-server-command = Unknown server command: { $command }.
 notification-admin-start-game = Only the host can start the game.
@@ -29,7 +28,7 @@ notification-unknown-map = Map was not found on server.
 notification-searching-map = Searching for map on the Resource Center...
 notification-admin-change-configuration = Only the host can change the configuration.
 notification-changed-map = { $player } changed the map to { $map }.
-notification-option-changed = { $player } changed { $name } to { $value }.
+notification-hidden-map-has-been-previewed = This generated map has been previewed by the admin during creation.
 notification-you-were-kicked = You have been kicked from the server.
 notification-admin-kicked = { $admin } kicked { $player } from the server.
 notification-kicked = { $player } was kicked from the server.
@@ -57,7 +56,6 @@ notification-you-were-banned = You have been banned from the server.
 notification-you-were-temp-banned = You have been temporarily banned from the server.
 notification-game-full = The game is full.
 notification-new-admin = { $player } is now the admin.
-notification-option-locked = { $option } cannot be changed.
 notification-invalid-configuration-command = Invalid configuration command.
 notification-admin-option = Only the host can set that option.
 notification-error-number-teams = Could not parse the number of teams: { $raw }.
@@ -83,16 +81,12 @@ notification-requires-authentication = Server requires players to have an OpenRA
 notification-no-permission-to-join = You do not have permission to join this server.
 notification-slot-closed = Your slot was closed by the host.
 
-## LobbySettingsNotification
-notification-lobby-option = { $name }: { $value }.
-
 ## ServerOrders, UnitOrders
 notification-joined = { $player } has joined the game.
 notification-lobby-disconnected = { $player } has left.
 
 ## UnitOrders
 notification-game-has-started = The game has started.
-notification-game-saved = Game saved.
 notification-game-paused = The game has been paused by { $player }.
 notification-game-unpaused = The game has been un-paused by { $player }.
 
@@ -156,7 +150,7 @@ menu-game-info =
     .objectives = Objectives
     .briefing = Briefing
     .options = Options
-    .debug = Debug
+    .debug = Cheats
     .chat = Chat
 
 ## GameInfoObjectivesLogic, GameInfoStatsLogic
@@ -206,6 +200,11 @@ label-chat-availability =
 
 ## LobbyLogic, ServerListLogic
 label-bot-player = AI Player
+
+## LobbyLogic
+notification-lobby-option = { $name }: { $value }.
+notification-lobby-option-changed = { $name } changed to { $value }.
+notification-map-bots-disabled = Bots have been disabled on this map.
 
 ## IngameMenuLogic
 menu-ingame =
@@ -341,8 +340,10 @@ button-retry-search = Retry Search
 label-created-by = Created by { $author }
 
 ## SpawnSelectorTooltipLogic
-label-disabled-spawn = Disabled spawn
-label-available-spawn = Available spawn
+label-disabled-spawn = Disabled spawn { $spawn }
+label-available-spawn = Available spawn { $spawn }
+label-spawn-name = Spawn { $spawn }
+label-team-spawn = Team { $team }  Spawn { $spawn }
 
 ## DisplaySettingsLogic
 options-camera =
@@ -402,6 +403,7 @@ options-mouse-scroll-type =
 options-control-scheme =
     .classic = Classic
     .modern = Modern
+    .otherrts = Other RTS
 
 ## SettingsLogic
 dialog-settings-save =
@@ -518,8 +520,9 @@ button-mapchooser-generated-maps-tab = Generate Map
 ## MissionBrowserLogic
 dialog-no-video =
     .title = Video not installed
-    .prompt = The game videos can be installed from the
-    "Manage Content" menu in the mod chooser.
+    .prompt =
+        The game videos can be installed from the
+        "Manage Content" menu.
     .cancel = Back
 
 dialog-cant-play-video =
@@ -552,6 +555,10 @@ options-replay-type =
 options-winstate =
     .victory = Victory
     .defeat = Defeat
+
+options-save-type =
+    .autosave = Autosave
+    .manual = Manual save
 
 options-replay-date =
     .today = Today
@@ -673,7 +680,7 @@ label-spectators-count =
        *[other] { $spectators } Spectators
     }
 
-## ServerlistLogic, GameInfoStatsLogic, ObserverShroudSelectorLogic, SpawnSelectorTooltipLogic, ReplayBrowserLogic
+## ServerlistLogic, GameInfoStatsLogic, ObserverShroudSelectorLogic, ReplayBrowserLogic
 label-team-name = Team { $team }
 label-no-team = No Team
 
@@ -704,6 +711,9 @@ notification-saved-screenshot = Saved screenshot { $filename }
 ## ChatCommands
 notification-invalid-command = { $name } is not a valid command.
 
+## DebugMenuLogic
+tooltip-debug-command = Cheat command: { $command }
+
 ## DebugVisualizationCommands
 description-combat-geometry = toggles combat geometry overlay.
 description-render-geometry = toggles render geometry overlay.
@@ -712,7 +722,6 @@ description-depth-buffer = toggles depth buffer overlay.
 description-actor-tags-overlay = toggles actor tags overlay.
 
 ## DevCommands
-notification-cheats-disabled = Cheats are disabled.
 notification-invalid-cash-amount = Invalid cash amount.
 description-toggle-visibility = toggles visibility checks and minimap.
 description-give-cash = gives the default or specified amount of money.
@@ -725,10 +734,17 @@ description-fast-charge = toggles near-instant support power charging.
 description-dev-cheat-all = toggles all cheats and gives you some cash for your trouble.
 description-dev-crash = crashes the game.
 description-levelup-actor = adds a specified number of levels to the selected actors.
-description-player-experience = adds a specified amount of player experience to the owner(s) of selected actors.
-description-power-outage = causes a 5-second power outage for the owner(s) of selected actors.
+description-player-experience = adds a specified amount of player experience to the local player.
+description-power-outage = causes a 5-second power outage for the local player.
+description-grow-resources = grows resources on the map.
+description-clear-shroud = reveals the entire map.
+description-reset-shroud = hides the entire map.
+description-heal-selected-actors = heals selected actors.
 description-kill-selected-actors = kills selected actors.
 description-dispose-selected-actors = disposes selected actors.
+
+## DevCommands, DebugVisualizationCommands, CustomTerrainDebugOverlay, ActorMapOverlay, CellTriggerOverlay, ExitsDebugOverlayManager, HierarchicalPathFinderOverlay, PathFinderOverlay, TerrainGeometryOverlay
+notification-cheats-disabled = Cheats are disabled.
 
 ## HelpCommands
 notification-available-commands = Here are the available commands:
@@ -739,8 +755,12 @@ description-help-description = provides useful info about various commands.
 description-pause-description = pause or unpause the game.
 description-surrender-description = self-destruct everything and lose the game.
 
-## DeveloperMode
+## DeveloperMode, GainsExperience, PowerManager
 notification-cheat-used = Cheat used: { $cheat } by { $player }{ $suffix }.
+
+## DeveloperMode, DebugVisualizationCommands, CustomTerrainDebugOverlay, ActorMapOverlay, CellTriggerOverlay, ExitsDebugOverlayManager, HierarchicalPathFinderOverlay, PathFinderOverlay, TerrainGeometryOverlay
+notification-cheat-enabled = Cheat enabled: { $cheat } by { $player }.
+notification-cheat-disabled = Cheat disabled: { $cheat } by { $player }.
 
 ## CustomTerrainDebugOverlay
 description-custom-terrain-debug-overlay = toggles the custom terrain debug overlay.
@@ -1119,9 +1139,12 @@ keycode =
     .mouse5 = Mouse 5
 
 ## MapGeneratorToolLogic
-label-map-generator-failed-cancel = Dismiss
 notification-map-generator-generated = Generated using { $name }
-notification-map-generator-failed = Map generation failed
+
+dialog-notification-map-generator-failed =
+    .title = Map generation failed
+    .prompt = See debug.log for details.
+    .cancel = Dismiss
 
 ## EditorTilingPathBrush
 notification-tiling-path-started = Started tiling path

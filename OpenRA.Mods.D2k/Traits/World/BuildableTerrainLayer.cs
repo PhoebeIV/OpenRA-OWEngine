@@ -12,14 +12,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.D2k.Traits.Buildings;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.D2k.Traits
 {
-	[Desc("Attach this to the world actor. Required for LaysTerrain to work.")]
+	[Desc("Attach this to the world actor. Required for `" + nameof(D2kBuilding) + "` to work.")]
 	[TraitLocation(SystemActors.World)]
 	public class BuildableTerrainLayerInfo : TraitInfo, Requires<ITiledTerrainRendererInfo>
 	{
@@ -111,7 +113,7 @@ namespace OpenRA.Mods.D2k.Traits
 					{
 						// Terrain tiles define their origin at the topleft
 						var s = terrainRenderer.TileSprite(tile.Value);
-						var ss = new Sprite(s.Sheet, s.Bounds, s.ZRamp, float2.Zero, s.Channel, s.BlendMode);
+						var ss = new Sprite(s.Sheet, s.Bounds, s.ZRamp, Vector3.Zero, s.Channel, s.BlendMode);
 						render.Update(kv.Key, ss, paletteReference);
 					}
 					else

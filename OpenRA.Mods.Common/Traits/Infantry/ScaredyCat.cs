@@ -31,7 +31,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int AttackPanicChance = 20;
 
 		[Desc("The terrain types that this actor should avoid running on to while panicking.")]
-		public readonly FrozenSet<string> AvoidTerrainTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> AvoidTerrainTypes = [];
 
 		[SequenceReference(prefix: true)]
 		public readonly string PanicSequencePrefix = "panic-";
@@ -46,7 +46,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Actor self;
 		readonly Func<CPos, bool> avoidTerrainFilter;
 
-		[Sync]
+		[VerifySync]
 		int panicStartedTick;
 		bool Panicking => panicStartedTick > 0;
 

@@ -112,17 +112,14 @@ namespace OpenRA.Mods.Common.Server
 		[FluentReference]
 		const string InvalidConfigurationCommand = "notification-invalid-configuration-command";
 
-		[FluentReference("option")]
-		const string OptionLocked = "notification-option-locked";
-
 		[FluentReference("player", "map")]
 		const string ChangedMap = "notification-changed-map";
 
 		[FluentReference]
-		const string MapBotsDisabled = "notification-map-bots-disabled";
+		const string HiddenMapHasBeenPreviewed = "notification-hidden-map-has-been-previewed";
 
-		[FluentReference("player", "name", "value")]
-		const string ValueChanged = "notification-option-changed";
+		[FluentReference]
+		const string MapBotsDisabled = "notification-map-bots-disabled";
 
 		[FluentReference]
 		const string NoMoveSpectators = "notification-admin-move-spectators";
@@ -194,7 +191,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool ValidateSlotCommand(S server, Connection conn, Session.Client client, string arg, bool requiresHost)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!server.LobbyInfo.Slots.ContainsKey(arg))
 				{
@@ -214,7 +211,7 @@ namespace OpenRA.Mods.Common.Server
 
 		public static bool ValidateCommand(S server, Connection conn, Session.Client client, string command)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				// Kick command is always valid for the host
 				if (command.StartsWith("kick ", StringComparison.Ordinal) || command.StartsWith("vote_kick ", StringComparison.Ordinal))
@@ -237,7 +234,7 @@ namespace OpenRA.Mods.Common.Server
 
 		public bool InterpretCommand(S server, Connection conn, Session.Client client, string cmd)
 		{
-			if (server == null || conn == null || client == null || !ValidateCommand(server, conn, client, cmd))
+			if (server == null || conn == null || client == null || cmd == null || !ValidateCommand(server, conn, client, cmd))
 				return false;
 
 			var cmdName = cmd.Split(' ').First();
@@ -251,7 +248,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static void CheckAutoStart(S server)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				var nonBotPlayers = server.LobbyInfo.NonBotPlayers;
 
@@ -297,7 +294,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool State(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!Enum.TryParse<Session.ClientState>(s, out var state))
 				{
@@ -318,7 +315,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool StartGame(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!client.IsAdmin)
 				{
@@ -332,9 +329,9 @@ namespace OpenRA.Mods.Common.Server
 					return true;
 				}
 
-				if (server.LobbyInfo.Slots.All(sl => server.LobbyInfo.ClientInSlot(sl.Key) == null))
+				if (server.LobbyInfo.Slots.All(sl => server.LobbyInfo.ClientInSlot(sl.Key)?.State is null or Session.ClientState.Invalid))
 				{
-					server.SendOrderTo(conn, "Message", NoStartWithoutPlayers);
+					server.SendFluentMessageTo(conn, NoStartWithoutPlayers);
 					return true;
 				}
 
@@ -358,7 +355,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool Slot(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!server.LobbyInfo.Slots.TryGetValue(s, out var slot))
 				{
@@ -389,7 +386,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool AllowSpectators(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (bool.TryParse(s, out server.LobbyInfo.GlobalSettings.AllowSpectators))
 				{
@@ -405,7 +402,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool Specate(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (server.LobbyInfo.GlobalSettings.AllowSpectators || client.IsAdmin)
 				{
@@ -425,7 +422,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool SlotClose(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!ValidateSlotCommand(server, conn, client, s, true))
 					return false;
@@ -459,7 +456,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool SlotOpen(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!ValidateSlotCommand(server, conn, client, s, true))
 					return false;
@@ -481,7 +478,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool SlotBot(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				var parts = s.Split(' ');
 				if (parts.Length < 3)
@@ -563,7 +560,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool Map(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!client.IsAdmin)
 				{
@@ -580,7 +577,7 @@ namespace OpenRA.Mods.Common.Server
 				var lastMap = server.LobbyInfo.GlobalSettings.Map;
 				void SelectMap(MapPreview map)
 				{
-					lock (server.LobbyInfo)
+					lock (server.LobbyInfoLock)
 					{
 						// Make sure the map hasn't changed in the meantime
 						if (server.LobbyInfo.GlobalSettings.Map != lastMap)
@@ -595,7 +592,7 @@ namespace OpenRA.Mods.Common.Server
 						server.LobbyInfo.Slots = server.Map.Players.Players
 							.Select(p => MakeSlotFromPlayerReference(p.Value))
 							.Where(ss => ss != null)
-							.ToDictionary(ss => ss.PlayerReference, ss => ss);
+							.ToDictionary(ss => ss.PlayerReference);
 
 						LoadMapSettings(server, server.LobbyInfo.GlobalSettings, server.Map);
 
@@ -647,9 +644,15 @@ namespace OpenRA.Mods.Common.Server
 
 						server.LobbyInfo.DisabledSpawnPoints.Clear();
 
-						server.SyncLobbyInfo();
-
 						server.SendFluentMessage(ChangedMap, "player", client.Name, "map", server.Map.Title);
+						var previewVisibility = map.GenerationArgs?.PreviewVisibility ?? MapGenerationArgs.PreviewVisibilityFlags.All;
+						var hiddenMapNeedsDisclaimer =
+							!previewVisibility.HasFlag(MapGenerationArgs.PreviewVisibilityFlags.Lobby)
+								&& previewVisibility.HasFlag(MapGenerationArgs.PreviewVisibilityFlags.MapChooser);
+						if (hiddenMapNeedsDisclaimer)
+							server.SendFluentMessage(HiddenMapHasBeenPreviewed);
+
+						server.SyncLobbyInfo();
 
 						if ((server.LobbyInfo.GlobalSettings.MapStatus & Session.MapStatus.UnsafeCustomRules) != 0)
 							server.SendFluentMessage(CustomRules);
@@ -658,31 +661,12 @@ namespace OpenRA.Mods.Common.Server
 							server.SendFluentMessage(TwoHumansRequired);
 						else if (server.Map.Players.Players.Where(p => p.Value.Playable).All(p => !p.Value.AllowBots))
 							server.SendFluentMessage(MapBotsDisabled);
-
-						var briefing = MissionBriefingOrDefault(server);
-						if (briefing != null)
-							server.SendMessage(briefing);
 					}
 				}
 
 				var m = server.ModData.MapCache[s];
-				if (m.Status == MapStatus.Available || m.Status == MapStatus.DownloadAvailable)
+				if (m.Status is MapStatus.Available or MapStatus.DownloadAvailable or MapStatus.Generatable or MapStatus.Generating)
 					SelectMap(m);
-				else if (m.Class == MapClassification.Generated)
-				{
-					if (m.Status == MapStatus.Generating)
-					{
-						// Wait up to 5 seconds for the map to be generated
-						var stopwatch = Stopwatch.StartNew();
-						while (m.Status == MapStatus.Generating && stopwatch.ElapsedMilliseconds < 5000)
-							Thread.Sleep(100);
-					}
-
-					if (m.Status == MapStatus.Available)
-						SelectMap(m);
-					else
-						QueryFailed();
-				}
 				else if (server.Settings.QueryMapRepository)
 				{
 					server.SendFluentMessageTo(conn, SearchingMap);
@@ -707,7 +691,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool Option(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!client.IsAdmin)
 				{
@@ -726,15 +710,9 @@ namespace OpenRA.Mods.Common.Server
 
 				var split = s.Split(' ');
 				if (split.Length < 2 || !options.TryGetValue(split[0], out var option) ||
-					!option.Values.ContainsKey(split[1]))
+					option.IsLocked || !option.Values.ContainsKey(split[1]))
 				{
 					server.SendFluentMessageTo(conn, InvalidConfigurationCommand);
-					return true;
-				}
-
-				if (option.IsLocked)
-				{
-					server.SendFluentMessageTo(conn, OptionLocked, ["option", option.Name]);
 					return true;
 				}
 
@@ -751,8 +729,6 @@ namespace OpenRA.Mods.Common.Server
 				oo.Value = oo.PreferredValue = split[1];
 
 				server.SyncLobbyGlobalSettings();
-				server.SendFluentMessage(ValueChanged, "player", client.Name, "name", option.Name, "value", option.Label(split[1]));
-
 				foreach (var c in server.LobbyInfo.Clients)
 					c.State = Session.ClientState.NotReady;
 
@@ -764,7 +740,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool ResetOptions(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!client.IsAdmin)
 				{
@@ -772,28 +748,16 @@ namespace OpenRA.Mods.Common.Server
 					return true;
 				}
 
-				var allOptions = server.Map.PlayerActorInfo.TraitInfos<ILobbyOptions>()
+				server.LobbyInfo.GlobalSettings.LobbyOptions = server.Map.PlayerActorInfo.TraitInfos<ILobbyOptions>()
 					.Concat(server.Map.WorldActorInfo.TraitInfos<ILobbyOptions>())
-					.SelectMany(t => t.LobbyOptions(server.Map));
-
-				var options = new Dictionary<string, Session.LobbyOptionState>();
-				foreach (var o in allOptions)
-				{
-					if (o.DefaultValue != server.LobbyInfo.GlobalSettings.LobbyOptions[o.Id].Value)
-						server.SendFluentMessage(ValueChanged,
-							"player", client.Name,
-							"name", o.Name,
-							"value", o.Label(o.DefaultValue));
-
-					options[o.Id] = new Session.LobbyOptionState
+					.SelectMany(t => t.LobbyOptions(server.Map))
+					.ToDictionary(o => o.Id, o => new Session.LobbyOptionState
 					{
 						IsLocked = o.IsLocked,
 						Value = o.DefaultValue,
 						PreferredValue = o.DefaultValue
-					};
-				}
+					});
 
-				server.LobbyInfo.GlobalSettings.LobbyOptions = options;
 				server.SyncLobbyGlobalSettings();
 
 				foreach (var c in server.LobbyInfo.Clients)
@@ -807,7 +771,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool AssignTeams(S server, Connection conn, Session.Client client, string raw)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!client.IsAdmin)
 				{
@@ -851,7 +815,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool Kick(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!client.IsAdmin)
 				{
@@ -909,7 +873,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool VoteKick(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				var split = s.Split(' ');
 				if (split.Length != 2)
@@ -965,7 +929,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool MakeAdmin(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!client.IsAdmin)
 				{
@@ -1002,7 +966,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool MakeSpectator(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!client.IsAdmin)
 				{
@@ -1037,7 +1001,7 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool Name(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				var sanitizedName = Settings.SanitizedPlayerName(s);
 				if (sanitizedName == client.Name)
@@ -1054,10 +1018,10 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool Faction(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
-				var parts = s.Split(' ');
-				var targetClient = server.LobbyInfo.ClientWithIndex(Exts.ParseInt32Invariant(parts[0]));
+				if (!TryParseClientCommand(server, conn, "faction", s, out var parts, out var targetClient) || targetClient.Slot == null)
+					return true;
 
 				// Only the host can change other client's info
 				if (targetClient.Index != client.Index && !client.IsAdmin)
@@ -1069,7 +1033,7 @@ namespace OpenRA.Mods.Common.Server
 
 				var faction = parts[1];
 				var isValidFaction = server.Map.WorldActorInfo.TraitInfos<FactionInfo>()
-					.Any(f => f.Selectable && f.InternalName == client.Faction);
+					.Any(f => f.Selectable && f.InternalName == faction);
 
 				if (!isValidFaction)
 				{
@@ -1086,10 +1050,10 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool Team(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
-				var parts = s.Split(' ');
-				var targetClient = server.LobbyInfo.ClientWithIndex(Exts.ParseInt32Invariant(parts[0]));
+				if (!TryParseClientCommand(server, conn, "team", s, out var parts, out var targetClient) || targetClient.Slot == null)
+					return true;
 
 				// Only the host can change other client's info
 				if (targetClient.Index != client.Index && !client.IsAdmin)
@@ -1114,10 +1078,10 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool Handicap(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
-				var parts = s.Split(' ');
-				var targetClient = server.LobbyInfo.ClientWithIndex(Exts.ParseInt32Invariant(parts[0]));
+				if (!TryParseClientCommand(server, conn, "handicap", s, out var parts, out var targetClient) || targetClient.Slot == null)
+					return true;
 
 				// Only the host can change other client's info
 				if (targetClient.Index != client.Index && !client.IsAdmin)
@@ -1150,7 +1114,12 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool ClearPlayerSpawn(S server, Connection conn, Session.Client client, string s)
 		{
-			var spawnPoint = Exts.ParseInt32Invariant(s);
+			if (!Exts.TryParseInt32Invariant(s, out var spawnPoint))
+			{
+				server.SendFluentMessageTo(conn, MalformedCommand, ["command", "clear_spawn"]);
+				return true;
+			}
+
 			if (spawnPoint == 0)
 				return true;
 
@@ -1187,10 +1156,10 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool Spawn(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
-				var parts = s.Split(' ');
-				var targetClient = server.LobbyInfo.ClientWithIndex(Exts.ParseInt32Invariant(parts[0]));
+				if (!TryParseClientCommand(server, conn, "spawn", s, out var parts, out var targetClient) || targetClient.Slot == null)
+					return true;
 
 				// Only the host can change other client's info
 				if (targetClient.Index != client.Index && !client.IsAdmin)
@@ -1242,10 +1211,10 @@ namespace OpenRA.Mods.Common.Server
 
 		static bool PlayerColor(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
-				var parts = s.Split(' ');
-				var targetClient = server.LobbyInfo.ClientWithIndex(Exts.ParseInt32Invariant(parts[0]));
+				if (!TryParseClientCommand(server, conn, "color", s, out var parts, out var targetClient))
+					return true;
 
 				// Only the host can change other client's info
 				if (targetClient.Index != client.Index && !client.IsAdmin)
@@ -1256,7 +1225,12 @@ namespace OpenRA.Mods.Common.Server
 					return true;
 
 				// Validate if color is allowed and get an alternative it isn't
-				var newColor = FieldLoader.GetValue<Color>("(value)", parts[1]);
+				if (!Color.TryParse(parts[1], out var newColor))
+				{
+					server.SendFluentMessageTo(conn, MalformedCommand, ["command", "color"]);
+					return true;
+				}
+
 				targetClient.Color = SanitizePlayerColor(server, newColor, targetClient.Index, conn);
 
 				// Only update player's preferred color if new color is valid
@@ -1269,9 +1243,30 @@ namespace OpenRA.Mods.Common.Server
 			}
 		}
 
+		static bool TryParseClientCommand(S server, Connection conn, string command, string s,
+			out string[] parts, out Session.Client targetClient)
+		{
+			parts = s.Split(' ');
+			targetClient = null;
+			if (parts.Length != 2 || !Exts.TryParseInt32Invariant(parts[0], out var targetId))
+			{
+				server.SendFluentMessageTo(conn, MalformedCommand, ["command", command]);
+				return false;
+			}
+
+			targetClient = server.LobbyInfo.ClientWithIndex(targetId);
+			if (targetClient == null)
+			{
+				server.SendFluentMessageTo(conn, MalformedCommand, ["command", command]);
+				return false;
+			}
+
+			return true;
+		}
+
 		static bool SyncLobby(S server, Connection conn, Session.Client client, string s)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (!client.IsAdmin)
 				{
@@ -1352,7 +1347,7 @@ namespace OpenRA.Mods.Common.Server
 
 		public void ServerStarted(S server)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				InitializeMapPool(server);
 
@@ -1366,7 +1361,7 @@ namespace OpenRA.Mods.Common.Server
 				server.LobbyInfo.Slots = server.Map.Players.Players
 					.Select(p => MakeSlotFromPlayerReference(p.Value))
 					.Where(s => s != null)
-					.ToDictionary(s => s.PlayerReference, s => s);
+					.ToDictionary(s => s.PlayerReference);
 
 				LoadMapSettings(server, server.LobbyInfo.GlobalSettings, server.Map);
 			}
@@ -1393,7 +1388,7 @@ namespace OpenRA.Mods.Common.Server
 
 		public static void LoadMapSettings(S server, Session.Global gs, MapPreview map)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				var options = map.PlayerActorInfo.TraitInfos<ILobbyOptions>()
 					.Concat(map.WorldActorInfo.TraitInfos<ILobbyOptions>())
@@ -1429,7 +1424,7 @@ namespace OpenRA.Mods.Common.Server
 
 		public static Color SanitizePlayerColor(S server, Color askedColor, int playerIndex, Connection connectionToEcho = null)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				var colorManager = server.ModData.DefaultRules.Actors[SystemActors.World].TraitInfo<IColorPickerManagerInfo>();
 				var askColor = askedColor;
@@ -1453,18 +1448,9 @@ namespace OpenRA.Mods.Common.Server
 			return !validFactions.Contains(askedFaction) ? "Random" : askedFaction;
 		}
 
-		static string MissionBriefingOrDefault(S server)
-		{
-			var missionData = server.Map.WorldActorInfo.TraitInfoOrDefault<MissionDataInfo>();
-			if (missionData != null && !string.IsNullOrEmpty(missionData.Briefing))
-				return missionData.Briefing.Replace("\\n", "\n");
-
-			return null;
-		}
-
 		public void ClientJoined(S server, Connection conn)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				if (server.MapPool != null)
 					server.SendOrderTo(conn, "SyncMapPool", FieldSaver.FormatValue(server.MapPool));
@@ -1474,19 +1460,12 @@ namespace OpenRA.Mods.Common.Server
 				// Validate whether color is allowed and get an alternative if it isn't
 				if (client.Slot != null && !server.LobbyInfo.Slots[client.Slot].LockColor)
 					client.Color = SanitizePlayerColor(server, client.Color, client.Index);
-
-				// Report any custom map details
-				// HACK: this isn't the best place for this to live, but if we move it somewhere else
-				// then we need a larger hack to hook the map change event.
-				var briefing = MissionBriefingOrDefault(server);
-				if (briefing != null)
-					server.SendOrderTo(conn, "Message", briefing);
 			}
 		}
 
 		void INotifyServerEmpty.ServerEmpty(S server)
 		{
-			lock (server.LobbyInfo)
+			lock (server.LobbyInfoLock)
 			{
 				// Expire any temporary bans
 				server.TempBans.Clear();
@@ -1498,7 +1477,7 @@ namespace OpenRA.Mods.Common.Server
 				server.LobbyInfo.Slots = server.Map.Players.Players
 					.Select(p => MakeSlotFromPlayerReference(p.Value))
 					.Where(ss => ss != null)
-					.ToDictionary(ss => ss.PlayerReference, ss => ss);
+					.ToDictionary(ss => ss.PlayerReference);
 			}
 		}
 

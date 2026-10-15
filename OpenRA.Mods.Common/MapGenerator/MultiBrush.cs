@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text.RegularExpressions;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.EditorBrushes;
 using OpenRA.Mods.Common.Terrain;
@@ -65,7 +64,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				if (string.IsNullOrEmpty(my.Value))
 					throw new YamlException("Missing template type");
 
-				if (!Exts.TryParseUshortInvariant(my.Value, out Type))
+				if (!Exts.TryParseUInt16Invariant(my.Value, out Type))
 					throw new YamlException($"Invalid MultiBrush Template `${my.Value}`");
 
 				FieldLoader.Load(this, my);
@@ -205,7 +204,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <summary>
 		/// Point sequence, where points are -X-Y corners of template tiles.
 		/// </summary>
-		[FieldLoader.Ignore]
 		public readonly ImmutableArray<CVec> Points;
 
 		/// <summary>
@@ -222,27 +220,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public MultiBrushSegment(MiniYaml my)
 		{
 			FieldLoader.Load(this, my);
+
+			for (var i = 1; i < Points.Length; i++)
 			{
-				// Unlike FieldLoader.ParseInt2Array, whitespace is ignored.
-				var value = my.NodeWithKey("Points").Value.Value;
-				var parts = Regex.Replace(value, @"\s+", string.Empty)
-					.Split(',', StringSplitOptions.RemoveEmptyEntries);
-				if (parts.Length % 2 != 0)
-					FieldLoader.InvalidValueAction(value, typeof(int2[]), "Points");
-
-				var points = new CVec[parts.Length / 2];
-				for (var i = 0; i < points.Length; i++)
-				{
-					points[i] = new CVec(Exts.ParseInt32Invariant(parts[2 * i]), Exts.ParseInt32Invariant(parts[2 * i + 1]));
-					if (i > 0)
-					{
-						var step = points[i] - points[i - 1];
-						if (Math.Abs(step.X) + Math.Abs(step.Y) != 1)
-							throw new YamlException($"Points sequence {value} has non-unit steps");
-					}
-				}
-
-				Points = [.. points];
+				var step = Points[i] - Points[i - 1];
+				if (Math.Abs(step.X) + Math.Abs(step.Y) != 1)
+					throw new YamlException("Points sequence has non-unit steps");
 			}
 		}
 
@@ -434,7 +417,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <summary>Load a named MultiBrush collection from a map's tileset.</summary>
 		public static ImmutableArray<MultiBrush> LoadCollection(Map map, string name)
 		{
-			var templatedTerrainInfo = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
+			var templatedTerrainInfo = (ITemplatedTerrainInfo)map.Rules.TerrainInfo;
 			return templatedTerrainInfo.MultiBrushCollections[name]
 				.Select(info => new MultiBrush(map, info))
 				.ToImmutableArray();
@@ -843,7 +826,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var bottomRight = new CPos(
 				Shape.Max(cvec => cvec.X),
 				Shape.Max(cvec => cvec.Y));
-			var cellRegion = new CellRegion(map.Grid.Type, topLeft, bottomRight);
+			var cellRegion = new CellCoordsRegion(topLeft, bottomRight);
 
 			var actorPreviews = new Dictionary<string, EditorActorPreview>();
 			for (var i = 0; i < actorPlans.Count; i++)
@@ -889,6 +872,42 @@ namespace OpenRA.Mods.Common.MapGenerator
 				for (int i = tileRange.MinIndex; i <= tileRange.MaxIndex; i++)
 					possible.Add(new(tileRange.Type, (byte)i));
 			return possible;
+		}
+
+		/// <summary>Pick a random brush from a list, respecting brush weights.</summary>
+		public static MultiBrush PickAny(IReadOnlyList<MultiBrush> brushes, MersenneTwister random)
+		{
+			if (brushes.Count == 0)
+				throw new ArgumentException("brushes was empty");
+
+			if (brushes.Count == 1)
+				return brushes[0];
+
+			var weights = new int[brushes.Count];
+			for (var i = 0; i < weights.Length; i++)
+				weights[i] = brushes[i].Weight;
+
+			return brushes[random.PickWeighted(weights)];
+		}
+
+		/// <summary>
+		/// Get the highest cell height in a MultiBrush collection. Does not consider ramps.
+		/// </summary>
+		public static byte MaxHeightOfBrushes(IEnumerable<MultiBrush> brushes)
+		{
+			return brushes
+				.SelectMany(b => b.GetHeightsAndRamps())
+				.Max(v => (byte)v.Height);
+		}
+
+		/// <summary>
+		/// Get the highest cell height in a MultiBrush collection filtered by segment inner type.
+		/// Does not consider ramps.
+		/// </summary>
+		public static byte MaxHeightOfSegmentType(string type, IEnumerable<MultiBrush> brushes)
+		{
+			return MaxHeightOfBrushes(
+				brushes.Where(b => b.Segment?.HasInnerType(type) ?? false));
 		}
 	}
 }

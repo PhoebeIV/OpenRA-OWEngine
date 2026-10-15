@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using NUnit.Framework;
 using OpenRA.Primitives;
 using OpenRA.Support;
@@ -31,7 +32,7 @@ namespace OpenRA.Test
 				new TestCaseData(123),
 				new TestCaseData((ushort)123),
 				new TestCaseData(123L),
-				new TestCaseData(123.4f),
+				new TestCaseData(123.4f.ToString(CultureInfo.InvariantCulture)),
 				new TestCaseData(123m),
 				new TestCaseData("test"),
 				new TestCaseData(Color.CornflowerBlue),
@@ -51,8 +52,6 @@ namespace OpenRA.Test
 				new TestCaseData(true),
 				new TestCaseData(new Size(123, 456)),
 				new TestCaseData(new int2(123, 456)),
-				new TestCaseData(new float2(123, 456)),
-				new TestCaseData(new float3(123, 456, 789)),
 				new TestCaseData(new Rectangle(123, 456, 789, 123)),
 			];
 		}
@@ -66,6 +65,18 @@ namespace OpenRA.Test
 		}
 
 		[Test]
+		public void FormatValue_Vector()
+		{
+			var vector1 = new Vector2(123, 456);
+			var actual = FieldSaver.FormatValue(vector1);
+			Assert.That(actual, Is.EqualTo("123,456"));
+
+			var vector2 = new Vector3(123, 456, 789);
+			actual = FieldSaver.FormatValue(vector2);
+			Assert.That(actual, Is.EqualTo("123,456,789"));
+		}
+
+		[Test]
 		public void FormatValue_Null()
 		{
 			var actual = FieldSaver.FormatValue(null);
@@ -76,11 +87,25 @@ namespace OpenRA.Test
 		[Test]
 		public void FormatValue_DateTime()
 		{
-			var input = new DateTime(2000, 1, 1);
+			var inputToBeAssumedUtc = new DateTime(2000, 1, 1);
+			Assert.That(inputToBeAssumedUtc.Kind, Is.EqualTo(DateTimeKind.Unspecified));
 
-			var actual = FieldSaver.FormatValue(input);
+			var actualUtc = FieldSaver.FormatValue(inputToBeAssumedUtc);
+			Assert.That(actualUtc, Is.EqualTo(inputToBeAssumedUtc.ToString("yyyy-MM-dd HH-mm-ss", CultureInfo.InvariantCulture)));
+			var inputUtc = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+			actualUtc = FieldSaver.FormatValue(inputUtc);
+			Assert.That(actualUtc, Is.EqualTo(inputUtc.ToString("yyyy-MM-dd HH-mm-ss", CultureInfo.InvariantCulture)));
 
-			Assert.That(actual, Is.EqualTo(input.ToString("yyyy-MM-dd HH-mm-ss", CultureInfo.InvariantCulture)));
+			var amsterdamTz = TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time");
+			var inputAms = TimeZoneInfo.ConvertTime(inputUtc, TimeZoneInfo.Utc, amsterdamTz);
+			var actualAms = FieldSaver.FormatValue(inputAms);
+			Assert.That(inputAms.Kind, Is.EqualTo(DateTimeKind.Unspecified));
+			Assert.That(actualAms, Is.EqualTo(inputAms.ToString("yyyy-MM-dd HH-mm-ss", CultureInfo.InvariantCulture)));
+
+			var inputLocal = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Local);
+			inputUtc = inputLocal.ToUniversalTime();
+			actualUtc = FieldSaver.FormatValue(inputLocal);
+			Assert.That(actualUtc, Is.EqualTo(inputUtc.ToString("yyyy-MM-dd HH-mm-ss", CultureInfo.InvariantCulture)));
 		}
 
 		[Test]
@@ -245,6 +270,17 @@ namespace OpenRA.Test
 		[TestCase(new int[] { 1, 1, 2, 2, 3 }, "1, 2, 3")]
 		[TestCase(new int[] { 1, 1, 1, 1 }, "1")]
 		public void FormatValue_FrozenSet(int[] input, string expected)
+		{
+			var actual = FieldSaver.FormatValue(input?.ToFrozenSet());
+
+			Assert.That(actual, Is.EqualTo(expected));
+		}
+
+		[TestCase(null, "")]
+		[TestCase(new string[] { }, "")]
+		[TestCase(new string[] { "item1" }, "item1")]
+		[TestCase(new string[] { "item1", "item2", "item3" }, "item1, item2, item3")]
+		public void StringArray_FormatValue_FrozenSet(string[] input, string expected)
 		{
 			var actual = FieldSaver.FormatValue(input?.ToFrozenSet());
 

@@ -8,15 +8,38 @@ on:
     - 'devtest-*'
 
 permissions:
-  contents: write  #  for release creation (svenstaro/upload-release-action)
+  contents: write # for release creation
 
 jobs:
+  create-release:
+    name: Create Draft Release
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          PRE_RELEASE_FLAG=""
+
+          if [[ "${{ github.ref_name }}" == devtest-* ]] || [[ "${{ github.ref_name }}" == playtest-* ]]; then
+            PRE_RELEASE_FLAG="--prerelease"
+          fi
+
+          # Use --repo to interact with the API without needing a git checkout
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "${{ github.ref_name }}" \
+            --draft \
+            $PRE_RELEASE_FLAG
+
   source:
     name: Source Tarball
+    needs: create-release
     runs-on: ubuntu-22.04
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Prepare Environment
         run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
@@ -27,25 +50,53 @@ jobs:
           ./packaging/source/buildpackage.sh "${GIT_TAG}" "${PWD}/build/source"
 
       - name: Upload Packages
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref }}
-          overwrite: true
-          file_glob: true
-          file: build/source/*
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload ${{ github.ref_name }} build/source/*
 
-  linux:
-    name: Linux AppImages
+  linux-x64:
+    name: Linux AppImages (x64)
+    needs: create-release
     runs-on: ubuntu-22.04
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Install .NET 8.0
-        uses: actions/setup-dotnet@v5
+      - name: Install .NET 10.0
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
+
+      - name: Prepare Environment
+        run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
+
+      - name: Package AppImages
+        run: |
+          mkdir -p build/linux
+          sudo apt-get install -y desktop-file-utils
+          ./packaging/linux/buildpackage.sh "${GIT_TAG}" "${PWD}/build/linux"
+
+      - name: Upload Packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload ${{ github.ref_name }} build/linux/*
+
+  linux-arm64:
+    name: Linux AppImages (arm64)
+    needs: create-release
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v7
+
+      - name: Install .NET 10.0
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
 
       - name: Prepare Environment
         run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
@@ -65,15 +116,16 @@ jobs:
 
   macos:
     name: macOS Disk Image
-    runs-on: macos-13
+    needs: create-release
+    runs-on: macos-14
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Install .NET 8.0
-        uses: actions/setup-dotnet@v5
+      - name: Install .NET 10.0
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Prepare Environment
         run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
@@ -98,15 +150,16 @@ jobs:
 
   windows:
     name: Windows Installers
+    needs: create-release
     runs-on: ubuntu-22.04
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Install .NET 8.0
-        uses: actions/setup-dotnet@v5
+      - name: Install .NET 10.0
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Prepare Environment
         run: |
@@ -122,14 +175,14 @@ jobs:
       - name: Upload Installer
         id: unsigned-artifact
         if: github.repository == 'openra/openra'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: build/windows/*.exe
 
       - name: Microsoft Authenticode
         id: signpath
         if: github.repository == 'openra/openra'
-        uses: signpath/github-action-submit-signing-request@v2
+        uses: signpath/github-action-submit-signing-request@v3
         with:
           api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
           organization-id: '${{ secrets.SIGNPATH_ORGANISATION_ID }}'
@@ -148,7 +201,7 @@ jobs:
         run: |
           gh release upload "${{ github.ref_name }}" build/windows/*.zip
 
-          if [ "${GITHUB_REPOSITORY}" = "openra/openra" ]; then
+          if [ "${{ steps.signpath.outcome }}" = "success" ]; then
             gh release upload "${{ github.ref_name }}" build/windows/signed/*.exe
           else
             gh release upload "${{ github.ref_name }}" build/windows/*.exe

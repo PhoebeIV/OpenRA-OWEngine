@@ -213,7 +213,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual void SelectTarget(Actor self, string order, SupportPowerManager manager)
 		{
-			self.World.OrderGenerator = new SelectGenericPowerTarget(order, manager, info, MouseButton.Left);
+			self.World.OrderGenerator = new SelectGenericPowerTarget(order, manager, info);
 		}
 
 		public virtual void Activate(Actor self, Order order, SupportPowerManager manager)
@@ -228,7 +228,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			foreach (var notify in self.TraitsImplementing<INotifySupportPower>())
-				notify.Activated(self);
+				notify.Activated(self, info.OrderName);
 		}
 
 		public virtual void PlayLaunchSounds()

@@ -26,13 +26,13 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		readonly AttackBomberInfo info;
 
-		[Sync]
+		[VerifySync]
 		Target target;
 
-		[Sync]
+		[VerifySync]
 		bool inAttackRange;
 
-		[Sync]
+		[VerifySync]
 		bool facingTarget = true;
 
 		public event Action<Actor> OnRemovedFromWorld = self => { };

@@ -168,7 +168,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				return occupants;
 			});
 
-			var disabledSpawnPoints = new CachedTransform<ReplayMetadata, FrozenSet<int>>(r => r.GameInfo.DisabledSpawnPoints ?? FrozenSet<int>.Empty);
+			var disabledSpawnPoints = new CachedTransform<ReplayMetadata, FrozenSet<int>>(r => r.GameInfo.DisabledSpawnPoints ?? []);
 
 			Ui.LoadWidget("MAP_PREVIEW", mapPreviewRoot, new WidgetArgs
 			{
@@ -706,7 +706,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		void SelectReplay(ReplayMetadata replay)
 		{
 			selectedReplay = replay;
-			map = selectedReplay != null ? selectedReplay.GameInfo.MapPreview : MapCache.UnknownMap;
+			map = selectedReplay != null ? selectedReplay.GameInfo.GetMapPreview(modData) : MapCache.UnknownMap;
 
 			if (replay == null)
 				return;

@@ -31,7 +31,7 @@ namespace OpenRA.Mods.Common.Traits
 	public class BuildingInfo : TraitInfo, IOccupySpaceInfo, IPlaceBuildingDecorationInfo
 	{
 		[Desc("Where you are allowed to place the building (Water, Clear, ...)")]
-		public readonly FrozenSet<string> TerrainTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> TerrainTypes = [];
 
 		[Desc("x means cell is blocked, capital X means blocked but not counting as targetable, ",
 			"= means part of the footprint but passable, _ means completely empty.")]
@@ -267,6 +267,7 @@ namespace OpenRA.Mods.Common.Traits
 		INotifyAddedToWorld, INotifyRemovedFromWorld
 	{
 		public readonly BuildingInfo Info;
+
 		readonly Actor self;
 		readonly BuildingInfluence influence;
 
@@ -274,7 +275,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly (CPos, SubCell)[] targetableCells;
 		readonly CPos[] transitOnlyCells;
 
-		[Sync]
+		[VerifySync]
 		public CPos TopLeft { get; }
 		public WPos CenterPosition { get; }
 

@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
@@ -123,7 +124,9 @@ namespace OpenRA.Mods.Common.Traits
 				(actor, _) =>
 				{
 					var init = actor.GetInitOrDefault<StanceInit>(this);
-					var stance = init?.Value ?? InitialStance;
+					var botOwned = actor.Owner.Bot != null || !actor.Owner.Playable;
+					var stance = init?.Value;
+					stance ??= botOwned ? InitialStanceAI : InitialStance;
 					return stances[(int)stance];
 				},
 				(actor, value) => actor.ReplaceInit(new StanceInit(this, (UnitStance)stances.IndexOf(value))));
@@ -136,12 +139,12 @@ namespace OpenRA.Mods.Common.Traits
 
 		readonly bool allowMovement;
 
-		[Sync]
+		[VerifySync]
 		int nextScanTime = 0;
 
 		public UnitStance Stance { get; private set; }
 
-		[Sync]
+		[VerifySync]
 		public Actor Aggressor;
 
 		// NOT SYNCED: do not refer to this anywhere other than UI code
@@ -409,6 +412,7 @@ namespace OpenRA.Mods.Common.Traits
 				else
 					continue;
 
+				validPriorities.Clear();
 				foreach (var ati in activePriorities)
 				{
 					// Already have a higher priority target
@@ -432,9 +436,16 @@ namespace OpenRA.Mods.Common.Traits
 				// Make sure that we can actually fire on the actor
 				var armaments = ab.ChooseArmamentsForTarget(target, false);
 				if (!allowMove)
-					armaments = armaments.Where(arm =>
-						target.IsInRange(self.CenterPosition, arm.MaxRange()) &&
-						!target.IsInRange(self.CenterPosition, arm.Weapon.MinRange));
+				{
+					// PERF: This lambda captures, contain it within a local function to prevent
+					// the compiler allocating the helper class at the top of the loop.
+					static Func<Armament, bool> IsInRange(Actor self, Target target) =>
+						arm =>
+							target.IsInRange(self.CenterPosition, arm.MaxRange()) &&
+							!target.IsInRange(self.CenterPosition, arm.Weapon.MinRange);
+
+					armaments = armaments.Where(IsInRange(self, target));
+				}
 
 				if (!armaments.Any())
 					continue;
@@ -454,8 +465,6 @@ namespace OpenRA.Mods.Common.Traits
 						chosenTargetRange = targetRange;
 					}
 				}
-
-				validPriorities.Clear();
 			}
 
 			return chosenTarget;

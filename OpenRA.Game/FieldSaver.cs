@@ -16,6 +16,7 @@ using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using System.Text;
 using OpenRA.Primitives;
@@ -94,12 +95,13 @@ namespace OpenRA
 			}
 
 			if (t.IsGenericType &&
-				(t.GetGenericTypeDefinition() == typeof(List<>) ||
-				t.GetGenericTypeDefinition() == typeof(HashSet<>) ||
-				t.GetGenericTypeDefinition()
-					.BaseTypes()
-					.Select(bt => bt.IsGenericType ? bt.GetGenericTypeDefinition() : null)
-					.Any(bt => bt == typeof(FrozenSet<>))))
+				(t.GetGenericTypeDefinition() == typeof(List<>) || t.GetGenericTypeDefinition() == typeof(HashSet<>)))
+				return ((System.Collections.IEnumerable)v).Cast<object>().Select(FormatValue).JoinWith(", ");
+
+			// FrozenSet may be optimized by the runtime to a non-generic internal type
+			if (t.BaseTypes()
+				.Select(bt => bt.IsGenericType ? bt.GetGenericTypeDefinition() : null)
+				.Any(bt => bt == typeof(FrozenSet<>)))
 				return ((System.Collections.IEnumerable)v).Cast<object>().Select(FormatValue).JoinWith(", ");
 
 			// This is only for documentation generation
@@ -127,7 +129,19 @@ namespace OpenRA
 			}
 
 			if (v is DateTime d)
+			{
+				// Assume DateTimeKind.Unspecified is already UTC
+				if (d.Kind == DateTimeKind.Local)
+					d = d.ToUniversalTime();
+
 				return d.ToString("yyyy-MM-dd HH-mm-ss", CultureInfo.InvariantCulture);
+			}
+
+			if (v is Vector2 vector2)
+				return $"{vector2.X},{vector2.Y}";
+
+			if (v is Vector3 vector3)
+				return $"{vector3.X},{vector3.Y},{vector3.Z}";
 
 			// Try the TypeConverter
 			var conv = TypeDescriptor.GetConverter(t);

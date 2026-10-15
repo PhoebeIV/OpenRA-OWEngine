@@ -161,6 +161,8 @@ namespace OpenRA
 										var numberOfTerrainPositions = r.ReadInt16();
 										if (numberOfTerrainPositions == -1)
 											target = Target.FromPos(pos);
+										else if (!HasRemainingBytes(r, numberOfTerrainPositions, 3 * sizeof(int)))
+											return null;
 										else
 										{
 											var terrainPositions = new WPos[numberOfTerrainPositions];
@@ -182,7 +184,9 @@ namespace OpenRA
 						Actor[] extraActors = null;
 						if (flags.HasField(OrderFields.ExtraActors))
 						{
-							var count = r.ReadInt32();
+							if (!TryReadActorCount(r, out var count))
+								return null;
+
 							if (world != null)
 								extraActors = Exts.MakeArray(count, _ => world.GetActorById(r.ReadUInt32()));
 							else
@@ -195,7 +199,9 @@ namespace OpenRA
 						Actor[] groupedActors = null;
 						if (flags.HasField(OrderFields.Grouped))
 						{
-							var count = r.ReadInt32();
+							if (!TryReadActorCount(r, out var count))
+								return null;
+
 							if (world != null)
 								groupedActors = Exts.MakeArray(count, _ => world.GetActorById(r.ReadUInt32()));
 							else
@@ -239,6 +245,19 @@ namespace OpenRA
 			}
 		}
 
+		static bool TryReadActorCount(BinaryReader r, out int count)
+		{
+			count = r.ReadInt32();
+			return HasRemainingBytes(r, count, sizeof(uint));
+		}
+
+		static bool HasRemainingBytes(BinaryReader r, int count, int itemSize)
+		{
+			var remainingBytes = r.BaseStream.Length - r.BaseStream.Position;
+			return count >= 0 && count <= int.MaxValue / itemSize &&
+				count <= remainingBytes / itemSize;
+		}
+
 		static uint UIntFromActor(Actor a)
 		{
 			if (a == null) return uint.MaxValue;
@@ -267,6 +286,11 @@ namespace OpenRA
 		public static Order FromTargetString(string order, string targetString, bool isImmediate)
 		{
 			return new Order(order, null, false) { IsImmediate = isImmediate, TargetString = targetString };
+		}
+
+		public static Order FromTargetString(string order, string targetString, bool isImmediate, uint extraData)
+		{
+			return new Order(order, null, false) { IsImmediate = isImmediate, TargetString = targetString, ExtraData = extraData };
 		}
 
 		public static Order FromGroupedOrder(Order grouped, Actor subject)

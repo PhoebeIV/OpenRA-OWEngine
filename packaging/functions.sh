@@ -10,7 +10,7 @@
 # Arguments:
 #   SRC_PATH: Path to the root OpenRA directory
 #   DEST_PATH: Path to the root of the install destination (will be created if necessary)
-#   TARGETPLATFORM: Platform type (win-x64, osx-x64, osx-arm64, linux-x64, linux-arm64, unix-generic)
+#   TARGETPLATFORM: Platform type (win-x64, win-arm64, osx-x64, osx-arm64, linux-x64, linux-arm64)
 #   COPY_GENERIC_LAUNCHER: If set to True the OpenRA.exe will also be copied (True, False)
 #   COPY_CNC_DLL: If set to True the OpenRA.Mods.Cnc.dll will also be copied (True, False)
 #   COPY_D2K_DLL: If set to True the OpenRA.Mods.D2k.dll will also be copied (True, False)
@@ -32,10 +32,17 @@ install_assemblies() (
 	COPY_CNC_DLL="${5}"
 	COPY_D2K_DLL="${6}"
 
+	ABS_SRC_PATH=$(realpath "${SRC_PATH}")
+
 	ORIG_PWD=$(pwd)
 	cd "${SRC_PATH}"
 
-    dotnet publish -c Release -p:TargetPlatform="${TARGETPLATFORM}" -p:CopyGenericLauncher="${COPY_GENERIC_LAUNCHER}" -p:CopyCncDll="${COPY_CNC_DLL}" -p:CopyD2kDll="${COPY_D2K_DLL}" -r "${TARGETPLATFORM}" -p:PublishDir="${DEST_PATH}" --self-contained true
+	dotnet publish -c Release -p:TargetPlatform="${TARGETPLATFORM}" -p:CopyGenericLauncher="${COPY_GENERIC_LAUNCHER}" \
+		-p:CopyCncDll="${COPY_CNC_DLL}" -p:CopyD2kDll="${COPY_D2K_DLL}" \
+		-r "${TARGETPLATFORM}" -p:PublishDir="${DEST_PATH}" \
+		-p:Deterministic=true -p:PathMap="${ABS_SRC_PATH}=." \
+		--self-contained true
+
 	cd "${ORIG_PWD}"
 )
 
@@ -89,7 +96,7 @@ install_data() (
 # Arguments:
 #   SRC_PATH: Path to the root OpenRA directory
 #   DEST_PATH: Path to the root of the install destination (will be created if necessary)
-#   TARGETPLATFORM: Platform type (win-x64)
+#   TARGETPLATFORM: Platform type (win-x64, win-arm64)
 #   MOD_ID: Mod id to launch (e.g. "ra")
 #   LAUNCHER_NAME: Filename (without the .exe extension) for the launcher
 #   MOD_NAME: Human-readable mod name to show in the crash dialog (e.g. "Red Alert")

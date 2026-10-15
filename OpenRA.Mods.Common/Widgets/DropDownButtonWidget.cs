@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Primitives;
 using OpenRA.Widgets;
@@ -32,6 +33,23 @@ namespace OpenRA.Mods.Common.Widgets
 		Widget panelRoot;
 		CachedTransform<(bool Disabled, bool Pressed, bool Hover, bool Focused, bool Highlighted), Sprite> getMarkerImage;
 		CachedTransform<(bool Disabled, bool Pressed, bool Hover, bool Focused, bool Highlighted), Sprite> getSeparatorImage;
+
+		public override bool HandleKeyPress(KeyInput e)
+		{
+			if (HasKeyboardFocus && e.Event == KeyInputEvent.Down && e.Key == Keycode.ESCAPE)
+			{
+				RemovePanel();
+				return true;
+			}
+
+			return base.HandleKeyPress(e);
+		}
+
+		public override bool YieldKeyboardFocus()
+		{
+			RemovePanel();
+			return base.YieldKeyboardFocus();
+		}
 
 		[ObjectCreator.UseCtor]
 		public DropDownButtonWidget(ModData modData)
@@ -61,7 +79,7 @@ namespace OpenRA.Mods.Common.Widgets
 			var arrowImage = getMarkerImage.Update((isDisabled, Depressed, isHover, false, IsHighlighted()));
 			WidgetUtils.DrawSprite(
 				arrowImage,
-				stateOffset + new float2(
+				stateOffset.ToVector2() + new Vector2(
 					rb.Right - (int)((rb.Height + arrowImage.Size.X) / 2),
 					rb.Top + (int)((rb.Height - arrowImage.Size.Y) / 2)));
 
@@ -71,7 +89,7 @@ namespace OpenRA.Mods.Common.Widgets
 			if (separatorImage != null)
 				WidgetUtils.DrawSprite(
 					separatorImage,
-					stateOffset + new float2(-3, 0) + new float2(rb.Right - rb.Height + 4,
+					stateOffset.ToVector2() + new Vector2(-3, 0) + new Vector2(rb.Right - rb.Height + 4,
 					rb.Top + (int)((rb.Height - separatorImage.Size.Y) / 2)));
 		}
 
@@ -101,6 +119,7 @@ namespace OpenRA.Mods.Common.Widgets
 			panelRoot.RemoveChild(panel);
 			panel = fullscreenMask = null;
 
+			YieldKeyboardFocus();
 			Ui.ResetTooltips();
 		}
 
@@ -110,6 +129,7 @@ namespace OpenRA.Mods.Common.Widgets
 			if (panel != null)
 				throw new InvalidOperationException("Attempted to attach a panel to an open dropdown");
 			panel = p;
+			TakeKeyboardFocus();
 
 			// Mask to prevent any clicks from being sent to other widgets
 			fullscreenMask = new MaskWidget
@@ -135,6 +155,10 @@ namespace OpenRA.Mods.Common.Widgets
 			var panelY = RenderOrigin.Y + Bounds.Height - panelRoot.RenderOrigin.Y;
 			if (panelY + oldBounds.Height > Game.Renderer.Resolution.Height)
 				panelY -= Bounds.Height + oldBounds.Height;
+
+			var buttonRightEdge = RenderOrigin.X + Bounds.Width - panelRoot.RenderOrigin.X;
+			if (panelX + oldBounds.Width > Game.Renderer.Resolution.Width)
+				panelX = buttonRightEdge - oldBounds.Width;
 
 			panel.Bounds = new WidgetBounds(
 				panelX,

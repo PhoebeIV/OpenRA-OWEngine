@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Effects;
 using OpenRA.Primitives;
@@ -112,12 +113,12 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class Cloak : PausableConditionalTrait<CloakInfo>,
 		IRenderModifier, INotifyDamage, INotifyUnloadCargo, INotifyLoadCargo, INotifyDemolition, INotifyInfiltration,
-		INotifyAttack, ITick, IVisibilityModifier, IRadarColorModifier, INotifyDockClient, INotifyDockHost, INotifySupportPower
+		INotifyAttack, ITick, IVisibilityModifier, IRadarColorModifier, INotifyDockClient, INotifyDockHost, INotifySupportPower, ISync
 	{
-		readonly float3 cloakedColor;
+		readonly Vector3 cloakedColor;
 		readonly float cloakedColorAlpha;
 
-		[Sync]
+		[VerifySync]
 		int remainingTime;
 
 		bool isDocking;
@@ -132,8 +133,10 @@ namespace OpenRA.Mods.Common.Traits
 			: base(info)
 		{
 			remainingTime = info.InitialDelay;
-			cloakedColor = new float3(info.CloakedColor.R, info.CloakedColor.G, info.CloakedColor.B) / 255f;
-			cloakedColorAlpha = info.CloakedColor.A / 255f;
+
+			var cColor = info.CloakedColor.ToVector4();
+			cloakedColor = cColor.AsVector3();
+			cloakedColorAlpha = cColor.W;
 		}
 
 		protected override void Created(Actor self)
@@ -365,7 +368,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifySupportPower.Charged(Actor self) { }
 
-		void INotifySupportPower.Activated(Actor self)
+		void INotifySupportPower.Activated(Actor self, string orderName)
 		{
 			if (Info.UncloakOn.HasFlag(UncloakType.SupportPower))
 				Uncloak();

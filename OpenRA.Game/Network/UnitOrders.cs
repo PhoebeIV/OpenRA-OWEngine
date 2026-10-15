@@ -30,9 +30,6 @@ namespace OpenRA.Network
 		[FluentReference]
 		const string GameStarted = "notification-game-has-started";
 
-		[FluentReference]
-		const string GameSaved = "notification-game-saved";
-
 		[FluentReference("player")]
 		const string GamePaused = "notification-game-paused";
 
@@ -213,11 +210,8 @@ namespace OpenRA.Network
 				}
 
 				case "GameSaved":
-					if (!orderManager.World.IsReplay)
-						TextNotificationsManager.AddSystemLine(GameSaved);
-
 					foreach (var nsr in orderManager.World.WorldActor.TraitsImplementing<INotifyGameSaved>())
-						nsr.GameSaved(orderManager.World);
+						nsr.GameSaved(orderManager.World, order.ExtraData != 0);
 					break;
 
 				case "PauseGame":
@@ -393,7 +387,14 @@ namespace OpenRA.Network
 				case "GenerateMap":
 				{
 					var yaml = new MiniYaml(order.OrderString, MiniYaml.FromString(order.TargetString, order.OrderString));
-					Game.ModData.MapCache.GenerateMap(Game.ModData, FieldLoader.Load<MapGenerationArgs>(yaml));
+					var args = FieldLoader.Load<MapGenerationArgs>(yaml);
+					var preview = Game.ModData.MapCache[args.Uid];
+					if (preview.Status != MapStatus.Available && preview.Class != MapClassification.Generated)
+					{
+						preview.UpdateFromGenerationArgs(args);
+						preview.Generate();
+					}
+
 					break;
 				}
 

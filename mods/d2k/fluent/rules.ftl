@@ -22,6 +22,8 @@ notification-cannot-build-here = Cannot build here.
 notification-one-of-our-buildings-has-been-captured = One of our buildings has been captured.
 
 ## world.yaml
+notification-game-saved = Game saved.
+
 dropdown-map-worms =
     .label = Worms
     .description = Worms roam the map, devouring unprepared forces
@@ -104,7 +106,7 @@ faction-smugglers =
 faction-fremen =
     .name = Fremen
 
-map-generator-d2k = D2K RMG
+map-generator-d2k = Map Generator
 map-generator-clear = Clear Terrain
 
 ## defaults.yaml
@@ -170,7 +172,7 @@ actor-light-inf =
     .description =
     General-purpose infantry.
       Strong vs Infantry
-      Weak vs Vehicles and Artillery
+      Weak vs Tanks and Artillery
     .encyclopedia =
     Lightly armored foot soldiers, equipped with 9mm RP assault rifles. They are effective against infantry and lightly armored vehicles.
 
@@ -285,9 +287,9 @@ actor-saboteur =
     .description =
     Sneaky infantry with explosives.
     Turns invisible for a limited time.
-      Strong vs Buildings
+      Strong vs Buildings, Vehicles
       Weak vs Everything
-      Special Ability: Destroys buildings
+      Special Ability: Destroys buildings and vehicles
     .encyclopedia =
     A specialized military unit of House Ordos, capable of demolishing enemy buildings and vehicles upon entry, but dying in the resulting explosion. It can activate self destruction and damage near by enemy units.
 
@@ -337,7 +339,6 @@ actor-upgrade-heavy =
     .name = Heavy Factory Upgrade
     .description =
     Unlocks additional construction options:
-    - Repair Pad
     - IX Research Center
 
     Unlocks additional heavy units:
@@ -581,7 +582,7 @@ actor-trike =
     Summary:
 
         - Explosion Radius: Small
-        - Vision: Medium
+        - Vision: Large
         - Strong vs Light Infantry, Trooper, Missile tank, Deviator
         - Weak vs Combat tank, Siege tank, Grenadier, Sardaukars
 
@@ -592,7 +593,7 @@ actor-quad =
     .description =
     Missile Scout.
       Strong vs Vehicles
-      Weak vs Infantry
+      Weak vs Infantry, Tanks
     .encyclopedia =
     Superior to the Trike in both armor and firepower, the Quad is a four-wheeled vehicle firing armor-piercing rockets. It is effective against most vehicles.
 
@@ -655,7 +656,7 @@ actor-sonic-tank =
     .description =
     Fires sonic shocks.
       Strong vs Infantry and Vehicles
-      Weak vs Artillery
+      Weak vs Tanks, Rocket Artillery
     .encyclopedia =
     Most effective against infantry and lightly armored vehicles, but weaker against armored targets.
 
@@ -677,7 +678,7 @@ actor-devastator =
     .description =
     Super Heavy Tank.
       Strong vs Tanks
-      Weak vs Artillery
+      Weak vs Rocket Artillery
     .encyclopedia =
     As the most powerful tank on Dune, the Devastator is slow but highly effective against most units. It fires dual plasma charges and can self-destruct on command, damaging nearby units and structures.
 
@@ -706,7 +707,7 @@ actor-raider =
     Summary:
 
         - Explosion Radius: small
-        - Vision: small
+        - Vision: Large
         - Strong vs Light Infantry, Trooper, Missile tank, Deviator, Trike
         - Weak vs Combat tank, Siege tank, Grenadier, Sardaukars, Quad
 
@@ -722,7 +723,7 @@ actor-stealth-raider =
     Summary:
 
         - Explosion Radius: Small
-        - Vision: Small
+        - Vision: Large
         - Strong vs Light Infantry, Trooper, Missile tank, Deviator, Trike
         - Weak vs Combat tank, Siege tank, Grenadier, Sardaukars
 
@@ -741,7 +742,7 @@ actor-deviator =
     Summary:
 
         - Explosion Radius: Small
-        - Vision: Large
+        - Vision: Medium
         - Strong vs Combat tank,  Quad, Devastator, Missile tank
         - Weak vs any infantry, Missile tank, Sonic Tank, Trike
 

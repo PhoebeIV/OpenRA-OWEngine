@@ -23,28 +23,28 @@ namespace OpenRA.Mods.Common.Traits
 	public class BaseBuilderBotModuleInfo : ConditionalTraitInfo, NotBefore<ResourceMapBotModuleInfo>, NotBefore<IResourceLayerInfo>
 	{
 		[Desc("Tells the AI what building types are considered construction yards.")]
-		public readonly FrozenSet<string> ConstructionYardTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> ConstructionYardTypes = [];
 
 		[Desc("Tells the AI what building types are considered refineries.")]
-		public readonly FrozenSet<string> RefineryTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> RefineryTypes = [];
 
 		[Desc("Tells the AI what building types are considered power plants.")]
-		public readonly FrozenSet<string> PowerTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> PowerTypes = [];
 
 		[Desc("Tells the AI what building types are considered production facilities.")]
-		public readonly FrozenSet<string> ProductionTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> ProductionTypes = [];
 
 		[Desc("Tells the AI what building types are considered tech buildings.")]
-		public readonly FrozenSet<string> TechTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> TechTypes = [];
 
 		[Desc("Tells the AI what building types are considered naval production facilities.")]
-		public readonly FrozenSet<string> NavalProductionTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> NavalProductionTypes = [];
 
 		[Desc("Tells the AI what building types are considered silos (resource storage).")]
-		public readonly FrozenSet<string> SiloTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> SiloTypes = [];
 
 		[Desc("Tells the AI what building types are considered defenses.")]
-		public readonly FrozenSet<string> DefenseTypes = FrozenSet<string>.Empty;
+		public readonly FrozenSet<string> DefenseTypes = [];
 
 		[Desc("Production queues AI uses for buildings.")]
 		public readonly FrozenSet<string> BuildingQueues = new HashSet<string> { "Building" }.ToFrozenSet();
@@ -103,11 +103,8 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Chance that the AI will place the defenses in the direction of the closest enemy building.")]
 		public readonly int PlaceDefenseTowardsEnemyChance = 100;
 
-		[Desc("Minimum range at which to build defensive structures near a combat hotspot.")]
-		public readonly int MinimumDefenseRadius = 5;
-
-		[Desc("Maximum range at which to build defensive structures near a combat hotspot.")]
-		public readonly int MaximumDefenseRadius = 20;
+		[Desc("Desired range at which to build defensive structures near a combat hotspot if possible.")]
+		public readonly int TryMaintainDefenseRange = 5;
 
 		[Desc("Try to build another production building if there is too much cash.")]
 		public readonly int NewProductionCashThreshold = 5000;
@@ -162,6 +159,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc($"AI will move the only mcv when those numbers of refinery <= productions + tech - {nameof(ForceExpansionTolerate)}.")]
 		public readonly ImmutableArray<int> ForceExpansionTolerate = [2, 3];
 
+		[Desc("Decrease the expansion tolerate by Cash / this. Used to prevent AI from expanding when it has enough cash.")]
+		public readonly int PerExpansionTolerateOnCash = 12000;
+
 		public override object Create(ActorInitializer init) { return new BaseBuilderBotModule(init.Self, this); }
 	}
 
@@ -170,13 +170,21 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		public CPos GetRandomBaseCenter()
 		{
-			var randomConstructionYard = ConstructionYardBuildings.Actors
+			var randomConstructionYard = ConstructionYardBuildings.Actors.Where(a => !a.IsDead)
 				.RandomOrDefault(world.LocalRandom);
 
 			return randomConstructionYard?.Location ?? initialBaseCenter;
 		}
 
-		public CPos DefenseCenter { get; private set; }
+		public CPos GetDefenseBaseCenter()
+		{
+			var defenceConstructionYard = DefenseCenter != null ? ConstructionYardBuildings.Actors.OrderBy(a => (DefenseCenter.Value - a.Location).LengthSquared)
+				.FirstOrDefault(a => !a.IsDead) : null;
+
+			return defenceConstructionYard?.Location ?? GetRandomBaseCenter();
+		}
+
+		public CPos? DefenseCenter { get; private set; }
 
 		// Actor, ActorCount.
 		public Dictionary<string, int> BuildingsBeingProduced = [];

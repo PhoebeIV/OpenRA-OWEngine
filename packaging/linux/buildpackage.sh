@@ -36,6 +36,13 @@ elif [[ ${TAG} == pkgtest* ]]; then
 	SUFFIX="-pkgtest"
 fi
 
+ARCH=$(uname -m)
+if [[ "${ARCH}" == "aarch64" ]]; then
+	TARGETPLATFORM="linux-arm64"
+else
+	TARGETPLATFORM="linux-x64"
+fi
+
 if [ ! -d "${OUTPUTDIR}" ]; then
 	echo "Output directory '${OUTPUTDIR}' does not exist.";
 	exit 1
@@ -44,12 +51,12 @@ fi
 # Add native libraries
 echo "Downloading appimagetool"
 if command -v curl >/dev/null 2>&1; then
-	curl -s -L -O https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+	curl -s -L -O https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${ARCH}.AppImage
 else
-	wget -cq https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+	wget -cq https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${ARCH}.AppImage
 fi
 
-chmod a+x appimagetool-x86_64.AppImage
+chmod a+x appimagetool-${ARCH}.AppImage
 
 echo "Building AppImages"
 
@@ -58,14 +65,14 @@ build_appimage() {
 	DISPLAY_NAME=${2}
 	DISCORD_ID=${3}
 	APPDIR="$(pwd)/${MOD_ID}.appdir"
-	APPIMAGE="OpenRA-$(echo "${DISPLAY_NAME}" | sed 's/ /-/g')${SUFFIX}-x86_64.AppImage"
+	APPIMAGE="OpenRA-$(echo "${DISPLAY_NAME}" | sed 's/ /-/g')${SUFFIX}-${ARCH}.AppImage"
 
 	IS_D2K="False"
 	if [ "${MOD_ID}" = "d2k" ]; then
 		IS_D2K="True"
 	fi
 
-	install_assemblies "${SRCDIR}" "${APPDIR}/usr/lib/openra" "linux-x64" "True" "True" "${IS_D2K}"
+	install_assemblies "${SRCDIR}" "${APPDIR}/usr/lib/openra" "${TARGETPLATFORM}" "True" "True" "${IS_D2K}"
 	install_data "${SRCDIR}" "${APPDIR}/usr/lib/openra" "${MOD_ID}"
 	set_engine_version "${TAG}" "${APPDIR}/usr/lib/openra"
 	set_mod_version "${TAG}" "${APPDIR}/usr/lib/openra/mods/${MOD_ID}/mod.yaml" "${APPDIR}/usr/lib/openra/mods/${MOD_ID}-content/mod.yaml"
@@ -79,6 +86,9 @@ build_appimage() {
 	sed "s/{MODID}/${MOD_ID}/g" openra.desktop.discord.in | sed "s/{MODNAME}/${DISPLAY_NAME}/g" | sed "s/{TAG}/${TAG}/g" | sed "s/{DISCORDAPPID}/${DISCORD_ID}/g" > "${APPDIR}/usr/share/applications/openra-${MOD_ID}.desktop"
 	chmod 0755 "${APPDIR}/usr/share/applications/openra-${MOD_ID}.desktop"
 	cp "${APPDIR}/usr/share/applications/openra-${MOD_ID}.desktop" "${APPDIR}/openra-${MOD_ID}.desktop"
+	mkdir "${APPDIR}/usr/share/metainfo/"
+	sed -e "s/{MODID}/${MOD_ID}/g" "openra.metainfo.xml.in" | sed "s/{MOD_NAME}/${MOD_NAME}/g" | sed "s/{SCREENSHOT_RA}/${SCREENSHOT_RA}/g" | sed "s/{SCREENSHOT_CNC}/${SCREENSHOT_CNC}/g" | sed "s/{SCREENSHOT_D2K}/${SCREENSHOT_D2K}/g" > "${APPDIR}/usr/share/metainfo/openra-${MOD_ID}.metainfo.xml"
+	chmod 0644 "${APPDIR}/usr/share/metainfo/openra-${MOD_ID}.metainfo.xml"
 
 	mkdir -p "${APPDIR}/usr/share/mime/packages"
 	# Note that the non-discord version of the mimeinfo file is used by the Mod SDK and must be maintained in parallel with the discord version!
@@ -110,10 +120,10 @@ build_appimage() {
 
 	# Embed update metadata if (and only if) compiled on GitHub Actions
 	if [ -n "${GITHUB_REPOSITORY}" ]; then
-		ARCH=x86_64 ./appimagetool-x86_64.AppImage --no-appstream -u "zsync|https://master.openra.net/appimagecheck.zsync?mod=${MOD_ID}&channel=${UPDATE_CHANNEL}" "${APPDIR}" "${OUTPUTDIR}/${APPIMAGE}"
+		ARCH=${ARCH} ./appimagetool-${ARCH}.AppImage --no-appstream -u "zsync|https://master.openra.net/appimagecheck.zsync?mod=${MOD_ID}&channel=${UPDATE_CHANNEL}" "${APPDIR}" "${OUTPUTDIR}/${APPIMAGE}"
 		zsyncmake -u "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${APPIMAGE}" -o "${OUTPUTDIR}/${APPIMAGE}.zsync" "${OUTPUTDIR}/${APPIMAGE}"
 	else
-		ARCH=x86_64 ./appimagetool-x86_64.AppImage --no-appstream "${APPDIR}" "${OUTPUTDIR}/${APPIMAGE}"
+		ARCH=${ARCH} ./appimagetool-${ARCH}.AppImage --no-appstream "${APPDIR}" "${OUTPUTDIR}/${APPIMAGE}"
 	fi
 
 	rm -rf "${APPDIR}"
@@ -124,4 +134,4 @@ build_appimage "cnc" "Tiberian Dawn" "699223250181292033"
 build_appimage "d2k" "Dune 2000" "712711732770111550"
 
 # Clean up
-rm -rf appimagetool-x86_64.AppImage "${BUILTDIR}"
+rm -rf appimagetool-${ARCH}.AppImage "${BUILTDIR}"

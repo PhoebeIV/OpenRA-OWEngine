@@ -37,7 +37,7 @@ namespace OpenRA.Mods.Common.Traits
 	}
 
 	public class Gate : PausableConditionalTrait<GateInfo>, ITick, ITemporaryBlocker, IBlocksProjectiles,
-		INotifyAddedToWorld, INotifyRemovedFromWorld, INotifyBlockingMove
+		INotifyAddedToWorld, INotifyRemovedFromWorld, INotifyBlockingMove, ISync
 	{
 		readonly Actor self;
 		readonly Building building;
@@ -46,7 +46,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public readonly int OpenPosition;
 
-		[Sync]
+		[VerifySync]
 		public int Position { get; private set; }
 
 		int desiredPosition;

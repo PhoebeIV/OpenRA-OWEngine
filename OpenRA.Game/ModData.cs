@@ -65,7 +65,7 @@ namespace OpenRA
 
 			FileSystemLoader = ObjectCreator.GetLoader<IFileSystemLoader>(Manifest.FileSystem.Value, "filesystem");
 			FieldLoader.Load(FileSystemLoader, Manifest.FileSystem);
-			FileSystemLoader.Mount(ModFiles, ObjectCreator);
+			FileSystemLoader.Mount(Manifest, ModFiles, ObjectCreator);
 			ModFiles.TrimExcess();
 
 			foreach (var kv in Manifest.GlobalModData)
@@ -107,7 +107,7 @@ namespace OpenRA
 			SpriteLoaders = ObjectCreator.GetLoaders<ISpriteLoader>(Manifest.SpriteFormats, "sprite");
 			VideoLoaders = ObjectCreator.GetLoaders<IVideoLoader>(Manifest.VideoFormats, "video");
 			SpriteSequenceLoader = ObjectCreator.GetLoader<ISpriteSequenceLoader>(Manifest.SpriteSequenceFormat, "sequence");
-			Hotkeys = new HotkeyManager(ModFiles, Game.Settings.Keys, Manifest);
+			Hotkeys = new HotkeyManager(ModFiles, ObjectCreator, Manifest);
 			Cursors = ParseCursors(Manifest, DefaultFileSystem);
 
 			defaultRules = Exts.Lazy(() => Ruleset.LoadDefaults(this));
@@ -213,6 +213,11 @@ namespace OpenRA
 			return modules.GetOrDefault<T>();
 		}
 
+		public T GetSettings<T>() where T : SettingsModule
+		{
+			return Game.Settings.GetOrCreate<T>(ObjectCreator, Manifest.Id);
+		}
+
 		public void Dispose()
 		{
 			LoadScreen?.Dispose();
@@ -248,6 +253,6 @@ namespace OpenRA
 
 	public interface IFileSystemLoader
 	{
-		void Mount(FS fileSystem, ObjectCreator objectCreator);
+		void Mount(Manifest manifest, FS fileSystem, ObjectCreator objectCreator);
 	}
 }

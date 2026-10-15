@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Graphics;
 
 namespace OpenRA.Traits
@@ -19,8 +20,8 @@ namespace OpenRA.Traits
 	[TraitLocation(SystemActors.World)]
 	public class ScreenShakerInfo : TraitInfo
 	{
-		public readonly float2 MinMultiplier = new(-3, -3);
-		public readonly float2 MaxMultiplier = new(3, 3);
+		public readonly Vector2 MinMultiplier = new(-3, -3);
+		public readonly Vector2 MaxMultiplier = new(3, 3);
 
 		public override object Create(ActorInitializer init) { return new ScreenShaker(this); }
 	}
@@ -31,6 +32,7 @@ namespace OpenRA.Traits
 		WorldRenderer worldRenderer;
 		readonly List<ShakeEffect> shakeEffects = [];
 		int ticks = 0;
+		Vector2 previousOffset = Vector2.Zero;
 
 		public ScreenShaker(ScreenShakerInfo info)
 		{
@@ -41,10 +43,13 @@ namespace OpenRA.Traits
 
 		void ITick.Tick(Actor self)
 		{
-			if (shakeEffects.Count > 0)
+			shakeEffects.RemoveAll(t => t.ExpiryTime == ticks);
+
+			var newOffset = shakeEffects.Count > 0 ? GetScrollOffset() : Vector2.Zero;
+			if (newOffset != previousOffset)
 			{
-				worldRenderer.Viewport.Scroll(GetScrollOffset(), true);
-				shakeEffects.RemoveAll(t => t.ExpiryTime == ticks);
+				worldRenderer.Viewport.Scroll(newOffset - previousOffset, true);
+				previousOffset = newOffset;
 			}
 
 			ticks++;
@@ -52,25 +57,25 @@ namespace OpenRA.Traits
 
 		public void AddEffect(int time, WPos position, int intensity)
 		{
-			AddEffect(time, position, intensity, new float2(1, 1));
+			AddEffect(time, position, intensity, Vector2.One);
 		}
 
-		public void AddEffect(int time, WPos position, int intensity, float2 multiplier)
+		public void AddEffect(int time, WPos position, int intensity, Vector2 multiplier)
 		{
 			shakeEffects.Add(new ShakeEffect { ExpiryTime = ticks + time, Position = position, Intensity = intensity, Multiplier = multiplier });
 		}
 
-		float2 GetScrollOffset()
+		Vector2 GetScrollOffset()
 		{
-			return GetMultiplier() * GetIntensity() * new float2(
+			return GetMultiplier() * GetIntensity() * new Vector2(
 				(float)Math.Sin(ticks * 2 * Math.PI / 4),
 				(float)Math.Cos(ticks * 2 * Math.PI / 5));
 		}
 
-		float2 GetMultiplier()
+		Vector2 GetMultiplier()
 		{
-			return shakeEffects.Aggregate(float2.Zero, (sum, next) => sum + next.Multiplier)
-				.Constrain(info.MinMultiplier, info.MaxMultiplier);
+			return Vector2.Clamp(shakeEffects.Aggregate(Vector2.Zero, (sum, next) => sum + next.Multiplier),
+				info.MinMultiplier, info.MaxMultiplier);
 		}
 
 		float GetIntensity()
@@ -88,6 +93,6 @@ namespace OpenRA.Traits
 		public int ExpiryTime;
 		public WPos Position;
 		public int Intensity;
-		public float2 Multiplier;
+		public Vector2 Multiplier;
 	}
 }

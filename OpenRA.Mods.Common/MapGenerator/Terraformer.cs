@@ -13,10 +13,13 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using OpenRA.FileFormats;
+using OpenRA.Graphics;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
 using OpenRA.Support;
+using OpenRA.Widgets;
 using static OpenRA.Mods.Common.Traits.ResourceLayerInfo;
 
 namespace OpenRA.Mods.Common.MapGenerator
@@ -90,6 +93,20 @@ namespace OpenRA.Mods.Common.MapGenerator
 			In = 1,
 		}
 
+		public enum ResourceDensityMode
+		{
+			/// <summary>
+			/// For mods where density values are not saved to map data, but calculated based on the
+			/// number of adjacent matching resources.
+			/// </summary>
+			Adjacency,
+
+			/// <summary>
+			/// Emulates the effect of the Adjacency mode, but saves density values to map data.
+			/// </summary>
+			BakedAdjacency,
+		}
+
 		public static (T[] Types, U[] Weights) SplitDictionary<T, U>(IReadOnlyDictionary<T, U> typeWeights)
 		{
 			var types = typeWeights
@@ -116,6 +133,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 		readonly ITemplatedTerrainInfo templatedTerrainInfo;
 		readonly Lazy<CellLayer<int>> lazyProjectionSpacing;
 
+		/// <summary>
+		/// Create a new terraformer providing map generation utilities for a map.
+		/// </summary>
+		/// <param name="mapGenerationArgs">Map generation args.</param>
+		/// <param name="map">Mutable map for utilities to apply to.</param>
+		/// <param name="modData">ModData.</param>
+		/// <param name="actorPlans">Mutable ActorPlan list to track eventual actors to bake into map.</param>
+		/// <param name="mirror">Mirror symmetry defined in terms of WPos coordinate system.</param>
+		/// <param name="rotations">Rotational symmetries.</param>
 		public Terraformer(
 			MapGenerationArgs mapGenerationArgs,
 			Map map,
@@ -181,6 +207,17 @@ namespace OpenRA.Mods.Common.MapGenerator
 			Map.Title = MapGenerationArgs.Title;
 			Map.Author = MapGenerationArgs.Author;
 			Map.RequiresMod = ModData.Manifest.Id;
+			if (!MapGenerationArgs.PreviewVisibility.HasFlag(MapGenerationArgs.PreviewVisibilityFlags.Lobby))
+			{
+				Map.HideSpawnPreviews = true;
+				Map.LockPreview = true;
+				byte[] png;
+				if (ChromeMetrics.TryGet<string>("HiddenMapPreviewPng", out var path))
+					png = ModData.DefaultFileSystem.Open(Platform.ResolvePath(path)).ReadAllBytes();
+				else
+					png = new Png([0, 0, 0, 255], SpriteFrameType.Rgba32, 1, 1).Save();
+				Map.StagedMapFiles.Add("map.png", png);
+			}
 		}
 
 		/// <summary>
@@ -286,6 +323,32 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Zone all cells that have ramps. This is a no-op if the map grid does not support
+		/// variable terrain heights.
+		/// </summary>
+		public void ZoneFromRamps<T>(CellLayer<T> zoneable, T value)
+		{
+			if (Map.Grid.MaximumTerrainHeight == 0)
+				return;
+
+			var terrainInfo = Map.Rules.TerrainInfo;
+			foreach (var mpos in Map.AllCells.MapCoords)
+				if (terrainInfo.GetTerrainInfo(Map.Tiles[mpos]).RampType != 0)
+					zoneable[mpos] = value;
+		}
+
+		/// <summary>
+		/// Zones all cells that have ramps, except for cardinal ramps.
+		/// </summary>
+		public void ZoneFromNonCardinalRamps<T>(CellLayer<T> zoneable, T value)
+		{
+			var terrainInfo = Map.Rules.TerrainInfo;
+			foreach (var mpos in Map.AllCells.MapCoords)
+				if (terrainInfo.GetTerrainInfo(Map.Tiles[mpos]).RampType > 4)
+					zoneable[mpos] = value;
+		}
+
+		/// <summary>
 		/// Returns a CellLayer describing whether the space in a map satisfies given terrain types
 		/// (if allowedTerrain is non-null), is free of actors, and/or is free of resources.
 		/// </summary>
@@ -293,7 +356,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			IReadOnlySet<byte> allowedTerrain,
 			bool checkActors = false,
 			bool checkResources = false,
-			bool checkBounds = false)
+			bool checkBounds = false,
+			bool checkRamps = false)
 		{
 			var space = new CellLayer<bool>(Map);
 			if (allowedTerrain != null)
@@ -315,6 +379,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			if (checkBounds)
 				ZoneFromOutOfBounds(space, false);
 
+			if (checkRamps)
+				ZoneFromRamps(space, false);
+
 			return space;
 		}
 
@@ -326,7 +393,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			ushort requiredTile,
 			bool checkActors = false,
 			bool checkResources = false,
-			bool checkBounds = false)
+			bool checkBounds = false,
+			bool checkRamps = false)
 		{
 			var space = new CellLayer<bool>(Map);
 			foreach (var mpos in Map.AllCells.MapCoords)
@@ -340,6 +408,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			if (checkBounds)
 				ZoneFromOutOfBounds(space, false);
+
+			if (checkRamps)
+				ZoneFromRamps(space, false);
 
 			return space;
 		}
@@ -367,7 +438,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			CheckHasMapShapeOrNull(mask);
 
-			var zoneable = CheckSpace(zoneableTerrain, true, true, true);
+			var zoneable = CheckSpace(zoneableTerrain, true, true, true, true);
 			if (mask != null)
 				zoneable = CellLayerUtils.Intersect([zoneable, mask]);
 
@@ -2044,7 +2115,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public void GrowResources(
 			CellLayer<int> plan,
 			CellLayer<ResourceTypeInfo> typePlan,
-			long targetValue)
+			long targetValue,
+			ResourceDensityMode densityMode = ResourceDensityMode.Adjacency)
 		{
 			CheckHasMapShape(plan);
 			CheckHasMapShape(typePlan);
@@ -2075,9 +2147,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			Map.Resources.Clear();
 
-			// Return resource value of a given square.
-			// Matches the logic in ResourceLayer trait.
-			int CheckValue(CPos cpos)
+			int CheckDensity(CPos cpos)
 			{
 				if (!Map.Resources.Contains(cpos))
 					return 0;
@@ -2099,9 +2169,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 				// We need to have at least one resource in the cell.
 				// HACK: we should not be lerping to 9, as maximum adjacent resources is 8.
 				// HACK: it's too disruptive to fix.
-				var density = Math.Max(int2.Lerp(0, resourceType.MaxDensity, adjacent, 9), 1);
+				return Math.Max(int2.Lerp(0, resourceType.MaxDensity, adjacent, 9), 1);
+			}
 
-				return resourceValues[resourceType] * density;
+			// Return resource value of a given square.
+			// Matches the logic in ResourceLayer trait.
+			int CheckValue(CPos cpos)
+			{
+				if (!typePlan.Contains(cpos))
+					return 0;
+
+				var resourceType = typePlan[cpos];
+				return resourceValues[resourceType] * CheckDensity(cpos);
 			}
 
 			int CheckValue3By3(CPos cpos)
@@ -2146,6 +2225,16 @@ namespace OpenRA.Mods.Common.MapGenerator
 				foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, Rotations, WMirror))
 					if (Map.Resources.Contains(cpos))
 						remaining -= AddResource(cpos);
+			}
+
+			if (densityMode == ResourceDensityMode.BakedAdjacency)
+			{
+				foreach (var cpos in Map.Resources.CellRegion)
+				{
+					Map.Resources[cpos] = new ResourceTile(
+						Map.Resources[cpos].Type,
+						(byte)CheckDensity(cpos));
+				}
 			}
 		}
 
@@ -2242,6 +2331,64 @@ namespace OpenRA.Mods.Common.MapGenerator
 			decorable = ImproveSymmetry(decorable, false, (a, b) => a && b);
 
 			return decorable;
+		}
+
+		/// <summary>Reorder mpspawn positions to make them more intuitive within a lobby.</summary>
+		public void ReorderPlayerSpawns()
+		{
+			// Find and take the actors out of the ActorPlans list.
+			var mpspawns = ActorPlans.Where(a => a.Reference.Type == "mpspawn").ToList();
+			if (mpspawns.Count <= 1)
+				return;
+
+			ActorPlans.RemoveAll(a => a.Reference.Type == "mpspawn");
+
+			// Sort the spawns clockwise around the center
+			var wCenter = CellLayerUtils.Center(Map);
+			(int Angle, long RadiusSq) PolarPosition(ActorPlan plan)
+			{
+				var locationFromCenter = plan.WPosCenterLocation - wCenter;
+				var wangle = WAngle.ArcTan(locationFromCenter.Y, locationFromCenter.X);
+				var radiusSq = locationFromCenter.LengthSquared;
+				return (wangle.Angle, radiusSq);
+			}
+
+			mpspawns = mpspawns.OrderBy(PolarPosition).ToList();
+
+			// Find a reasonable ("A") spawn. It should:
+			// - Have the largest possible preceeding angular gap from the preceeding spawn.
+			// - (Tie breaker) should be close to the left.
+			// - (Tie breaker 2) should be close to the top.
+			//
+			// Note that this offers a strong suggestion of spawn groupings for teams. This works
+			// well for the vast majority of cases, but is ultimately subjective. In some rare
+			// cases, it may suggest teams that seem unusual compared to alternatives, for example:
+			// - long but orderly straight lines of spawns (rather than tight clusters);
+			// - clustering by euclidean distance rather than polar angle;
+			// - division according to land masses or terrain barriers.
+			var previousPolar = PolarPosition(mpspawns[^1]);
+			var choices = new List<(int Gap, int X, int Y, int Index)>();
+			for (var i = 0; i < mpspawns.Count; i++)
+			{
+				var thisPolar = PolarPosition(mpspawns[i]);
+				var gap = (thisPolar.Angle - previousPolar.Angle + 1024) % 1024;
+				var location = mpspawns[i].WPosLocation;
+				choices.Add((gap, location.X, location.Y, i));
+				previousPolar = thisPolar;
+			}
+
+			const int ComparisonThreshold = 2;
+			var bestGap = choices.Max(c => c.Gap);
+			var bestIndex = choices
+				.Where(c => c.Gap >= bestGap - ComparisonThreshold)
+				.Min(c => (c.X, c.Y, c.Index))
+				.Index;
+
+			// Rotate the spawns so that our "A" spawn is first.
+			mpspawns = [.. mpspawns[bestIndex..], .. mpspawns[..bestIndex]];
+
+			// Put them back into the ActorPlans list.
+			ActorPlans.AddRange(mpspawns);
 		}
 	}
 }

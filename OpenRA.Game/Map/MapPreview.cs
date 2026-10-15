@@ -24,10 +24,11 @@ using OpenRA.FileSystem;
 using OpenRA.Graphics;
 using OpenRA.Primitives;
 using OpenRA.Support;
+using OpenRA.Traits;
 
 namespace OpenRA
 {
-	public enum MapStatus { Available, Unavailable, Searching, DownloadAvailable, Downloading, DownloadError, Generating }
+	public enum MapStatus { Available, Unavailable, Searching, DownloadAvailable, Downloading, DownloadError, Generatable, Generating }
 
 	// Used for grouping maps in the UI
 	[Flags]
@@ -54,6 +55,7 @@ namespace OpenRA
 		public readonly int players;
 		public readonly Rectangle bounds;
 		public readonly ImmutableArray<short> spawnpoints = [];
+		public readonly bool hideSpawnPreviews;
 		public readonly MapGridType map_grid_type;
 		public readonly string minimap;
 		public readonly bool downloading;
@@ -77,6 +79,7 @@ namespace OpenRA
 			public MapPlayers Players;
 			public int PlayerCount;
 			public ImmutableArray<CPos> SpawnPoints;
+			public bool HideSpawnPreviews;
 			public MapGridType GridType;
 			public Rectangle Bounds;
 			public Png Preview;
@@ -84,6 +87,7 @@ namespace OpenRA
 			public MapClassification Class;
 			public MapVisibility Visibility;
 			public DateTime ModifiedDate;
+			public MapGenerationArgs GenerationArgs;
 
 			public MiniYaml RuleDefinitions;
 			public MiniYaml WeaponDefinitions;
@@ -197,7 +201,7 @@ namespace OpenRA
 			}
 		}
 
-		readonly object syncRoot = new();
+		readonly Lock syncRoot = new();
 		readonly MapCache cache;
 		readonly ModData modData;
 		IReadOnlyPackage package;
@@ -219,19 +223,6 @@ namespace OpenRA
 				return new Map(modData, package);
 		}
 
-		public string ToBase64String()
-		{
-			LoadPackage();
-			if (package is not ZipFileLoader.ReadWriteZipFile p)
-			{
-				var map = new Map(modData, package);
-				p = new ZipFileLoader.ReadWriteZipFile();
-				map.Save(p);
-			}
-
-			return p.ToBase64String();
-		}
-
 		IReadOnlyPackage parentPackage;
 
 		volatile InnerData innerData;
@@ -244,6 +235,7 @@ namespace OpenRA
 		public MapPlayers Players => innerData.Players;
 		public int PlayerCount => innerData.PlayerCount;
 		public ImmutableArray<CPos> SpawnPoints => innerData.SpawnPoints;
+		public bool HideSpawnPreviews => innerData.HideSpawnPreviews;
 		public MapGridType GridType => innerData.GridType;
 		public Rectangle Bounds => innerData.Bounds;
 		public Png Preview => innerData.Preview;
@@ -258,6 +250,8 @@ namespace OpenRA
 		public ActorInfo WorldActorInfo => innerData.WorldActorInfo;
 		public ActorInfo PlayerActorInfo => innerData.PlayerActorInfo;
 		public DateTime ModifiedDate => innerData.ModifiedDate;
+
+		public MapGenerationArgs GenerationArgs => innerData.GenerationArgs;
 
 		public long DownloadBytes { get; private set; }
 		public int DownloadPercentage { get; private set; }
@@ -421,6 +415,10 @@ namespace OpenRA
 			newData.Status = modData.Manifest.MapCompatibility.Contains(requiresMod) ?
 				MapStatus.Available : MapStatus.Unavailable;
 
+			newData.HideSpawnPreviews = false;
+			if (yaml.TryGetValue("HideSpawnPreviews", out temp))
+				newData.HideSpawnPreviews = FieldLoader.GetValue<bool>("HideSpawnPreviews", temp.Value);
+
 			try
 			{
 				// Actor definitions may change if the map format changes
@@ -429,7 +427,7 @@ namespace OpenRA
 					var spawns = new List<CPos>();
 					foreach (var kv in actorDefinitions.Nodes.Where(d => d.Value.Value == "mpspawn"))
 					{
-						var s = new ActorReference(kv.Value.Value, kv.Value.ToDictionary());
+						var s = new ActorReference(kv.Value.Value, kv.Value);
 						spawns.Add(s.Get<LocationInit>().Value);
 					}
 
@@ -477,17 +475,85 @@ namespace OpenRA
 		{
 			var newData = innerData.Clone();
 			newData.Class = MapClassification.Generated;
-			if (args != null)
+			newData.Status = MapStatus.Generatable;
+			newData.Title = args.Title;
+			newData.Author = args.Author;
+			newData.TileSet = args.Tileset;
+			newData.GenerationArgs = args;
+			newData.MapFormat = Map.CurrentMapFormat;
+
+			try
 			{
-				newData.Status = MapStatus.Generating;
-				newData.Title = args.Title;
-				newData.Author = args.Author;
+				var generator = modData.DefaultRules.Actors[SystemActors.EditorWorld]
+					.TraitInfos<IMapGeneratorInfo>()
+					.FirstOrDefault(info => info.Type == args.Generator);
+
+				if (generator == null)
+					throw new Exception($"Unknown map generator type {args.Generator}");
+
+				if (!generator.ValidateArgs(modData, args))
+					throw new Exception("MapGenerationArgs validation failed");
+
+				if (!generator.TryGenerateMetadata(modData, args, out var players, out var ruleDefinitions))
+					throw new Exception("Failed to generate map metadata");
+
+				newData.Players = players;
+				newData.PlayerCount = newData.Players.Players.Count(x => x.Value.Playable);
+				newData.SetCustomRules(modData, this, ruleDefinitions, null);
+
+				// Placeholder to satisfy server-side lint checks
+				newData.SpawnPoints = Exts.MakeArray(newData.PlayerCount, i => new CPos(i, i)).ToImmutableArray();
 			}
-			else
+			catch (Exception e)
+			{
+				Log.Write("debug", "Map generation failed with error:");
+				Log.Write("debug", e);
+
 				newData.Status = MapStatus.Unavailable;
+			}
 
 			lock (syncRoot)
 				innerData = newData;
+		}
+
+		public void Generate()
+		{
+			if (Class != MapClassification.Generated || Status != MapStatus.Generatable)
+				return;
+
+			lock (syncRoot)
+				innerData.Status = MapStatus.Generating;
+
+			Task.Run(() =>
+			{
+				try
+				{
+					var generator = modData.DefaultRules.Actors[SystemActors.EditorWorld]
+						.TraitInfos<IMapGeneratorInfo>()
+						.FirstOrDefault(info => info.Type == GenerationArgs.Generator);
+
+					if (generator == null)
+						throw new Exception($"Unknown map generator type {GenerationArgs.Generator}");
+
+					var map = generator.Generate(modData, GenerationArgs);
+
+					// Uid is generated when the map is saved
+					map.Save(new ZipFileLoader.ReadWriteZipFile());
+
+					if (map.Uid != GenerationArgs.Uid)
+						throw new InvalidOperationException("Map generation UID mismatch");
+
+					Game.RunAfterTick(() => UpdateFromMap(map.Package, MapClassification.Generated));
+				}
+				catch (Exception e)
+				{
+					Log.Write("debug", "Map generation failed with error:");
+					Log.Write("debug", e);
+
+					lock (syncRoot)
+						innerData.Status = MapStatus.Unavailable;
+				}
+			});
 		}
 
 		public void BeginRemoteSearch()
@@ -522,11 +588,13 @@ namespace OpenRA
 					newData.Bounds = r.bounds;
 					newData.TileSet = r.tileset;
 					newData.MapFormat = r.mapformat;
+					newData.HideSpawnPreviews = r.hideSpawnPreviews;
 
 					var spawns = new CPos[r.spawnpoints.Length / 2];
 					for (var j = 0; j < r.spawnpoints.Length; j += 2)
 						spawns[j / 2] = new CPos(r.spawnpoints[j], r.spawnpoints[j + 1]);
 					newData.SpawnPoints = spawns.ToImmutableArray();
+
 					newData.GridType = r.map_grid_type;
 					if (cache.LoadPreviewImages)
 					{
