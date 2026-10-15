@@ -51,12 +51,12 @@ namespace OpenRA.Mods.AS.Traits
 		}
 	}
 
-	class ExplodeWeapon : ConditionalTrait<ExplodeWeaponInfo>, ITick, INotifyCreated
+	sealed class ExplodeWeapon : ConditionalTrait<ExplodeWeaponInfo>, ITick, INotifyCreated
 	{
 		readonly ExplodeWeaponInfo info;
 		readonly WeaponInfo weapon;
 		readonly BodyOrientation body;
-		readonly List<(int Tick, Action Action)> delayedActions = new List<(int, Action)>();
+		readonly List<(int Tick, Action Action)> delayedActions = [];
 
 		int fireDelay;
 		int burst;
@@ -138,10 +138,9 @@ namespace OpenRA.Mods.AS.Traits
 
 					if (weapon.AfterFireSound != null && weapon.AfterFireSound.Any())
 					{
-						ScheduleDelayedAction(weapon.AfterFireSoundDelay, () =>
-						{
-							Game.Sound.Play(SoundType.World, weapon.AfterFireSound.Random(self.World.SharedRandom), self.CenterPosition);
-						});
+						ScheduleDelayedAction(
+							weapon.AfterFireSoundDelay,
+							() => Game.Sound.Play(SoundType.World, weapon.AfterFireSound.Random(self.World.SharedRandom), self.CenterPosition));
 					}
 				}
 			}

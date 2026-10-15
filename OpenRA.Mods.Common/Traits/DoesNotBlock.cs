@@ -17,7 +17,7 @@ namespace OpenRA.Mods.CA.Traits
 	public class DoesNotBlockInfo : TraitInfo
 	{
 		[Desc("Target types to allow to pass through.")]
-		public readonly BitSet<TargetableType> TargetTypes = default(BitSet<TargetableType>);
+		public readonly BitSet<TargetableType> TargetTypes = default;
 
 		public override object Create(ActorInitializer init) { return new DoesNotBlock(init, this); }
 	}

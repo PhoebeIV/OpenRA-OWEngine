@@ -19,7 +19,7 @@ namespace OpenRA.Mods.AS.Traits
 	public class CarrierSlaveInfo : BaseSpawnerSlaveInfo
 	{
 		[Desc("Move this close to the spawner, before entering it.")]
-		public readonly WDist LandingDistance = new WDist(5 * 1024);
+		public readonly WDist LandingDistance = new(5 * 1024);
 
 		public override object Create(ActorInitializer init) { return new CarrierSlave(init, this); }
 	}
@@ -57,15 +57,6 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			base.LinkMaster(self, master, spawnerMaster);
 			this.spawnerMaster = spawnerMaster as CarrierMaster;
-		}
-
-		bool NeedToReload(Actor self)
-		{
-			// The unit may not have ammo but will have unlimited ammunitions.
-			if (ammoPools.Length == 0)
-				return false;
-
-			return ammoPools.All(x => !x.HasAmmo);
 		}
 
 		void INotifyIdle.TickIdle(Actor self)

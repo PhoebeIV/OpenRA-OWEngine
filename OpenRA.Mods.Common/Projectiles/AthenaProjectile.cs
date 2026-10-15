@@ -27,7 +27,7 @@ namespace OpenRA.Mods.CA.Projectiles
 		public IProjectile Create(ProjectileArgs args) { return new AthenaProjectile(this, args); }
 	}
 
-	class AthenaProjectile : IProjectile
+	sealed class AthenaProjectile : IProjectile
 	{
 		readonly ProjectileArgs args;
 		readonly WDist altitude;

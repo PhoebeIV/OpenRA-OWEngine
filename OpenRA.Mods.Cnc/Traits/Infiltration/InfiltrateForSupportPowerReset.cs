@@ -66,6 +66,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			TextNotificationsManager.AddTransientLine(self.Owner, info.InfiltratedTextNotification);
 			TextNotificationsManager.AddTransientLine(infiltrator.Owner, info.InfiltrationTextNotification);
 
+			infiltrator.Owner.PlayerActor.TraitOrDefault<PlayerExperience>()?.GiveExperience(info.PlayerExperience);
+
 			var manager = self.Owner.PlayerActor.Trait<SupportPowerManager>();
 			var powers = manager.GetPowersForActor(self).Where(sp => !sp.Disabled);
 			foreach (var power in powers)

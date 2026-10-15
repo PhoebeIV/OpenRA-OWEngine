@@ -24,8 +24,8 @@ namespace OpenRA.Mods.AS.Traits
 
 	public class AutoDeployManager : ConditionalTrait<AutoDeployManagerInfo>, IBotTick
 	{
-		readonly HashSet<TraitPair<AutoDeployer>> active = new HashSet<TraitPair<AutoDeployer>>();
-		readonly HashSet<Order> undeployOrders = new HashSet<Order>();
+		readonly HashSet<TraitPair<AutoDeployer>> active = [];
+		readonly HashSet<Order> undeployOrders = [];
 		readonly World world;
 
 		public AutoDeployManager(Actor self, AutoDeployManagerInfo info)

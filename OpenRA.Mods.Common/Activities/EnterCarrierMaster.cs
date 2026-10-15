@@ -10,13 +10,12 @@
 
 using System.Linq;
 using OpenRA.Mods.AS.Traits;
-using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Activities
 {
-	class EnterCarrierMaster : Enter
+	sealed class EnterCarrierMaster : Enter
 	{
 		readonly Actor master;
 		readonly CarrierMaster spawnerMaster;

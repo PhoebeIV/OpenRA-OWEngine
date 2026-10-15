@@ -36,7 +36,7 @@ namespace OpenRA.Mods.CA.Traits
 
 	public class GrantConditionOnDamage : ConditionalTrait<GrantConditionOnDamageInfo>, ITick, INotifyDamage
 	{
-		public readonly new GrantConditionOnDamageInfo Info;
+		public new readonly GrantConditionOnDamageInfo Info;
 		int token = Actor.InvalidConditionToken;
 		int ticksRemaining;
 

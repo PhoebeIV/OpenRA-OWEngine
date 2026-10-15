@@ -27,7 +27,7 @@ namespace OpenRA.Mods.AS.Warheads
 		public readonly int Chance = 100;
 
 		[Desc("Target offsets relative to warhead explosion.")]
-		public readonly WVec[] Offsets = { new WVec(0, 0, 0) };
+		public readonly WVec[] Offsets = [new WVec(0, 0, 0)];
 
 		[Desc("If set, Offset's Z value will be used as absolute height instead of explosion height.")]
 		public readonly bool UseZOffsetAsAbsoluteHeight = false;
@@ -95,10 +95,10 @@ namespace OpenRA.Mods.AS.Warheads
 					DamageModifiers = args.DamageModifiers,
 
 					InaccuracyModifiers = !firedBy.IsDead ? firedBy.TraitsImplementing<IInaccuracyModifier>()
-						.Select(a => a.GetInaccuracyModifier()).ToArray() : System.Array.Empty<int>(),
+						.Select(a => a.GetInaccuracyModifier()).ToArray() : [],
 
 					RangeModifiers = !firedBy.IsDead ? firedBy.TraitsImplementing<IRangeModifier>()
-						.Select(a => a.GetRangeModifier()).ToArray() : System.Array.Empty<int>(),
+						.Select(a => a.GetRangeModifier()).ToArray() : [],
 
 					Source = target.CenterPosition,
 					CurrentSource = () => centerPosition,

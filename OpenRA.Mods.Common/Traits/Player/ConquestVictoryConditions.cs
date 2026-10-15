@@ -119,6 +119,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyWinStateChanged.OnPlayerWon(Player player)
 		{
+			foreach (var a in player.World.ActorsWithTrait<INotifyOwnerWon>().Where(a => a.Actor.Owner == player))
+				a.Trait.OnOwnerWon(a.Actor);
+
 			if (info.SuppressNotifications)
 				return;
 

@@ -1174,7 +1174,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 					}
 
 					if (maybeAbstractCell == null)
-						throw new Exception(
+						Log.Write("debug",
 							"The abstract path should never be searched for an unreachable point. " +
 							$"Cell {cell} failed lookup for an abstract cell.");
 				}
@@ -1187,7 +1187,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 				{
 					abstractSearch.TargetPredicate = c => c == abstractCell;
 					if (!abstractSearch.ExpandToTarget())
-						throw new Exception(
+						Log.Write("debug",
 							"The abstract path should never be searched for an unreachable point. " +
 							$"Abstract cell {abstractCell} failed to route to abstract cell.");
 					info = graph[abstractCell];

@@ -10,7 +10,6 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.AS.Traits;
 using OpenRA.Primitives;
@@ -18,7 +17,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Activities
 {
-	class EnterTeleportNetwork : Enter
+	sealed class EnterTeleportNetwork : Enter
 	{
 		readonly string type;
 
@@ -69,7 +68,7 @@ namespace OpenRA.Mods.Common.Activities
 				else
 					initialFacing = exitinfo.Facing.Value;
 
-				exitLocations = rp != null ? rp.Path : new List<CPos>() { exit };
+				exitLocations = rp != null ? rp.Path : [exit];
 			}
 
 			// Teleport myself to primary actor.

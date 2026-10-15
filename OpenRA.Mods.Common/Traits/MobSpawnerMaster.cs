@@ -64,7 +64,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (InitialActorCount > Actors.Length || InitialActorCount < -1)
 				throw new YamlException("MobSpawner can't have more InitialActorCount than the actors defined!");
 
-			if (InitialActorCount == 0 && AggregateHealth == true)
+			if (InitialActorCount == 0 && AggregateHealth)
 				throw new YamlException("You can't have InitialActorCount == 0 and AggregateHealth");
 		}
 
@@ -74,13 +74,13 @@ namespace OpenRA.Mods.AS.Traits
 	public class MobSpawnerMaster : BaseSpawnerMaster, INotifyOwnerChanged, ITick,
 		IResolveOrder, INotifyAttack
 	{
-		class MobSpawnerSlaveEntry : BaseSpawnerSlaveEntry
+		sealed class MobSpawnerSlaveEntry : BaseSpawnerSlaveEntry
 		{
 			public new MobSpawnerSlave SpawnerSlave;
 			public Health Health;
 		}
 
-		public new MobSpawnerMasterInfo Info { get; private set; }
+		public new MobSpawnerMasterInfo Info { get; }
 
 		MobSpawnerSlaveEntry[] slaveEntries;
 		int spawnReplaceTicks = 0;

@@ -38,14 +38,17 @@ namespace OpenRA.Mods.Common.Warheads
 
 		void IRulesetLoaded<WeaponInfo>.RulesetLoaded(Ruleset rules, WeaponInfo info)
 		{
+			if (Falloff.Length < 2)
+				throw new YamlException("SpreadDamage requires at least two Falloff values.");
+
 			if (Range != null)
 			{
-				if (Range.Length != 1 && Range.Length != Falloff.Length)
-					throw new YamlException("Number of range values must be 1 or equal to the number of Falloff values.");
+				if (Range.Length != Falloff.Length)
+					throw new YamlException("Number of Range values must be equal to the number of Falloff values.");
 
 				for (var i = 0; i < Range.Length - 1; i++)
-					if (Range[i] > Range[i + 1])
-						throw new YamlException("Range values must be specified in an increasing order.");
+					if (Range[i] >= Range[i + 1])
+						throw new YamlException("Range values must be specified in a strictly increasing order.");
 
 				effectiveRange = Range;
 			}

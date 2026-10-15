@@ -64,15 +64,12 @@ namespace OpenRA.Mods.CA.Traits
 		readonly Lazy<IShieldRegenModifier[]> shieldModifiers;
 		int conditionToken = Actor.InvalidConditionToken;
 		int conditionToken2 = Actor.InvalidConditionToken;
-		Actor self;
+		readonly Actor self;
 
-		[Sync]
+		[VerifySync]
 		int strength;
-		[Sync]
 		int intervalTicks;
-		[Sync]
 		int delayTicks;
-		[Sync]
 		int maxshield;
 
 		public Shielded(ActorInitializer init, ShieldedInfo info)
@@ -136,11 +133,13 @@ namespace OpenRA.Mods.CA.Traits
 			var overrideTypes = Info.OverrideDamageType;
 			var bypassTypes = Info.BypassDamageTypes;
 
-			if (e.Damage.DamageTypes.Overlaps(overrideTypes))
+			if (e.Damage.DamageTypes.Overlaps(overrideTypes) || (e.Damage.Value < 0 && e.Damage.DamageTypes.Overlaps(bypassTypes)))
 				return;
 
 			if ((strength == 0 && e.Damage.Value > 0) || e.Damage.Value == 0 || e.Attacker == self)
-				return;
+			{
+				ResetRegen(); return;
+			}
 
 			var damageAmt = Convert.ToInt32(e.Damage.Value / 0.01);
 			var excessDamage = damageAmt - strength;
@@ -186,8 +185,7 @@ namespace OpenRA.Mods.CA.Traits
 			{
 				var hullDamage = new Damage(excessDamage, damageTypes);
 
-				if (health != null)
-					health.InflictDamage(self, e.Attacker, hullDamage, true);
+				health?.InflictDamage(self, e.Attacker, hullDamage, false);
 			}
 		}
 

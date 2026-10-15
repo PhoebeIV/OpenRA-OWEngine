@@ -76,37 +76,22 @@ namespace OpenRA.Mods.Common.Activities
 
 			if (cargo.IsDead || carryable.IsTraitDisabled || carryall.IsTraitDisabled || !cargo.AppearsFriendlyTo(self) || cargo != carryall.Carryable)
 			{
-				if (carryall.State == Carryall.CarryallState.Reserved)
-					carryall.UnreserveCarryable(self);
-
-				// Make sure we run the TakeOff activity if we are / have landed
-				if (self.Trait<Aircraft>().HasInfluence())
-				{
-					ChildHasPriority = true;
-					IsInterruptible = false;
-					QueueChild(new TakeOff(self));
-					return false;
-				}
-
-				return true;
-			}
-
-			if (cargo.IsDead || carryable.IsTraitDisabled || !cargo.AppearsFriendlyTo(self))
-			{
-				carryall.UnreserveCarryable(self);
-				return true;
+				Cancel(self, true);
+				return false;
 			}
 
 			// Wait until we are near the target before we try to lock it
-			var distSq = (cargo.CenterPosition - self.CenterPosition).HorizontalLengthSquared;
-			if (state == PickupState.Intercept && distSq <= targetLockRange.LengthSquared)
+			if (state == PickupState.Intercept && (cargo.CenterPosition - self.CenterPosition).HorizontalLengthSquared <= targetLockRange.LengthSquared)
 				state = PickupState.LockCarryable;
 
 			if (state == PickupState.LockCarryable)
 			{
 				var lockResponse = carryable.LockForPickup(cargo, self);
 				if (lockResponse == LockResponse.Failed)
-					Cancel(self);
+				{
+					Cancel(self, true);
+					return false;
+				}
 				else if (lockResponse == LockResponse.Success)
 				{
 					// Pickup position and facing are now known - swap the fly/wait activity with Land
@@ -146,10 +131,17 @@ namespace OpenRA.Mods.Common.Activities
 			// TakeOff is not interruptible, but this activity is. To deal with it we bail. We transfer
 			// priority both to dispose of this activity and to make sure TakeOff is not disposed with it.
 			if (ChildActivity is TakeOff)
+			{
 				ChildHasPriority = true;
+				return;
+			}
 
-			// Return once we are in the pickup state and the pickup activities have completed
-			return TickChild(self) && state == PickupState.Pickup;
+			// Make sure we run the TakeOff activity if we are / have landed.
+			if (self.Trait<Aircraft>().HasInfluence())
+			{
+				ChildHasPriority = true;
+				QueueChild(new TakeOff(self));
+			}
 		}
 
 		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)

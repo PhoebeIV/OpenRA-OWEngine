@@ -18,7 +18,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("Can move actors instantly to primary designated teleport network canal actor.")]
-	class TeleportNetworkTransportableInfo : TraitInfo
+	sealed class TeleportNetworkTransportableInfo : TraitInfo
 	{
 		[VoiceReference]
 		public readonly string Voice = "Action";
@@ -32,7 +32,7 @@ namespace OpenRA.Mods.AS.Traits
 		public override object Create(ActorInitializer init) { return new TeleportNetworkTransportable(this); }
 	}
 
-	class TeleportNetworkTransportable : IIssueOrder, IResolveOrder, IOrderVoice
+	sealed class TeleportNetworkTransportable : IIssueOrder, IResolveOrder, IOrderVoice
 	{
 		readonly TeleportNetworkTransportableInfo info;
 
@@ -51,13 +51,13 @@ namespace OpenRA.Mods.AS.Traits
 			if (order.OrderID != "TeleportNetworkTransport")
 				return null;
 
-			return new Order(order.OrderID, self, target, queued) { };
+			return new Order(order.OrderID, self, target, queued);
 		}
 
 		// Checks if targeted actor's owner has enough canals (more than 1) of provided type
 		static bool HasEnoughCanals(Actor targetactor, string type)
 		{
-			var counter = targetactor.Owner.PlayerActor.TraitsImplementing<TeleportNetworkManager>().Where(x => x.Type == type).First();
+			var counter = targetactor.Owner.PlayerActor.TraitsImplementing<TeleportNetworkManager>().First(x => x.Type == type);
 
 			if (counter == null)
 				return false;
@@ -107,7 +107,7 @@ namespace OpenRA.Mods.AS.Traits
 			self.QueueActivity(new EnterTeleportNetwork(self, order.Target, targettrait.Info.Type));
 		}
 
-		class TeleportNetworkTransportOrderTargeter : UnitOrderTargeter
+		sealed class TeleportNetworkTransportOrderTargeter : UnitOrderTargeter
 		{
 			readonly TeleportNetworkTransportableInfo info;
 

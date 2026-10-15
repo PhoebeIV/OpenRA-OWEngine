@@ -24,7 +24,7 @@ namespace OpenRA.Mods.AS.Warheads
 		[Desc("Whether to consider actors in determining whether the explosion should happen. If false, only terrain will be considered.")]
 		public readonly bool ImpactActors = true;
 
-		static readonly BitSet<TargetableType> TargetTypeAir = new BitSet<TargetableType>("Air");
+		static readonly BitSet<TargetableType> TargetTypeAir = new("Air");
 
 		protected enum ImpactActorType
 		{

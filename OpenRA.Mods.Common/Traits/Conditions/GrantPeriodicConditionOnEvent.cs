@@ -34,10 +34,10 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly string Condition = null;
 
 		[Desc("The range of time (in ticks) with the condition being disabled.")]
-		public readonly int[] CooldownDuration = { 1000 };
+		public readonly int[] CooldownDuration = [1000];
 
 		[Desc("The range of time (in ticks) with the condition being enabled.")]
-		public readonly int[] ActiveDuration = { 100 };
+		public readonly int[] ActiveDuration = [100];
 
 		public readonly PeriodicConditionTrigger Triggers = PeriodicConditionTrigger.Damage;
 
@@ -58,7 +58,7 @@ namespace OpenRA.Mods.AS.Traits
 		readonly Actor self;
 		readonly GrantPeriodicConditionOnEventInfo info;
 
-		[Sync]
+		[VerifySync]
 		int ticks;
 
 		int cooldown, active;

@@ -21,12 +21,12 @@ namespace OpenRA.Mods.AS.Traits
 		public override object Create(ActorInitializer init) { return new Berserkable(init.Self, this); }
 	}
 
-	class Berserkable : ConditionalTrait<BerserkableInfo>, INotifyIdle
+	sealed class Berserkable : ConditionalTrait<BerserkableInfo>, INotifyIdle
 	{
 		public Berserkable(Actor self, BerserkableInfo info)
 			: base(info) { }
 
-		void Blink(Actor self)
+		static void Blink(Actor self)
 		{
 			self.World.AddFrameEndTask(w =>
 			{
@@ -55,9 +55,9 @@ namespace OpenRA.Mods.AS.Traits
 			Blink(self);
 		}
 
-		WDist GetScanRange(Actor self, AttackBase[] atbs)
+		static WDist GetScanRange(Actor self, AttackBase[] atbs)
 		{
-			WDist range = WDist.Zero;
+			var range = WDist.Zero;
 
 			// Get max value of autotarget scan range.
 			var autoTargets = self.TraitsImplementing<AutoTarget>().Where(a => !a.IsTraitDisabled).ToArray();
@@ -91,7 +91,7 @@ namespace OpenRA.Mods.AS.Traits
 				return;
 			}
 
-			WDist range = GetScanRange(self, atbs);
+			var range = GetScanRange(self, atbs);
 
 			var targets = self.World.FindActorsInCircle(self.CenterPosition, range)
 				.Where(a => !a.Owner.NonCombatant && a != self && a.IsTargetableBy(self));

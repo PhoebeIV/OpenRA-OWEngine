@@ -99,6 +99,9 @@ namespace OpenRA.Mods.Common.Traits
 			if (defeated && !Info.SpawnAfterDefeat)
 				return;
 
+			if (!self.World.Map.Contains(self.Location + Info.Offset))
+				return;
+
 			var td = new TypeDictionary
 			{
 				new ParentActorInit(self),

@@ -45,11 +45,20 @@ namespace OpenRA.Mods.AS.Traits
 	}
 
 	// TO-DO: Pester OpenRA to allow INotifyDeployTrigger to be used for other traits besides WithMakeAnimation. Like this one.
-	public class AutoDeployer : ConditionalTrait<AutoDeployerInfo>, INotifyAttack, ITick, INotifyDamage, INotifyCreated, ISync, INotifyOwnerChanged, INotifyDeployComplete, INotifyBecomingIdle
+	public class AutoDeployer :
+		ConditionalTrait<AutoDeployerInfo>,
+		INotifyAttack,
+		ITick,
+		INotifyDamage,
+		INotifyCreated,
+		ISync,
+		INotifyOwnerChanged,
+		INotifyDeployComplete,
+		INotifyBecomingIdle
 	{
 		public const string PrimaryBuildingOrderID = "PrimaryProducer";
 
-		[Sync]
+		[VerifySync]
 		int undeployTicks = -1, deployTicks;
 
 		bool deployed;

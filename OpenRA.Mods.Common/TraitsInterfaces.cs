@@ -487,9 +487,15 @@ namespace OpenRA.Mods.Common.Traits
 
 	[RequireExplicitImplementation]
 	public interface IResourceValueModifier { int GetResourceValueModifier(); }
-	
+
 	[RequireExplicitImplementation]
 	public interface IShieldRegenModifier { int GetShieldRegenModifier(); }
+
+	[RequireExplicitImplementation]
+	public interface IPeriodicConditionCooldownModifier { int GetPeriodicConditionCooldownModifier(); }
+
+	[RequireExplicitImplementation]
+	public interface IPeriodicConditionActiveModifier { int GetPeriodicConditionActiveModifier(); }
 
 	[RequireExplicitImplementation]
 	public interface ICustomMovementLayer
@@ -1022,4 +1028,7 @@ namespace OpenRA.Mods.Common.Traits
 			Size sizeLimit,
 			MapGeneratorOption.VisibilityFlags visibilityRequirements);
 	}
+
+	[RequireExplicitImplementation]
+	public interface INotifyTeslaCharging { void Charging(Actor self, in Target target); }
 }

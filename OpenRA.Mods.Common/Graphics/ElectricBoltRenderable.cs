@@ -17,27 +17,26 @@ namespace OpenRA.Mods.Common.Graphics
 	public class ElectricBoltRenderable : IRenderable, IFinalizedRenderable
 	{
 		readonly WPos[] offsets;
-		readonly int zOffset;
 		readonly WDist width;
 		readonly Color color;
 
 		public ElectricBoltRenderable(WPos[] offsets, int zOffset, WDist width, Color color)
 		{
 			this.offsets = offsets;
-			this.zOffset = zOffset;
+			ZOffset = zOffset;
 			this.width = width;
 			this.color = color;
 		}
 
 		public WPos Pos { get { return new WPos(offsets[0].X, offsets[0].Y, 0); } }
-		public int ZOffset { get { return zOffset; } }
+		public int ZOffset { get; }
 		public bool IsDecoration { get { return true; } }
 
 		public IRenderable WithZOffset(int newOffset) { return new ElectricBoltRenderable(offsets, newOffset, width, color); }
 		public IRenderable OffsetBy(in WVec vec)
 		{
 			var cachedWVec = vec;
-			return new ElectricBoltRenderable(offsets.Select(offset => offset + cachedWVec).ToArray(), zOffset, width, color);
+			return new ElectricBoltRenderable(offsets.Select(offset => offset + cachedWVec).ToArray(), ZOffset, width, color);
 		}
 
 		public IRenderable AsDecoration() { return this; }
@@ -47,7 +46,7 @@ namespace OpenRA.Mods.Common.Graphics
 		{
 			var screenWidth = wr.ScreenVector(new WVec(width, WDist.Zero, WDist.Zero))[0];
 
-			Game.Renderer.WorldRgbaColorRenderer.DrawLine(offsets.Select(offset => wr.Screen3DPosition(offset)), screenWidth, color, false);
+			Game.Renderer.WorldRgbaColorRenderer.DrawLine(offsets.Select(wr.Screen3DPosition), screenWidth, color, false);
 		}
 
 		public void RenderDebugGeometry(WorldRenderer wr) { }

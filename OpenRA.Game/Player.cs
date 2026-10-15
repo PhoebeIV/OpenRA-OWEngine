@@ -42,7 +42,7 @@ namespace OpenRA
 		const string EnumeratedBotName = "enumerated-bot-name";
 
 		public readonly Actor PlayerActor;
-		public readonly string PlayerName;
+		public string PlayerName;
 		public readonly string InternalName;
 		public readonly FactionInfo Faction;
 		public readonly bool NonCombatant = false;
@@ -164,12 +164,12 @@ namespace OpenRA
 				ClientIndex = client.Index;
 				color = client.Color;
 				Color = color;
-				PlayerName = client.Name;
+				if (!client.IsBot)
+					PlayerName = client.Name;
 
 				BotType = client.Bot;
 				Faction = ResolveFaction(world, client.Faction, playerRandom, !pr.LockFaction);
 				DisplayFaction = ResolveDisplayFaction(world, client.Faction);
-
 				var assignSpawnPoints = world.WorldActor.TraitOrDefault<IAssignSpawnPoints>();
 				HomeLocation = assignSpawnPoints?.AssignHomeLocation(world, client, playerRandom) ?? pr.HomeLocation;
 				SpawnPoint = assignSpawnPoints?.SpawnPointForPlayer(this) ?? client.SpawnPoint;
@@ -238,7 +238,12 @@ namespace OpenRA
 			{
 				var botInfo = botInfos.First(b => b.Type == BotType);
 				var botsOfSameType = World.Players.Where(c => c.BotType == BotType).ToArray();
-				return FluentProvider.GetMessage(EnumeratedBotName,
+				if (PlayerName != null)
+					return FluentProvider.GetMessage(EnumeratedBotName,
+					"name", FluentProvider.GetMessage(PlayerName),
+					"number", botsOfSameType.IndexOf(this) + 1);
+				else
+					return FluentProvider.GetMessage(EnumeratedBotName,
 					"name", FluentProvider.GetMessage(botInfo.Name),
 					"number", botsOfSameType.IndexOf(this) + 1);
 			}

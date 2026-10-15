@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using OpenRA.GameRules;
 using OpenRA.Graphics;
@@ -27,7 +28,7 @@ namespace OpenRA.Mods.CA.Projectiles
 	public class ElectricBoltInfo : IProjectileInfo
 	{
 		[Desc("The width of the zap.")]
-		public readonly WDist Width = new WDist(12);
+		public readonly WDist Width = new(12);
 
 		[Desc("Equivalent to sequence ZOffset. Controls Z sorting.")]
 		public readonly int ZOffset = 0;
@@ -46,17 +47,17 @@ namespace OpenRA.Mods.CA.Projectiles
 
 		[Desc("Colors of the zaps. The amount of zaps are the amount of colors listed here and PlayerColorZaps.")]
 		public readonly Color[] Colors =
-		{
+		[
 			Color.FromArgb(80, 80, 255),
 			Color.FromArgb(80, 80, 255),
 			Color.FromArgb(255, 255, 255)
-		};
+		];
 
 		[Desc("Additional zaps colored with the player's color.")]
 		public readonly int PlayerColorZaps = 0;
 
 		[Desc("Alpha to apply to player colored zaps. If two values are specified randomly select a value between the two values.")]
-		public readonly int[] PlayerColorZapAlpha = { 255 };
+		public readonly ImmutableArray<int> PlayerColorZapAlpha = [255];
 
 		[Desc("Initial distortion offset.")]
 		public readonly int Distortion = 0;
@@ -68,7 +69,7 @@ namespace OpenRA.Mods.CA.Projectiles
 		public readonly WAngle Angle = WAngle.FromDegrees(90);
 
 		[Desc("Maximum length per segment.")]
-		public readonly WDist SegmentLength = new WDist(320);
+		public readonly WDist SegmentLength = new(320);
 
 		[Desc("Image containing launch effect sequence.")]
 		public readonly string LaunchEffectImage = null;
@@ -102,9 +103,9 @@ namespace OpenRA.Mods.CA.Projectiles
 		int ticks = 0;
 		WVec leftVector;
 		WVec upVector;
-		WVec inaccuracyOffset;
+		readonly WVec inaccuracyOffset;
 
-		[Sync]
+		[VerifySync]
 		WPos target, source, lastTarget, lastSource;
 
 		public ElectricBolt(ElectricBoltInfo info, ProjectileArgs args)
@@ -115,8 +116,10 @@ namespace OpenRA.Mods.CA.Projectiles
 			var playerColor = args.SourceActor.Owner.Color;
 			var colors = info.Colors.ToList();
 
-			for (int i = 0; i < info.PlayerColorZaps; i++)
-				colors.Add(Color.FromArgb(info.PlayerColorZapAlpha.Length != 2 ? info.PlayerColorZapAlpha[0] : OpenRA.Mods.Common.Util.RandomInRange(args.SourceActor.World.SharedRandom, info.PlayerColorZapAlpha), playerColor.R, playerColor.G, playerColor.B));
+			for (var i = 0; i < info.PlayerColorZaps; i++)
+				colors.Add(Color.FromArgb(info.PlayerColorZapAlpha.Length != 2
+					? info.PlayerColorZapAlpha[0]
+					: Common.Util.RandomInRange(args.SourceActor.World.SharedRandom, info.PlayerColorZapAlpha), playerColor.R, playerColor.G, playerColor.B));
 
 			source = lastSource = args.Source;
 			target = lastTarget = args.PassiveTarget;
@@ -133,7 +136,7 @@ namespace OpenRA.Mods.CA.Projectiles
 			var direction = target - source;
 			numSegments = (direction.Length - 1) / info.SegmentLength.Length + 1;
 
-			zaps = new HashSet<(Color, WPos[], WVec[])>();
+			zaps = [];
 			foreach (var c in colors)
 			{
 				var numSegments = (direction.Length - 1) / info.SegmentLength.Length + 1;
@@ -164,7 +167,7 @@ namespace OpenRA.Mods.CA.Projectiles
 			hasLaunchEffect = !string.IsNullOrEmpty(info.LaunchEffectImage) && !string.IsNullOrEmpty(info.LaunchEffectSequence);
 			if (hasLaunchEffect)
 			{
-				Func<WAngle> getMuzzleFacing = () => args.CurrentMuzzleFacing();
+				WAngle getMuzzleFacing() => args.CurrentMuzzleFacing();
 				args.SourceActor.World.AddFrameEndTask(w => w.Add(new SpriteEffect(args.CurrentSource, getMuzzleFacing, args.SourceActor.World,
 					info.LaunchEffectImage, info.LaunchEffectSequence, info.LaunchEffectPalette)));
 			}
@@ -172,7 +175,8 @@ namespace OpenRA.Mods.CA.Projectiles
 
 		void CheckBlocked()
 		{
-			if (info.Blockable && BlocksProjectiles.AnyBlockingActorsBetween(args.SourceActor.World, args.SourceActor.Owner, source, target, info.Width, out var blockedPos))
+			if (info.Blockable
+				&& BlocksProjectiles.AnyBlockingActorsBetween(args.SourceActor.World, args.SourceActor.Owner, source, target, info.Width, out var blockedPos))
 				target = blockedPos;
 		}
 
@@ -216,7 +220,7 @@ namespace OpenRA.Mods.CA.Projectiles
 				var offsets = zap.Positions;
 				var distortions = zap.Distortions;
 				offsets[0] = source;
-				offsets[offsets.Length - 1] = target;
+				offsets[^1] = target;
 
 				for (var i = 1; i < offsets.Length - 1; i++)
 				{
