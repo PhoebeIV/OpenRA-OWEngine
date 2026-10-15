@@ -34,7 +34,7 @@ namespace OpenRA.Mods.Common.Scripting
 			pp.SendDropPods(Self, target, null);
 
 			foreach (var notify in Self.TraitsImplementing<INotifySupportPower>())
-				notify.Activated(Self);
+				notify.Activated(Self, "DropPodsPower");
 		}
 	}
 }
